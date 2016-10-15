@@ -1,0 +1,14 @@
+{
+  "name": "miner",
+  "version": "0.1.0",
+  "description": "Ad hoc repo mining",
+  "main": "index.js",
+  "scripts": {
+    "test": "ava"
+  },
+  "author": "Eddie Antonio Santos <easantos@ualberta.ca>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "github": "^5.2.2"
+  }
+}
