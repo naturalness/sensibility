@@ -1,5 +1,10 @@
 {
   "globalDependencies": {
-    "node": "registry:env/node#6.0.0+20161015001438"
+    "jszip": "registry:dt/jszip#0.0.0+20160709055933",
+    "node": "registry:env/node#6.0.0+20161015001438",
+    "sqlite3": "registry:dt/sqlite3#2.2.3+20160724070935"
+  },
+  "dependencies": {
+    "redis": "registry:npm/redis#2.6.0+20160901110043"
   }
 }
