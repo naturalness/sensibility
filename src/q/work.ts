@@ -23,15 +23,35 @@ export type DataCallback = (data: String) => any;
  * <insert obligatory Rhianna jokes>
  */
 export default class WorkQ {
-  protected _personalQueue: string = uuid.v1();
+  private _personalQueue: Q;
 
-  constructor(protected queue: Q) {
+  constructor(protected queue: Q, private onData: DataCallback) {
+    const personalQueueName = uuid.v1();
+    this._personalQueue = new Q(queue.client, personalQueueName);
   }
 
   /**
-   * TODO: need a way to acknowledge reads.
+   * Acknowledge reads...
    */
-  blockingRead(): Promise<string> {
-    return this.queue.transfer(this._personalQueue);
+  protected blockingRead(): Promise<string> {
+    return this.queue
+    .transfer(this._personalQueue)
+    .then(data => {
+      this.onData(data);
+    })
+    .catch((err) => {
+      console.error(err);
+    })
+    .then(() => {
+      this._personalQueue.clear()
+    });
+  }
+
+  /* TODO */
+  start() {
+  }
+
+  /* TODO */
+  stop() {
   }
 };

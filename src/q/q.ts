@@ -1,12 +1,12 @@
 /*
  * Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ declare module 'redis' {
   interface RedisClient {
     lpushAsync(key: String, value: string): Promise<number>;
     rpoplpushAsync(src: string, dest: string): Promise<string>;
+    delAsync(src: string): Promise<undefined>;
   }
 }
 
@@ -36,7 +37,7 @@ export interface RedisSerializable {
  * A Redis queue.
  */
 export default class Q {
-  constructor(public redis: RedisClient, public name: string) {
+  constructor(public client: RedisClient, public name: string) {
   }
 
   /**
@@ -48,14 +49,27 @@ export default class Q {
         const serialized =
           (typeof object === "string") ? object : object.toRedisString();
 
-        return this.redis.lpushAsync(this.name, serialized);
+        return this.client.lpushAsync(this.name, serialized);
     });
   }
 
   /**
    * Atomically transfer an item from one queue to the other.
    */
-  transfer(destination: string): Promise<string> {
-    return this.redis.rpoplpushAsync(this.name, destination);
+  transfer(destination: string | Q): Promise<string> {
+    return Promise.resolve()
+    .then(() => {
+      const destKey =
+        (typeof destination === "string") ? destination : destination.name;
+
+      return this.client.rpoplpushAsync(this.name, destKey);
+    });
+  }
+
+  /**
+   * Clears the queue.
+   */
+  clear(): Promise<undefined> {
+    return this.client.delAsync(this.name);
   }
 }
