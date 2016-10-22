@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS source_file (
     owner   TEXT,
     repo    TEXT,
     path    TEXT NOT NULL,
-    text    TEXT NOT NULL,
+    source  TEXT NOT NULL,
 
     FOREIGN KEY (owner, repo) REFERENCES repository (owner, repo) ON DELETE CASCADE
 );
