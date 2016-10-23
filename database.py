@@ -8,10 +8,17 @@
 >>> ret = db.add_repository(repo)
 >>> ret == repo
 True
->>> source = SourceFile.create(repo, '(void)0;', 'index.js')
->>> ret = db.add_source_file(source)
->>> ret == source
+>>> source_a = SourceFile.create(repo, '(void)0;', 'index.js')
+>>> ret = db.add_source_file(source_a)
+>>> ret == source_a
 True
+>>> source_b = SourceFile.create(repo, '(void)0;', 'undefined.js')
+>>> source_a != source_b
+True
+>>> ret = db.add_source_file(source_b)
+Traceback (most recent call last):
+...
+database.DuplicateFileError: duplicate file contents
 """
 
 import logging
@@ -20,6 +27,7 @@ import sqlite3
 from path import Path
 
 from datatypes import Repository, SourceFile, ParsedSource
+from utils import is_hash
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +36,15 @@ SCHEMA_FILENAME = Path(__file__).parent / 'schema.sql'
 with open(SCHEMA_FILENAME, encoding='UTF-8') as schema_file:
     SCHEMA = schema_file.read()
     del schema_file
+
+
+class DuplicateFileError(Exception):
+    def __init__(self, hash_):
+        assert is_hash(hash_)
+        self.hash = hash_
+        super(DuplicateFileError, self).__init__(
+            "duplicate file contents"
+        )
 
 
 class Database:
@@ -55,22 +72,25 @@ class Database:
     def add_repository(self, repo):
         assert isinstance(repo, Repository)
         cur = self.conn.cursor()
-        cur.execute(r"""
-            INSERT INTO repository (owner, repo, license, revision)
-            VALUES (?, ?, ?, ?);
-        """, (repo.owner, repo.name, repo.license, repo.revision))
-        self.conn.commit()
+        with self.conn:
+            cur.execute(r"""
+                INSERT INTO repository (owner, repo, license, revision)
+                VALUES (?, ?, ?, ?);
+            """, (repo.owner, repo.name, repo.license, repo.revision))
         return repo
 
     def add_source_file(self, source_file):
         assert isinstance(source_file, SourceFile)
         cur = self.conn.cursor()
-        cur.execute(r"""
-            INSERT INTO source_file (hash, owner, repo, path, source)
-            VALUES (?, ?, ?, ?, ?);
-        """, (source_file.hash, source_file.owner, source_file.name,
-              source_file.path, source_file.source))
-        self.conn.commit()
+        try:
+            with self.conn:
+                cur.execute(r"""
+                    INSERT INTO source_file (hash, owner, repo, path, source)
+                    VALUES (?, ?, ?, ?, ?);
+                """, (source_file.hash, source_file.owner, source_file.name,
+                      source_file.path, source_file.source))
+        except sqlite3.IntegrityError:
+            raise DuplicateFileError(source_file.hash)
         return source_file
 
     def set_failure(self, source_file):
