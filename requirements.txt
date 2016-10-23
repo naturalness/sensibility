@@ -1,0 +1,4 @@
+sh
+pytest
+pytest-xdist
+path.py
