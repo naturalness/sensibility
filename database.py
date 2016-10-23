@@ -24,6 +24,9 @@ database.DuplicateFileError: duplicate file contents
 >>> parsed == ret
 True
 >>> db.set_failure(source_b)
+
+>>> db.get_source(source_a.hash)
+'void 0;'
 """
 
 import logging
@@ -95,6 +98,14 @@ class Database:
         except sqlite3.IntegrityError:
             raise DuplicateFileError(source_file.hash)
         return source_file
+
+    def get_source(self, hash_):
+        assert is_hash(hash_)
+        cur = self.conn.cursor()
+        cur.execute('SELECT source FROM source_file WHERE hash = ?', (hash_,))
+        source, = cur.fetchone()
+        return source
+
 
     def add_parsed_source(self, parsed_source):
         assert isinstance(parsed_source, ParsedSource)

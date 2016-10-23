@@ -1,3 +1,4 @@
 redis
 sh
 path.py
+requests

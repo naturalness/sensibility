@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-import tempfile
 import json
+import logging
+import tempfile
 
+logger = logging.getLogger('parse_worker')
+
+import sh
 from sh import node
 
 import database
+from datatypes import ParsedSource
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
+
+class ParseError(Exception):
+    def __init__(self):
+        super(ParseError, self).__init__('failed to parse file')
+
 
 def parse_js(source):
     """
@@ -17,12 +27,19 @@ def parse_js(source):
     3
     >>> isinstance(ast, dict)
     True
+    >>> parse_js("%$")
+    Traceback (most recent call last):
+    ...
+    parse_worker.ParseError: failed to parse file
     """
 
     with tempfile.NamedTemporaryFile() as source_file:
         source_file.write(source.encode('utf-8'))
         source_file.flush()
-        result_string = node('parse-js', source_file.name)
+        try:
+            result_string = node('parse-js', source_file.name)
+        except sh.ErrorReturnCode_1:
+            raise ParseError
     result = json.loads(str(result_string))
     return result['tokens'], result['ast']
 
@@ -39,11 +56,18 @@ def main():
             break
 
         try:
-            db.get_source(file_hash)
-            result_json = parse()
+            source_code = db.get_source(file_hash)
+            tokens, ast = parse_js(source_code)
+            db.parsed_source(ParsedSource(file_hash, tokens, ast))
+        except ParseError:
+            db.set_failure(file_hash)
+            logger.info("Failed: %s", file_hash)
         except KeyboardInterrupt:
             aborted << file_hash
+            logger.warn("Interrupted: %s", file_hash)
             break
+        else:
+            logger.info('Done: %s', file_hash)
 
 
 if __name__ == '__main__':
