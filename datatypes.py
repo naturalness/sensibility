@@ -5,6 +5,7 @@
 Nothing can stop me from writing this module.
 """
 
+import json
 from collections import namedtuple
 
 from utils import is_hash, is_sha, sha256
@@ -56,6 +57,16 @@ class SourceFile(namedtuple('SourceFile', 'repo hash source path')):
         return self.repo.name
 
 
-class ParsedSource(namedtuple('ParsedSource', 'id tokens ast')):
-    def __init__(self, id_, tokens, ast):
-        assert is_hash(id_)
+class ParsedSource(namedtuple('ParsedSource', 'hash tokens ast')):
+    def __init__(self, hash_, tokens, ast):
+        assert is_hash(hash_)
+        assert isinstance(tokens, list)
+        assert isinstance(ast, dict)
+
+    @property
+    def tokens_as_json(self):
+        return json.dumps(self.tokens)
+
+    @property
+    def ast_as_json(self):
+        return json.dumps(self.ast)

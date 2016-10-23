@@ -21,10 +21,10 @@ CREATE TABLE source_file (
 
 -- A file is inserted here if it has correct syntax, can be converted into an
 -- AST and has a list of lexemes.
-CREATE TABLE parse (
+CREATE TABLE parsed_source (
     hash    TEXT PRIMARY KEY,
-    ast     TEXT NOT NULL, -- JSON
-    lexemes TEXT NOT NULL, -- JSON
+    ast     JSON NOT NULL, -- JSON
+    tokens  JSON NOT NULL, -- JSON
 
     FOREIGN KEY (hash) REFERENCES source_file (hash) ON DELETE CASCADE
 );
