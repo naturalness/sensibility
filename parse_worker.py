@@ -64,14 +64,16 @@ def main():
             source_code = db.get_source(file_hash)
             tokens, ast = parse_js(source_code)
             db.parsed_source(ParsedSource(file_hash, tokens, ast))
-        except ParseError:
-            db.set_failure(file_hash)
-            logger.info("Failed: %s", file_hash)
         except KeyboardInterrupt:
             aborted << file_hash
             logger.warn("Interrupted: %s", file_hash)
             break
+        except ParseError:
+            db.set_failure(file_hash)
+            worker.acknowledge(file_hash)
+            logger.info("Failed: %s", file_hash)
         else:
+            worker.acknowledge(file_hash)
             logger.info('Done: %s', file_hash)
 
 
