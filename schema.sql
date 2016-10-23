@@ -1,5 +1,5 @@
 -- Represents a source code repository.
-CREATE TABLE IF NOT EXISTS repository (
+CREATE TABLE repository (
     owner       TEXT NOT NULL, -- the owner of the repository
     repo        TEXT NOT NULL, -- the name of the repository
     license     TEXT, -- License of the file
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS repository (
 );
 
 -- A single source file from a repository.
-CREATE TABLE IF NOT EXISTS source_file (
+CREATE TABLE source_file (
     hash    TEXT PRIMARY KEY NOT NULL, -- The SHA2 hash of the file
     owner   TEXT,
     repo    TEXT,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS source_file (
 
 -- A file is inserted here if it has correct syntax, can be converted into an
 -- AST and has a list of lexemes.
-CREATE TABLE IF NOT EXISTS parse (
+CREATE TABLE parse (
     hash    TEXT PRIMARY KEY,
     ast     TEXT NOT NULL, -- JSON
     lexemes TEXT NOT NULL, -- JSON
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS parse (
 );
 
 -- A file is inserted here if it does not have valid syntax.
-CREATE TABLE IF NOT EXISTS failure (
+CREATE TABLE failure (
     hash    TEXT PRIMARY KEY
 );
 

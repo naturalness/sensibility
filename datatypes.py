@@ -7,7 +7,7 @@ Nothing can stop me from writing this module.
 
 from collections import namedtuple
 
-from utils import is_hash, sha256
+from utils import is_hash, is_sha, sha256
 
 
 class RepositoryID(namedtuple('RepositoryID', 'owner name')):
@@ -17,6 +17,12 @@ class RepositoryID(namedtuple('RepositoryID', 'owner name')):
 class Repository(namedtuple('Repository', 'id license revision')):
     def __init__(self, id_, license, revision):
         assert isinstance(id_, RepositoryID)
+        assert license.lower() == license
+        assert is_sha(revision)
+
+    @classmethod
+    def create(self, owner, name, license, revision):
+        return Repository(RepositoryID(owner, name), license, revision)
 
     @property
     def owner(self):
@@ -46,5 +52,5 @@ class SourceFile(namedtuple('SourceFile', 'repo hash source path')):
 
 
 class ParsedSource(namedtuple('ParsedSource', 'id tokens ast')):
-    def __init__(self, id_, license, revision):
+    def __init__(self, id_, tokens, ast):
         assert is_hash(id_)
