@@ -50,7 +50,13 @@ class Database:
 
     def add_repository(self, repo):
         assert isinstance(repo, Repository)
-        raise NotImplementedError
+        cur = self.conn.cursor()
+        cur.execute(r"""
+            INSERT INTO repository (owner, repo, license, revision)
+            VALUES (?, ?, ?, ?);
+        """, (repo.owner, repo.name, repo.license, repo.revision))
+        self.conn.commit()
+        return repo
 
     def add_source_file(self, source_file):
         assert isinstance(repo, SourceFile)
