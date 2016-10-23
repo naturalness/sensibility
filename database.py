@@ -8,6 +8,10 @@
 >>> ret = db.add_repository(repo)
 >>> ret == repo
 True
+>>> source = SourceFile.create(repo, '(void)0;', 'index.js')
+>>> ret = db.add_source_file(source)
+>>> ret == source
+True
 """
 
 import logging
@@ -59,8 +63,15 @@ class Database:
         return repo
 
     def add_source_file(self, source_file):
-        assert isinstance(repo, SourceFile)
-        raise NotImplementedError
+        assert isinstance(source_file, SourceFile)
+        cur = self.conn.cursor()
+        cur.execute(r"""
+            INSERT INTO source_file (hash, owner, repo, path, source)
+            VALUES (?, ?, ?, ?, ?);
+        """, (source_file.hash, source_file.owner, source_file.name,
+              source_file.path, source_file.source))
+        self.conn.commit()
+        return source_file
 
     def set_failure(self, source_file):
         assert isinstance(repo, SourceFile)

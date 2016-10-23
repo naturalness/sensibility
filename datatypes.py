@@ -11,7 +11,9 @@ from utils import is_hash, is_sha, sha256
 
 
 class RepositoryID(namedtuple('RepositoryID', 'owner name')):
-    pass
+    def __str__(self):
+        return r'{}/{}'.format(self.owner, self.name)
+    # TODO: URLs
 
 
 class Repository(namedtuple('Repository', 'id license revision')):
@@ -34,21 +36,24 @@ class Repository(namedtuple('Repository', 'id license revision')):
 
 
 class SourceFile(namedtuple('SourceFile', 'repo hash source path')):
-    def __init__(self, id_, license, revision):
-        assert isinstance(id_, RepositoryID)
+    def __init__(self, repo, hash_, source, path):
+        assert isinstance(repo, RepositoryID)
+        assert is_hash(hash_)
 
     @classmethod
     def create(cls, repo, source, path):
+        if isinstance(repo, Repository):
+            repo = repo.id
         file_hash = sha256(source.encode('UTF-8'))
         return cls(repo, file_hash, source, path)
 
     @property
     def owner(self):
-        return self.id.owner
+        return self.repo.owner
 
     @property
     def name(self):
-        return self.id.name
+        return self.repo.name
 
 
 class ParsedSource(namedtuple('ParsedSource', 'id tokens ast')):
