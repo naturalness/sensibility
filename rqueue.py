@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
 r"""
 
 First, ensure the Redis server is running, and clear it.
 
->>> client = redis.StrictRedis()
+>>> client = redis.StrictRedis(db=1)
 >>> client.flushdb()
 True
 

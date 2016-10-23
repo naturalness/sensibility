@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
  * Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
  *
@@ -20,6 +21,8 @@ const fs = require('fs');
 const esprima = require('esprima');
 
 function parsePipeline(source) {
+    // TODO: Ignore shebang line if present
+    // TODO: handle modules and source files.
     const ast = esprima.parse(source);
     const tokens = esprima.tokenize(source, { loc: true });
     return { ast, tokens };
