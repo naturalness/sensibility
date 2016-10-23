@@ -23,6 +23,7 @@ database.DuplicateFileError: duplicate file contents
 >>> ret = db.add_parsed_source(parsed)
 >>> parsed == ret
 True
+>>> db.set_failure(source_b)
 """
 
 import logging
@@ -95,10 +96,6 @@ class Database:
             raise DuplicateFileError(source_file.hash)
         return source_file
 
-    def set_failure(self, source_file):
-        assert isinstance(repo, SourceFile)
-        raise NotImplementedError
-
     def add_parsed_source(self, parsed_source):
         assert isinstance(parsed_source, ParsedSource)
         cur = self.conn.cursor()
@@ -110,3 +107,10 @@ class Database:
                   parsed_source.ast_as_json, parsed_source.tokens_as_json))
         return parsed_source
 
+    def set_failure(self, source_file):
+        assert isinstance(source_file, SourceFile)
+        cur = self.conn.cursor()
+        with self.conn:
+            cur.execute(r"""
+                INSERT INTO failure (hash) VALUES (?)
+            """, (source_file.hash,))
