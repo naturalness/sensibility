@@ -150,6 +150,8 @@ def main():
         except KeyboardInterrupt:
             break
 
+        logger.debug('Pulled: %s', file_hash)
+
         try:
             source_code = db.get_source(file_hash)
             tokens, ast = parse_js(source_code)
@@ -162,10 +164,10 @@ def main():
         except ParseError:
             db.set_failure(file_hash)
             worker.acknowledge(file_hash)
-            logger.info("Failed: %s", file_hash)
+            logger.debug("Failed: %s", file_hash)
         else:
             worker.acknowledge(file_hash)
-            logger.info('Done: %s', file_hash)
+            logger.debug('Done: %s', file_hash)
 
 
 if __name__ == '__main__':
