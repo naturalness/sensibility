@@ -25,14 +25,17 @@ Okay, now we can rock.
 >>> list(line)
 [b'eddieantonio/bop']
 
+WorkQueue tests:
+
 >>> q.clear()
 >>> q << "hello"
 >>> worker = WorkQueue(q)
 >>> name = worker.name
->>> import re; bool(re.match(r'^[0-9a-f\-]{20,}$', name))
+>>> import re; bool(re.match(r'^q:worker:[0-9a-f\-]{20,}$', name))
 True
 >>> worker.get()
 b'hello'
+>>> worker.acknowledge(b'hello')
 >>> worker.get(timeout=1) is None
 True
 
@@ -76,6 +79,9 @@ class Queue:
     def clear(self):
         self.client.delete(self.name)
 
+    def remove(self, value, count=1):
+        self.client.lrem(self.name, count, value)
+
     def transfer(self, other, timeout=0):
         """Transfer one element to the other"""
         assert isinstance(other, Queue)
@@ -86,11 +92,15 @@ class WorkQueue:
     def __init__(self, queue):
         assert isinstance(queue, Queue)
         self.origin = queue
-        self._processing = Queue(str(uuid.uuid4()),
-                                client=queue.client)
+        name = "q:worker:%s" % (uuid.uuid4(),)
+        self._processing = Queue(name, client=queue.client)
+
     @property
     def name(self):
         return self._processing.name
 
     def get(self, timeout=0):
         return self.origin.transfer(self._processing, timeout)
+
+    def acknowledge(self, value):
+        self._processing.remove(value)

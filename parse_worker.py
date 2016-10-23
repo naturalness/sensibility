@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+"""
+Listens to updates on q:analyze, and inserts them into the database.
+"""
+
 import json
 import logging
 import tempfile
-
-logger = logging.getLogger('parse_worker')
 
 import sh
 from sh import node
@@ -14,6 +16,9 @@ import database
 from datatypes import ParsedSource
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
+
+# TODO: count characters in string literals!
+logger = logging.getLogger('parse_worker')
 
 class ParseError(Exception):
     def __init__(self):
