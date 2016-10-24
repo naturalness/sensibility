@@ -2,3 +2,4 @@ typings
 dump.rdb
 .cache/
 *.sqlite3
+.token
