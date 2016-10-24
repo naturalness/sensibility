@@ -26,7 +26,7 @@ True
 >>> db.set_failure(source_b)
 
 >>> db.get_source(source_a.hash)
-'void 0;'
+b'void 0;'
 """
 
 import logging
@@ -104,7 +104,10 @@ class Database:
         cur = self.conn.cursor()
         cur.execute('SELECT source FROM source_file WHERE hash = ?', (hash_,))
         source, = cur.fetchone()
-        return source
+        if isinstance(source, str):
+            return source.encode('utf-8')
+        else:
+            return source
 
 
     def add_parsed_source(self, parsed_source):
