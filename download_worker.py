@@ -30,7 +30,8 @@ import requests
 import database
 from datatypes import RepositoryID, Repository, SourceFile
 from rqueue import Queue, WorkQueue
-from connection import redis_client, sqlite3_connection, github
+from connection import redis_client, sqlite3_connection
+from rate_limit import wait_for_rate_limit
 
 QUEUE_NAME = 'q:download'
 QUEUE_ERRORS = 'q:download:aborted'
@@ -84,15 +85,6 @@ def download_source_files(repo):
             yield SourceFile.create(repo, source, path)
 
 
-def wait_for_rate_limit():
-    limit_info = github.rate_limit()
-    core = limit_info['resources']['core']
-    remaining = core['remaining']
-    if remaining < 10:
-        # Wait an hour
-        reset = core['reset']
-        time.sleep(seconds_until(reset) + 1)
-
 
 def seconds_until(timestamp):
     now = datetime.datetime.now()
@@ -125,7 +117,7 @@ def main():
             db.add_repository(repo)
             for source_file in download_source_files(repo):
                 db.add_source_file(source_file)
-                parser_worker.enqueue(source_file.hash)
+                parser_worker << source_file.hash
         except KeyboardInterrupt:
             aborted << repo_id
             logger.warn("Interrupted: %s", repo_id)
