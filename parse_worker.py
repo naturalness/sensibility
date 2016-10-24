@@ -41,9 +41,14 @@ def parse_js(source):
     Traceback (most recent call last):
     ...
     parse_worker.ParseError: failed to parse file
+
     >>> tokens, _ = parse_js("#!/usr/bin/node\nvar foo;")
     >>> len(tokens)
     3
+
+    >>> tokens, _ = parse_js("/*\n*/\n\nimport * as esprima from 'esprima';")
+    >>> len(tokens)
+    7
     """
 
     with tempfile.NamedTemporaryFile() as source_file:

@@ -20,17 +20,58 @@
 const fs = require('fs');
 const esprima = require('esprima');
 
-function parsePipeline(source) {
-    // Strip shebang line.
-    source = source.replace(/^#![^\r\n]+/, '');
-    // TODO: Ignore shebang line if present
-    // TODO: handle modules and source files.
-    const ast = esprima.parse(source);
-    const tokens = esprima.tokenize(source, { loc: true });
-    return { ast, tokens };
-}
-
 const [_node, _script, filename] = process.argv;
 
 const source = fs.readFileSync(filename, 'utf8');
 console.log(JSON.stringify(parsePipeline(source)));
+
+function parsePipeline(source) {
+    // Strip shebang line.
+    source = source.replace(/^#![^\r\n]+/, '');
+    const sourceType = deduceSourceType(source);
+    const ast = esprima.parse(source, { sourceType });
+    const tokens = esprima.tokenize(source, {
+        loc: true,
+        sourceType
+    });
+    return { ast, tokens };
+}
+
+/*
+  Obtained from: http://esprima.org/demo/parse.js
+
+  Copyright (C) 2013 Ariya Hidayat <ariya.hidayat@gmail.com>
+  Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
+  Copyright (C) 2011 Ariya Hidayat <ariya.hidayat@gmail.com>
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+function deduceSourceType(code) {
+    var type = 'module';
+
+    try {
+        esprima.parse(code, { sourceType: 'script' });
+        type = 'script';
+    } catch (e) {
+    }
+
+    return type;
+}
