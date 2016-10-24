@@ -12,9 +12,32 @@ from utils import is_hash, is_sha, sha256
 
 
 class RepositoryID(namedtuple('RepositoryID', 'owner name')):
+    """
+    >>> repo = RepositoryID.parse('eddieantonio/bop')
+    >>> repo.archive_url()
+    'https://api.github.com/repos/eddieantonio/bop/zipball/master'
+    """
+
     def __str__(self):
         return r'{}/{}'.format(self.owner, self.name)
-    # TODO: URLs
+
+    def archive_url(self, format="zipball", revision="master"):
+        return (
+            "https://api.github.com"
+            "/repos/{owner}/{repo}/{format}/{rev}"
+        ).format(owner=self.owner, repo=self.name,
+                 format=format, rev=revision)
+
+    @property
+    def api_url(self):
+        return (
+            "https://api.github.com/repos/{owner}/{repo}"
+        ).format(owner=self.owner, repo=self.name)
+
+    @classmethod
+    def parse(cls, string):
+        owner, name = string.split('/', 1)
+        return cls(owner, name)
 
 
 class Repository(namedtuple('Repository', 'id license revision')):

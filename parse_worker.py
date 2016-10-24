@@ -156,6 +156,7 @@ def main():
         try:
             file_hash = worker.get()
         except KeyboardInterrupt:
+            logging.info('Interrupted while idle (no data loss)')
             break
 
         logger.debug('Pulled: %s', file_hash)
