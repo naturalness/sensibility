@@ -51,8 +51,11 @@ def parse_js(source):
     7
     """
 
+    if isinstance(source, str):
+        source = source.encode('utf-8')
+
     with tempfile.NamedTemporaryFile() as source_file:
-        source_file.write(source.encode('utf-8'))
+        source_file.write(source)
         source_file.flush()
         try:
             result_string = node('parse-js', source_file.name)
