@@ -112,13 +112,13 @@ def main():
             aborted << repo_id
             logger.warn("Interrupted: %s", repo_id)
             break
-        except Exception as ex:
+        except:
             aborted << repo_id
             worker.acknowledge(repo_id)
             logger.exception("Failed: %s", repo_id)
         else:
             worker.acknowledge(repo_id)
-            logger.debug('Done: %s', repo_id)
+            logger.info('Downloaded: %s', repo_id)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

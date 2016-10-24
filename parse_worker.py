@@ -152,6 +152,8 @@ def main():
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
 
+    logger.info("Parser listening on %s", QUEUE_NAME)
+
     while True:
         try:
             file_hash = worker.get()
@@ -166,7 +168,7 @@ def main():
         try:
             source_code = db.get_source(file_hash)
             tokens, ast = parse_js(source_code)
-            db.parsed_source(ParsedSource(file_hash, tokens, ast))
+            db.add_parsed_source(ParsedSource(file_hash, tokens, ast))
             insert_count(count_codepoints_in_literals(tokens))
         except KeyboardInterrupt:
             aborted << file_hash
@@ -174,12 +176,16 @@ def main():
             break
         except ParseError:
             db.set_failure(file_hash)
+            logger.info("Syntax error in %s", file_hash)
+        except:
+            aborted << file_hash
             worker.acknowledge(file_hash)
-            logger.debug("Failed: %s", file_hash)
+            logger.exception("Failed: %s", file_hash)
         else:
             worker.acknowledge(file_hash)
-            logger.debug('Done: %s', file_hash)
+            logger.info('Analyzed: %s', file_hash)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     main()
