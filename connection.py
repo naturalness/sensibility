@@ -30,7 +30,7 @@ __all__ = ['redis_client', 'sqlite3_connection', 'github']
 redis_client = redis.StrictRedis(db=0)
 
 # Default database
-sqlite3_connection = sqlite3.connect('parsed_sources.sqlite3')
+sqlite3_connection = sqlite3.connect('sources.sqlite3')
 
 # Default GitHub
 with open('.token', 'r', encoding='UTF=8') as token_file:

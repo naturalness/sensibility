@@ -67,11 +67,12 @@ class DuplicateFileError(Exception):
         self.hash = hash_
         super(DuplicateFileError, self).__init__("duplicate file contents")
 
+
 class SourceNotFoundError(Exception):
     def __init__(self, hash_):
         assert is_hash(hash_)
         self.hash = hash_
-        super(DuplicateFileError, self).__init__("could not find source",
+        super(SourceNotFoundError, self).__init__("could not find source",
                                                  hash_)
 
 

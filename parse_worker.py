@@ -20,6 +20,7 @@
 Listens to updates on q:analyze, and inserts them into the database.
 """
 
+import time
 import json
 import logging
 import tempfile
