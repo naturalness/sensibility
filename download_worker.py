@@ -28,6 +28,7 @@ import io
 import requests
 
 import database
+from database import DuplicateFileError
 from datatypes import RepositoryID, Repository, SourceFile
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
@@ -116,8 +117,12 @@ def main():
             repo = get_repo_info(repo_id)
             db.add_repository(repo)
             for source_file in download_source_files(repo):
-                db.add_source_file(source_file)
-                parser_worker << source_file.hash
+                try:
+                    db.add_source_file(source_file)
+                except DuplicateFileError:
+                    logger.info("Duplicate file: %s", source_file.path)
+                else:
+                    parser_worker << source_file.hash
         except KeyboardInterrupt:
             aborted << repo_id
             logger.warn("Interrupted: %s", repo_id)

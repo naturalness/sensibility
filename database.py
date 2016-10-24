@@ -2,13 +2,13 @@
 # -*- coding: UTF-8 -*-
 
 # Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -67,6 +67,13 @@ class DuplicateFileError(Exception):
         self.hash = hash_
         super(DuplicateFileError, self).__init__("duplicate file contents")
 
+class SourceNotFoundError(Exception):
+    def __init__(self, hash_):
+        assert is_hash(hash_)
+        self.hash = hash_
+        super(DuplicateFileError, self).__init__("could not find source",
+                                                 hash_)
+
 
 class Database:
     def __init__(self, connection=None):
@@ -118,7 +125,10 @@ class Database:
         assert is_hash(hash_)
         cur = self.conn.cursor()
         cur.execute('SELECT source FROM source_file WHERE hash = ?', (hash_,))
-        source, = cur.fetchone()
+        result = cur.fetchone()
+        if result is None:
+            raise SourceNotFoundError(hash_)
+        source, = result
         if isinstance(source, str):
             return source.encode('utf-8')
         else:

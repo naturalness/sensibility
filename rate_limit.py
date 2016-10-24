@@ -22,10 +22,14 @@ import time
 from connection import github
 
 
-logging = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def wait_for_rate_limit():
+    """
+    Checks the rate limit and waits if the rate limit is beyond a certain
+    threshold.
+    """
     limit_info = github.rate_limit()
     core = limit_info['resources']['core']
     remaining = core['remaining']
