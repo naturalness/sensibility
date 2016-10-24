@@ -21,7 +21,7 @@ from rqueue import Queue
 from connection import github, redis_client
 from names import DOWNLOAD_QUEUE
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('search_worker')
 
 
 def main():
