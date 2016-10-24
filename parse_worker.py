@@ -31,7 +31,7 @@ class ParseError(Exception):
 
 
 def parse_js(source):
-    """
+    r"""
     >>> tokens, ast = parse_js("void 0;")
     >>> len(tokens)
     3
@@ -41,6 +41,9 @@ def parse_js(source):
     Traceback (most recent call last):
     ...
     parse_worker.ParseError: failed to parse file
+    >>> tokens, _ = parse_js("#!/usr/bin/node\nvar foo;")
+    >>> len(tokens)
+    3
     """
 
     with tempfile.NamedTemporaryFile() as source_file:

@@ -21,6 +21,8 @@ const fs = require('fs');
 const esprima = require('esprima');
 
 function parsePipeline(source) {
+    // Strip shebang line.
+    source = source.replace(/^#![^\r\n]+/, '');
     // TODO: Ignore shebang line if present
     // TODO: handle modules and source files.
     const ast = esprima.parse(source);
