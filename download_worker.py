@@ -20,10 +20,11 @@
 Downloads metadata from the GitHub API.
 """
 
-import logging
-import zipfile
 import datetime
 import io
+import logging
+import time
+import zipfile
 
 import requests
 
@@ -86,7 +87,6 @@ def download_source_files(repo):
             yield SourceFile.create(repo, source, path)
 
 
-
 def seconds_until(timestamp):
     now = datetime.datetime.now()
     future = datetime.datetime.fromtimestamp(timestamp)
@@ -116,13 +116,20 @@ def main():
         try:
             repo = get_repo_info(repo_id)
             db.add_repository(repo)
+            to_analyze = set()
             for source_file in download_source_files(repo):
                 try:
                     db.add_source_file(source_file)
                 except DuplicateFileError:
                     logger.info("Duplicate file: %s", source_file.path)
                 else:
-                    parser_worker << source_file.hash
+                    to_analyze.add(source_file.hash)
+
+            # XXX: For some reason, we need to wait a bit before adding to the
+            # queue, or else the parser will not be able to read sources.
+            time.sleep(1)
+            for hash_ in to_analyze:
+                parser_worker << hash_
         except KeyboardInterrupt:
             aborted << repo_id
             logger.warn("Interrupted: %s", repo_id)

@@ -20,7 +20,6 @@
 Listens to updates on q:analyze, and inserts them into the database.
 """
 
-import time
 import json
 import logging
 import tempfile
@@ -183,8 +182,6 @@ def main():
         file_hash = file_hash.decode('utf-8')
 
         logger.debug('Pulled: %s', file_hash)
-        # Hack! Wait a second before analyzing
-        time.sleep(1)
 
         try:
             source_code = db.get_source(file_hash)
