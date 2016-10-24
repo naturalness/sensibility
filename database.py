@@ -89,8 +89,8 @@ class Database:
     def _initialize_db(self):
         conn = self.conn
         if self._is_database_empty():
-            conn.executescript(SCHEMA)
-            conn.commit()
+            with self.conn:
+                conn.executescript(SCHEMA)
 
     def _is_database_empty(self):
         cur = self.conn.cursor()
