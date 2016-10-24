@@ -148,7 +148,7 @@ def insert_count(counter, client=redis_client):
 
 
 def main():
-    db = database(sqlite3_connection)
+    db = database.Database(sqlite3_connection)
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
 
@@ -158,6 +158,8 @@ def main():
         except KeyboardInterrupt:
             logging.info('Interrupted while idle (no data loss)')
             break
+
+        file_hash = file_hash.decode('utf-8')
 
         logger.debug('Pulled: %s', file_hash)
 

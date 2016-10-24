@@ -13,7 +13,7 @@ import io
 import requests
 
 import database
-from datatypes import RepositoryID, Repository
+from datatypes import RepositoryID, Repository, SourceFile
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection, github
 
@@ -28,7 +28,7 @@ def get_repo_info(repo_id):
     logging.debug('Accessing %s', url)
 
     wait_for_rate_limit()
-    resp = repo_id.get(url, headers={
+    resp = requests.get(url, headers={
         'User-Agent': 'eddieantonio-ad-hoc-miner',
         'Accept': 'application/vnd.github.drax-preview+json'
     })
@@ -57,22 +57,24 @@ def download_source_files(repo):
 
     wait_for_rate_limit()
     resp = requests.get(url)
-    assert repo.status_code == 200
+    assert resp.status_code == 200
 
     # Open zip file
     fake_file = io.BytesIO(resp.content)
     with zipfile.ZipFile(fake_file) as repo_zip:
         # Iterate through all javascript files
         for path, source in extract_js(repo_zip):
+            logger.debug("Extracted %s", path)
             yield SourceFile.create(repo, source, path)
 
 
 def wait_for_rate_limit():
     limit_info = github.rate_limit()
-    remaining = limit_info['core']['remaining']
+    core = limit_info['resources']['core']
+    remaining = core['remaining']
     if remaining < 10:
         # Wait an hour
-        reset = limit_info['core']['reset']
+        reset = core['reset']
         time.sleep(seconds_until(reset) + 1)
 
 
@@ -84,9 +86,11 @@ def seconds_until(timestamp):
 
 
 def main():
-    db = database(sqlite3_connection)
+    db = database.Database(sqlite3_connection)
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
+
+    logger.info("Downloader listening on %s", QUEUE_NAME)
 
     while True:
         try:
@@ -95,27 +99,27 @@ def main():
             logging.info('Interrupted while idle (no data loss)')
             break
 
-        repo_id = RepositoryID.parse(repo_name)
+        repo_id = RepositoryID.parse(repo_name.decode('utf-8'))
 
         logger.debug('Set to download: %s', repo_id)
 
         try:
             repo = get_repo_info(repo_id)
             db.add_repository(repo)
-            for source_file in download_source_files(repo_id):
+            for source_file in download_source_files(repo):
                 db.add_source_file(source_file)
         except KeyboardInterrupt:
-            aborted << file_hash
-            logger.warn("Interrupted: %s", file_hash)
+            aborted << repo_id
+            logger.warn("Interrupted: %s", repo_id)
             break
         except Exception as ex:
-            aborted << file_hash
-            worker.acknowledge(file_hash)
-            logger.exception("Failed: %s", file_hash)
+            aborted << repo_id
+            worker.acknowledge(repo_id)
+            logger.exception("Failed: %s", repo_id)
         else:
-            worker.acknowledge(file_hash)
-            logger.debug('Done: %s', file_hash)
+            worker.acknowledge(repo_id)
+            logger.debug('Done: %s', repo_id)
 
-
-    default_branch = ...
-
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    main()

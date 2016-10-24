@@ -44,7 +44,9 @@ class Repository(namedtuple('Repository', 'id license revision')):
     def __init__(self, id_, license, revision):
         assert isinstance(id_, RepositoryID)
         assert license.lower() == license
-        assert is_sha(revision)
+        # Originally, I wanted a specific git SHA, but now I'll take
+        # any valid branch name.
+        #assert is_sha(revision)
 
     @classmethod
     def create(self, owner, name, license, revision):
@@ -68,7 +70,12 @@ class SourceFile(namedtuple('SourceFile', 'repo hash source path')):
     def create(cls, repo, source, path):
         if isinstance(repo, Repository):
             repo = repo.id
-        file_hash = sha256(source.encode('UTF-8'))
+        if isinstance(source, str):
+            source_bytes = source.encode('UTF-8')
+        else:
+            assert isinstance(source, bytes)
+            source_bytes = source
+        file_hash = sha256(source_bytes)
         return cls(repo, file_hash, source, path)
 
     @property
