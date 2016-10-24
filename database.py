@@ -85,6 +85,7 @@ class Database:
         else:
             self.conn = connection
 
+        self._set_wal()
         self._initialize_db()
 
     def _initialize_db(self):
@@ -92,6 +93,12 @@ class Database:
         if self._is_database_empty():
             with conn:
                 conn.executescript(SCHEMA)
+
+    def _set_wal(self):
+        with closing(self.conn.cursor()) as cur:
+            cur.execute('PRAGMA journal_mode=WAL')
+            status, = cur.fetchone()
+        assert status in ('wal', 'memory')
 
     def _is_database_empty(self):
         with closing(self.conn.cursor()) as cur:
