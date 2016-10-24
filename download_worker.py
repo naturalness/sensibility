@@ -2,13 +2,13 @@
 # -*- coding: UTF-8 -*-
 
 # Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,6 +34,7 @@ from connection import redis_client, sqlite3_connection, github
 
 QUEUE_NAME = 'q:download'
 QUEUE_ERRORS = 'q:download:aborted'
+PARSE_WORKER = 'q:analyze'
 
 logger = logging.getLogger('download_worker')
 
@@ -104,6 +105,7 @@ def main():
     db = database.Database(sqlite3_connection)
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
+    parser_worker = Queue(PARSE_WORKER, redis_client)
 
     logger.info("Downloader listening on %s", QUEUE_NAME)
 
@@ -123,6 +125,7 @@ def main():
             db.add_repository(repo)
             for source_file in download_source_files(repo):
                 db.add_source_file(source_file)
+                parser_worker.enqueue(source_file.hash)
         except KeyboardInterrupt:
             aborted << repo_id
             logger.warn("Interrupted: %s", repo_id)
@@ -136,5 +139,5 @@ def main():
             logger.info('Downloaded: %s', repo_id)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     main()
