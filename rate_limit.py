@@ -25,17 +25,20 @@ from connection import github
 logger = logging.getLogger(__name__)
 
 
-def wait_for_rate_limit():
+def wait_for_rate_limit(resource='core'):
     """
     Checks the rate limit and waits if the rate limit is beyond a certain
     threshold.
     """
-    limit_info = github.rate_limit()
-    core = limit_info['resources']['core']
-    remaining = core['remaining']
+    assert resource in ('core', 'search')
+    response = github.rate_limit()
+    limit_info = response['resources'][resource]
+
+    remaining = limit_info['remaining']
     logger.debug('%d requests remaining', remaining)
+
     if remaining < 10:
         # Wait until reset
-        reset = core['reset']
+        reset = limit_info['reset']
         logger.info('Exceded rate limit; waiting until %r', reset)
         time.sleep(seconds_until(reset) + 1)
