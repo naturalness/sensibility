@@ -14,7 +14,7 @@ CREATE TABLE source_file (
     owner   TEXT,
     repo    TEXT,
     path    TEXT NOT NULL,
-    source  TEXT NOT NULL,
+    source  BLOB NOT NULL, -- Store as raw bytes.
 
     FOREIGN KEY (owner, repo) REFERENCES repository (owner, repo) ON DELETE CASCADE
 );

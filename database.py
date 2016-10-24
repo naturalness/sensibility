@@ -8,11 +8,11 @@
 >>> ret = db.add_repository(repo)
 >>> ret == repo
 True
->>> source_a = SourceFile.create(repo, 'void 0;', 'index.js')
+>>> source_a = SourceFile.create(repo, b'void 0;', 'index.js')
 >>> ret = db.add_source_file(source_a)
 >>> ret == source_a
 True
->>> source_b = SourceFile.create(repo, 'void 0;', 'undefined.js')
+>>> source_b = SourceFile.create(repo, b'void 0;', 'undefined.js')
 >>> source_a != source_b
 True
 >>> ret = db.add_source_file(source_b)

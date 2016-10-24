@@ -61,22 +61,19 @@ class Repository(namedtuple('Repository', 'id license revision')):
         return self.id.name
 
 
-class SourceFile(namedtuple('SourceFile', 'repo hash source path')):
-    def __init__(self, repo, hash_, source, path):
+class SourceFile(namedtuple('SourceFile', 'repo hash source_bytes path')):
+    def __init__(self, repo, hash_, source_bytes, path):
+        assert isinstance(source_bytes, bytes)
         assert isinstance(repo, RepositoryID)
         assert is_hash(hash_)
 
     @classmethod
-    def create(cls, repo, source, path):
+    def create(cls, repo, source_bytes, path):
+        assert isinstance(source_bytes, bytes)
         if isinstance(repo, Repository):
             repo = repo.id
-        if isinstance(source, str):
-            source_bytes = source.encode('UTF-8')
-        else:
-            assert isinstance(source, bytes)
-            source_bytes = source
         file_hash = sha256(source_bytes)
-        return cls(repo, file_hash, source, path)
+        return cls(repo, file_hash, source_bytes, path)
 
     @property
     def owner(self):
@@ -85,6 +82,10 @@ class SourceFile(namedtuple('SourceFile', 'repo hash source path')):
     @property
     def name(self):
         return self.repo.name
+
+    @property
+    def source(self):
+        return self.source_bytes.decode('UTF-8')
 
 
 class ParsedSource(namedtuple('ParsedSource', 'hash tokens ast')):
