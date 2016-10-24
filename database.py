@@ -46,6 +46,7 @@ b'void 0;'
 
 import logging
 import sqlite3
+from contextlib import closing
 
 from path import Path
 
@@ -72,8 +73,8 @@ class SourceNotFoundError(Exception):
     def __init__(self, hash_):
         assert is_hash(hash_)
         self.hash = hash_
-        super(SourceNotFoundError, self).__init__("could not find source",
-                                                 hash_)
+        super(SourceNotFoundError,
+              self).__init__("could not find source", hash_)
 
 
 class Database:
@@ -89,30 +90,32 @@ class Database:
     def _initialize_db(self):
         conn = self.conn
         if self._is_database_empty():
-            with self.conn:
+            with conn:
                 conn.executescript(SCHEMA)
 
     def _is_database_empty(self):
-        cur = self.conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
-        answer, = cur.fetchone()
+        with closing(self.conn.cursor()) as cur:
+            cur.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+            answer, = cur.fetchone()
+
         return int(answer) == 0
 
     def add_repository(self, repo):
         assert isinstance(repo, Repository)
-        cur = self.conn.cursor()
-        with self.conn:
+
+        with closing(self.conn.cursor()) as cur, self.conn:
             cur.execute(r"""
                 INSERT INTO repository (owner, repo, license, revision)
                 VALUES (?, ?, ?, ?);
             """, (repo.owner, repo.name, repo.license, repo.revision))
+
         return repo
 
     def add_source_file(self, source_file):
         assert isinstance(source_file, SourceFile)
-        cur = self.conn.cursor()
+
         try:
-            with self.conn:
+            with closing(self.conn.cursor()) as cur, self.conn:
                 cur.execute(r"""
                     INSERT INTO source_file (hash, owner, repo, path, source)
                     VALUES (?, ?, ?, ?, ?);
@@ -120,37 +123,34 @@ class Database:
                       source_file.path, source_file.source))
         except sqlite3.IntegrityError:
             raise DuplicateFileError(source_file.hash)
+
         return source_file
 
     def get_source(self, hash_):
         assert is_hash(hash_)
-        cur = self.conn.cursor()
-        cur.execute('SELECT source FROM source_file WHERE hash = ?', (hash_,))
-        result = cur.fetchone()
+
+        with closing(self.conn.cursor()) as cur:
+            cur.execute('SELECT source FROM source_file WHERE hash = ?', (hash_,))
+            result = cur.fetchone()
+
         if result is None:
             raise SourceNotFoundError(hash_)
-        source, = result
-        if isinstance(source, str):
-            return source.encode('utf-8')
-        else:
-            return source
 
+        source, = result
+        return source.encode('utf-8') if isinstance(source, str) else source
 
     def add_parsed_source(self, parsed_source):
         assert isinstance(parsed_source, ParsedSource)
-        cur = self.conn.cursor()
         with self.conn:
-            cur.execute(r"""
+            self.conn.execute(r"""
                 INSERT INTO parsed_source (hash, ast, tokens)
                 VALUES (?, ?, ?)
-            """, (parsed_source.hash,
-                  parsed_source.ast_as_json, parsed_source.tokens_as_json))
+            """, (parsed_source.hash, parsed_source.ast_as_json,
+                  parsed_source.tokens_as_json))
         return parsed_source
 
     def set_failure(self, source_hash):
         assert is_hash(source_hash)
-        cur = self.conn.cursor()
         with self.conn:
-            cur.execute(r"""
-                INSERT INTO failure (hash) VALUES (?)
-            """, (source_hash,))
+            self.conn.execute(r"""INSERT INTO failure (hash) VALUES (?)""",
+                              (source_hash,))
