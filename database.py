@@ -38,7 +38,7 @@ database.DuplicateFileError: duplicate file contents
 >>> ret = db.add_parsed_source(parsed)
 >>> parsed == ret
 True
->>> db.set_failure(source_b)
+>>> db.set_failure(source_b.hash)
 
 >>> db.get_source(source_a.hash)
 b'void 0;'
@@ -147,10 +147,10 @@ class Database:
                   parsed_source.ast_as_json, parsed_source.tokens_as_json))
         return parsed_source
 
-    def set_failure(self, source_file):
-        assert isinstance(source_file, SourceFile)
+    def set_failure(self, source_hash):
+        assert is_hash(source_hash)
         cur = self.conn.cursor()
         with self.conn:
             cur.execute(r"""
                 INSERT INTO failure (hash) VALUES (?)
-            """, (source_file.hash,))
+            """, (source_hash,))
