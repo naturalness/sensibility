@@ -161,7 +161,7 @@ def insert_count(counter, client=redis_client):
     """
     with client.pipeline() as pipe:
         for scalar_value, count in counter.most_common():
-            pipe.hincrby(COUNTER_NAME, scalar_value, count)
+            pipe.zincrby(COUNTER_NAME, scalar_value, count)
         pipe.execute()
 
 
@@ -182,6 +182,8 @@ def main():
         file_hash = file_hash.decode('utf-8')
 
         logger.debug('Pulled: %s', file_hash)
+        # Hack! Wait a second before analyzing
+        time.sleep(1)
 
         try:
             source_code = db.get_source(file_hash)
