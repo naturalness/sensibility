@@ -141,6 +141,7 @@ def main():
             worker.acknowledge(repo_id)
             logger.info('Downloaded: %s', repo_id)
 
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     main()

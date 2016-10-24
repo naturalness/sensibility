@@ -193,6 +193,7 @@ def main():
             break
         except ParseError:
             db.set_failure(file_hash)
+            worker.acknowledge(file_hash)
             logger.info("Syntax error in %s", file_hash)
         except:
             aborted << file_hash
