@@ -35,9 +35,8 @@ from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
 from rate_limit import wait_for_rate_limit
 
-QUEUE_NAME = 'q:download'
-QUEUE_ERRORS = 'q:download:aborted'
-PARSE_WORKER = 'q:analyze'
+from names import DOWNLOAD_QUEUE as QUEUE_NAME, PARSE_QUEUE
+QUEUE_ERRORS = QUEUE_NAME.errors
 
 logger = logging.getLogger('download_worker')
 
@@ -98,9 +97,9 @@ def main():
     db = database.Database(sqlite3_connection)
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
-    parser_worker = Queue(PARSE_WORKER, redis_client)
+    parser_worker = Queue(PARSE_QUEUE, redis_client)
 
-    logger.info("Downloader listening on %s", QUEUE_NAME)
+    logger.info("Downloader listening on %s", worker.name)
 
     while True:
         try:

@@ -33,9 +33,8 @@ from datatypes import ParsedSource
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
 
-QUEUE_NAME = 'q:analyze'
-QUEUE_ERRORS = 'q:analyze:aborted'
-COUNTER_NAME = 'char_count'
+from names import PARSE_QUEUE as QUEUE_NAME, CHAR_COUNT
+QUEUE_ERRORS = QUEUE_NAME.errors
 
 logger = logging.getLogger('parse_worker')
 
@@ -153,15 +152,15 @@ def insert_count(counter, client=redis_client):
     """
     >>> import redis
     >>> client = redis.StrictRedis(db=1)
-    >>> client.delete(COUNTER_NAME) or 1
+    >>> client.delete(CHAR_COUNT) or 1
     1
     >>> insert_count(Counter({'U+0041': 2}), client=client)
-    >>> int(client.hget(COUNTER_NAME, 'U+0041'))
+    >>> int(client.zscore(CHAR_COUNT, 'U+0041'))
     2
     """
     with client.pipeline() as pipe:
         for scalar_value, count in counter.most_common():
-            pipe.zincrby(COUNTER_NAME, scalar_value, count)
+            pipe.zincrby(CHAR_COUNT, scalar_value, count)
         pipe.execute()
 
 
