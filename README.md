@@ -14,15 +14,18 @@ Requirements
 Install
 -------
 
+You must create a GitHub OAuth token and save it as `.token` in the
+repository root.
+
 ```sh
+# For the NodeJS script (required for Python scripts!)
+cd parse-js/
+npm install
+
 # For the Python scripts
 virtualenv -p $(which python3) venv
 source venv/bin/activate
 pip install -r requirements.txt
-
-# For the NodeJS script
-cd parse-js/
-npm install
 ```
 
 Usage
