@@ -32,7 +32,7 @@ import database
 from database import DuplicateFileError
 from datatypes import RepositoryID, Repository, SourceFile
 from rqueue import Queue, WorkQueue
-from connection import redis_client, sqlite3_connection
+from connection import redis_client, sqlite3_connection, github_token
 from rate_limit import wait_for_rate_limit
 
 from names import DOWNLOAD_QUEUE as QUEUE_NAME, PARSE_QUEUE
@@ -48,7 +48,8 @@ def get_repo_info(repo_id):
     wait_for_rate_limit()
     resp = requests.get(url, headers={
         'User-Agent': 'eddieantonio-ad-hoc-miner',
-        'Accept': 'application/vnd.github.drax-preview+json'
+        'Accept': 'application/vnd.github.drax-preview+json',
+        'Authorization': "token %s" % (github_token,)
     })
 
     assert resp.status_code == 200
@@ -74,7 +75,11 @@ def download_source_files(repo):
     url = repo.id.archive_url(format="zipball", revision=repo.revision)
 
     wait_for_rate_limit()
-    resp = requests.get(url)
+    resp = requests.get(url, headers={
+        'User-Agent': 'eddieantonio-ad-hoc-miner',
+        'Authorization': "token %s" % (github_token,)
+    })
+
     assert resp.status_code == 200
 
     # Open zip file
