@@ -43,7 +43,7 @@ logger = logging.getLogger('download_worker')
 
 def get_repo_info(repo_id):
     url = repo_id.api_url
-    logging.debug('Accessing %s', url)
+    logger.debug('Accessing %s', url)
 
     wait_for_rate_limit()
     resp = requests.get(url, headers={
@@ -54,6 +54,8 @@ def get_repo_info(repo_id):
 
     assert resp.status_code == 200
     body = resp.json()
+    logger.debug("Headers: %r", resp.headers)
+    logger.debug("Body: %r", resp.content)
 
     license = body.get('license', {}).get('key', None)
     rev = body.get('default_branch', 'master')
@@ -110,7 +112,7 @@ def main():
         try:
             repo_name = worker.get()
         except KeyboardInterrupt:
-            logging.info('Interrupted while idle (no data loss)')
+            logger.info('Interrupted while idle (no data loss)')
             break
 
         repo_id = RepositoryID.parse(repo_name.decode('utf-8'))
