@@ -42,6 +42,11 @@ True
 
 >>> db.get_source(source_a.hash)
 b'void 0;'
+
+>>> repo = Repository.create('github', 'example-2', None, 'master')
+>>> ret = db.add_repository(repo)
+>>> ret == repo
+True
 """
 
 import logging
