@@ -57,7 +57,11 @@ def get_repo_info(repo_id):
     logger.debug("Headers: %r", resp.headers)
     logger.debug("Body: %r", resp.content)
 
-    license = body.get('license', {}).get('key', None)
+    # Get the license, else assume None
+    try:
+        license = body['license']['key']
+    except (KeyError, TypeError):
+        license = None
     rev = body.get('default_branch', 'master')
 
     return Repository(repo_id, license, rev)
