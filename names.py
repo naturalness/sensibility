@@ -1,7 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-__all__ = ['DOWNLOAD_QUEUE', 'PARSE_QUEUE']
+"""
+Names for all of the Redis queues.
+
+q:download: <repo/owner>
+ ~ download, extract, and insert JavaScript files
+
+q:analyze: <sha256 of file>
+ ~ requires syntactic and lexical analysis
+
+q:work:[uuid]: <[data]>
+ ~ work queue for a process
+
+char_count: <code_point>: <count>
+ ~ hash of word frequencies
+
+"""
+
+__all__ = ['DOWNLOAD_QUEUE', 'PARSE_QUEUE', 'CHAR_COUNT']
 
 
 class WithErrors(str):
