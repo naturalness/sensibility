@@ -3,3 +3,6 @@ dump.rdb
 .cache/
 *.sqlite3
 .token
+*.log
+*.pyc
+venv/
