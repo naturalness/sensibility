@@ -28,7 +28,7 @@ def main():
     queue = Queue(DOWNLOAD_QUEUE, redis_client)
 
     search_iter = github.search_repositories(
-        'language:javascript stars:>=10',
+        'language:javascript stars:"10 .. 190"',
         sort='stars'
     )
 
