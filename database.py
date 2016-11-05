@@ -83,6 +83,11 @@ class SourceNotFoundError(Exception):
 
 
 class Database:
+    """
+    Object-oriented wrapper for the sources and repository database.
+    Because I like writing ORMs from scratch.
+    """
+
     def __init__(self, connection=None):
         if connection is None:
             logger.warn("Using in memory database!")
@@ -100,10 +105,22 @@ class Database:
                 conn.executescript(SCHEMA)
 
     def _set_wal(self):
+        """
+        Enable Write-Ahead-Logging (WAL). This allows for less lock contention
+        when there is a writer and multiple readers.
+
+        Use BEGIN IMMEDIATE TRANSACTION instead of a standard BEGIN
+        TRANSACTION, or even worse, BEGIN EXCLUSIVE TRANSACTION.
+
+        https://www.sqlite.org/wal.html
+        """
         with closing(self.conn.cursor()) as cur:
             cur.execute('PRAGMA journal_mode=WAL')
             status, = cur.fetchone()
         assert status in ('wal', 'memory')
+
+        # Allow for IMMEDIATE transactions rather DEFERRED
+        self.conn.isolation_level = 'IMMEDIATE'
 
     def _is_database_empty(self):
         with closing(self.conn.cursor()) as cur:
@@ -113,6 +130,9 @@ class Database:
         return int(answer) == 0
 
     def add_repository(self, repo):
+        """
+        Add a repository to the database.
+        """
         assert isinstance(repo, Repository)
 
         with closing(self.conn.cursor()) as cur, self.conn:
@@ -124,6 +144,9 @@ class Database:
         return repo
 
     def add_source_file(self, source_file):
+        """
+        Add a brand new source file to the database.
+        """
         assert isinstance(source_file, SourceFile)
 
         try:
@@ -139,6 +162,11 @@ class Database:
         return source_file
 
     def get_source(self, hash_):
+        """
+        Return the source code for the given SHA256 hash as a bytes object.
+        It is up to the client to decode the bytes into the appropriate
+        encoding.
+        """
         assert is_hash(hash_)
 
         with closing(self.conn.cursor()) as cur:
@@ -152,6 +180,9 @@ class Database:
         return source.encode('utf-8') if isinstance(source, str) else source
 
     def add_parsed_source(self, parsed_source):
+        """
+        Add the AST and tokens of the parsed source file.
+        """
         assert isinstance(parsed_source, ParsedSource)
         with self.conn:
             self.conn.execute(r"""
@@ -162,6 +193,9 @@ class Database:
         return parsed_source
 
     def set_failure(self, source_hash):
+        """
+        Set that the given sourch hash had a parsing error.
+        """
         assert is_hash(source_hash)
         with self.conn:
             self.conn.execute(r"""INSERT INTO failure (hash) VALUES (?)""",
