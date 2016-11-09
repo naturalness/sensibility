@@ -28,7 +28,7 @@ from collections import Counter
 import sh
 from sh import node
 
-import database
+from miner_db import Database
 from datatypes import ParsedSource
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
@@ -165,7 +165,7 @@ def insert_count(counter, client=redis_client):
 
 
 def main():
-    db = database.Database(sqlite3_connection)
+    db = Database(sqlite3_connection)
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
 

@@ -28,8 +28,7 @@ import zipfile
 
 import requests
 
-import database
-from database import DuplicateFileError
+from miner_db import Database, DuplicateFileError
 from datatypes import RepositoryID, Repository, SourceFile
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection, github_token
@@ -105,7 +104,7 @@ def seconds_until(timestamp):
 
 
 def main():
-    db = database.Database(sqlite3_connection)
+    db = Database(sqlite3_connection)
     worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
     parser_worker = Queue(PARSE_QUEUE, redis_client)
