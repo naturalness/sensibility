@@ -29,7 +29,7 @@ import zipfile
 import requests
 
 from miner_db import Database, DuplicateFileError
-from datatypes import RepositoryID, Repository, SourceFile
+from miner_db.datatypes import RepositoryID, Repository, SourceFile
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection, github_token
 from rate_limit import wait_for_rate_limit

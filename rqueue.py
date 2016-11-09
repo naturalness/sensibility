@@ -27,7 +27,7 @@ True
 Okay, now we can rock.
 
 >>> q = Queue('foo', client)
->>> from datatypes import RepositoryID
+>>> from miner_db.datatypes import RepositoryID
 >>> q << RepositoryID('eddieantonio', 'bop')
 >>> list(q)
 [b'eddieantonio/bop']

@@ -29,7 +29,7 @@ import sh
 from sh import node
 
 from miner_db import Database
-from datatypes import ParsedSource
+from miner_db.datatypes import ParsedSource
 from rqueue import Queue, WorkQueue
 from connection import redis_client, sqlite3_connection
 
