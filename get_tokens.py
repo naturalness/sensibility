@@ -17,7 +17,7 @@
 
 """
 
->>> corpus = Corpus(single_file_corpus())
+>>> corpus = Corpus(test_corpus())
 >>> raw_tokens = next(iter(corpus))
 >>> token = raw_tokens[0]
 >>> isinstance(token, Token)
@@ -68,10 +68,19 @@ class Corpus:
         cur.close()
 
 
-def illgettoit():
-    conn = sqlite3.connect('file:{}?mode=ro'.format(path), uri=True)
+    @classmethod
+    def connect_to(cls, filename):
+        """
+        Connects to the database (read-only) with the given filename.
+        """
+        filename = Path(filename).abspath()
+        assert filename.exists()
+        conn = sqlite3.connect('file:{}?mode=ro'.format(filename),
+                               uri=True)
+        return Corpus(conn)
 
-def single_file_corpus():
+
+def test_corpus():
     conn = sqlite3.connect(':memory:')
     with open(_DIRECTORY/'test.sql') as sqlfile:
         conn.executescript(sqlfile.read())
