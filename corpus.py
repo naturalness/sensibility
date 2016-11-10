@@ -18,6 +18,8 @@
 """
 
 >>> corpus = Corpus(test_corpus())
+>>> len(corpus)
+1
 >>> raw_tokens = next(iter(corpus))
 >>> token = raw_tokens[0]
 >>> isinstance(token, Token)
@@ -66,6 +68,12 @@ class Corpus:
             else:
                 yield [Token.from_json(raw_token) for raw_token in tokens]
         cur.close()
+
+    def __len__(self):
+        cur = self.conn.cursor()
+        cur.execute('SELECT COUNT(*) FROM parsed_source')
+        count, = cur.fetchone()
+        return int(count)
 
 
     @classmethod
