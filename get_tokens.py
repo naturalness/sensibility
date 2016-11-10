@@ -30,12 +30,13 @@ True
 
 import sqlite3
 import json
+import logging
 
 from collections import namedtuple
 
 from path import Path
 
-
+logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
 
@@ -54,15 +55,14 @@ class Corpus:
 
     def __iter__(self):
         cur = self.conn.cursor()
-        cur.execute('''SELECT tokens FROM parsed_source''')
+        cur.execute('''SELECT hash, tokens FROM parsed_source''')
         row = cur.fetchone()
         while row is not None:
-            blob, = row
+            hash_id, blob = row
             try:
                  tokens = json.loads(blob)
             except json.decoder.JSONDecodeError:
-                # TODO: warn
-                pass
+                logging.warn("Could not parse file: %s", hash_id)
             else:
                 yield [Token.from_json(raw_token) for raw_token in tokens]
         cur.close()
