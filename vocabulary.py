@@ -24,6 +24,16 @@
 'false'
 >>> useful_token(Token(value='NULL', type='Null', loc=None))
 'null'
+>>> useful_token(Token(value='``', type='Template', loc=None))
+'`standalone-template`'
+>>> useful_token(Token(value='``', type='Template', loc=None))
+'`standalone-template`'
+>>> useful_token(Token(value='`${', type='Template', loc=None))
+'`template-head${'
+>>> useful_token(Token(value='}`', type='Template', loc=None))
+'}template-tail`'
+>>> useful_token(Token(value='}  ${', type='Template', loc=None))
+'}template-middle${'
 """
 
 
@@ -73,15 +83,14 @@ class useful_token:
         try:
             fn = getattr(self, token.type)
         except AttributeError:
-            raise token
-        else:
-            return fn(token.value)
+            raise TypeError('Unhandled type: %s' %(token.type,))
+        return fn(token.value)
 
     def Boolean(self, text):
         return text
 
     def Identifier(self, text):
-        return '$id'
+        return '$anyIdentifier'
 
     def Keyword(self, text):
         return text
@@ -90,22 +99,30 @@ class useful_token:
         return 'null'
 
     def Numeric(self, text):
-        return '/*<any-number>*/0'
+        return '/*any-number*/0'
 
     def Punctuator(self, text):
         return text
 
     def String(self, text):
-        return '"<any-string">'
+        return '"any-string"'
 
     def RegularExpression(self, text):
-        return '/<any-regexp>/'
+        return '/any-regexp/'
 
     def Template(self, text):
-        """
-        This one depends on context, but whatever.
-        """
-        return '`<any-template-fragment>`'
+        assert len(text) >= 2
+        if text.startswith('`'):
+            if text.endswith('`'):
+                return '`standalone-template`'
+            elif text.endswith('${'):
+                return '`template-head${'
+        elif text.startswith('}'):
+            if text.endswith('`'):
+                return '}template-tail`'
+            elif text.endswith('${'):
+                return '}template-middle${'
+        raise TypeError('Unhandled template literal: ' + text)
 
 
 if __name__ == '__main__':
