@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+
+>>> corpus = Corpus(single_file_corpus())
+>>> raw_tokens = next(iter(corpus))
+>>> token = raw_tokens[0]
+>>> isinstance(token, Token)
+True
+>>> token.type
+'Keyword'
+>>> token.value
+'var'
+"""
+
+import sqlite3
+import json
+
+from collections import namedtuple
+
+from path import Path
+
+
+_DIRECTORY = Path(__file__).parent
+
+
+class Token(namedtuple('BaseToken', 'value type loc')):
+    @classmethod
+    def from_json(cls, obj):
+        assert isinstance(obj, dict)
+        return cls(value=obj.get('value'),
+                   type=obj.get('type'),
+                   loc=None)
+
+
+class Corpus:
+    def __init__(self, connection):
+        self.conn = connection
+
+    def __iter__(self):
+        cur = self.conn.cursor()
+        cur.execute('''SELECT tokens FROM parsed_source''')
+        row = cur.fetchone()
+        while row is not None:
+            blob, = row
+            try:
+                 tokens = json.loads(blob)
+            except json.decoder.JSONDecodeError:
+                # TODO: warn
+                pass
+            else:
+                yield [Token.from_json(raw_token) for raw_token in tokens]
+        cur.close()
+
+
+def illgettoit():
+    conn = sqlite3.connect('file:{}?mode=ro'.format(path), uri=True)
+
+def single_file_corpus():
+    conn = sqlite3.connect(':memory:')
+    with open(_DIRECTORY/'test.sql') as sqlfile:
+        conn.executescript(sqlfile.read())
+    return conn
