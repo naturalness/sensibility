@@ -20,6 +20,8 @@
 >>> corpus = Corpus(test_corpus())
 >>> len(corpus)
 1
+>>> len(list(corpus))
+1
 >>> raw_tokens = next(iter(corpus))
 >>> token = raw_tokens[0]
 >>> isinstance(token, Token)
@@ -67,6 +69,8 @@ class Corpus:
                 logging.warn("Could not parse file: %s", hash_id)
             else:
                 yield [Token.from_json(raw_token) for raw_token in tokens]
+            row = cur.fetchone()
+
         cur.close()
 
     def __len__(self):
