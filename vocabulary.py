@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 UNK_TOKEN   = '/*<unknown>*/'
 START_TOKEN = '/*<start>*/'
@@ -22,8 +25,8 @@ class Vocabulary:
 
     def __init__(self, array):
         assert isinstance(array, list)
-        assert array[0] is START_TOKEN
-        assert array[-1] is END_TOKEN
+        assert array[0] == START_TOKEN
+        assert array[-1] == END_TOKEN
         self._index2text = array
         self._text2index = {text: index for index, text in enumerate(array)}
         assert self._text2index[START_TOKEN] == 0
@@ -37,3 +40,10 @@ class Vocabulary:
 
     def __len__(self):
         return len(self._index2text)
+
+try:
+    from calculated_vocabulary import VOCAB
+except ImportError:
+    logger.exception("Could not load generated vocabulary.")
+else:
+    vocabulary = Vocabulary(VOCAB)
