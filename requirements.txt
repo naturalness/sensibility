@@ -1,3 +1,4 @@
+numpy >= 1.11.0
 tqdm
 path.py
 blessings
