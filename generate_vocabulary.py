@@ -14,36 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
->>> from corpus import Token
->>> useful_token(Token(value='**=', type='Punctuator', loc=None))
-'**='
->>> useful_token(Token(value='var', type='Keyword', loc=None))
-'var'
->>> useful_token(Token(value='false', type='Boolean', loc=None))
-'false'
->>> useful_token(Token(value='NULL', type='Null', loc=None))
-'null'
->>> useful_token(Token(value='``', type='Template', loc=None))
-'`standalone-template`'
->>> useful_token(Token(value='``', type='Template', loc=None))
-'`standalone-template`'
->>> useful_token(Token(value='`${', type='Template', loc=None))
-'`template-head${'
->>> useful_token(Token(value='}`', type='Template', loc=None))
-'}template-tail`'
->>> useful_token(Token(value='}  ${', type='Template', loc=None))
-'}template-middle${'
-"""
-
-
 from pprint import pprint
 
 from tqdm import tqdm
 from blessings import Terminal
 
 from corpus import Corpus
-
+from stringify_token import stringify_token
 
 t = Terminal()
 
@@ -75,57 +52,6 @@ def summarize(vocab):
         pprint(total_vocab, stream=vocab_file)
 
 
-def singleton(cls):
-    return cls()
-
-@singleton
-class useful_token:
-    def __call__(self, token):
-        try:
-            fn = getattr(self, token.type)
-        except AttributeError:
-            raise TypeError('Unhandled type: %s' %(token.type,))
-        return fn(token.value)
-
-    def Boolean(self, text):
-        return text
-
-    def Identifier(self, text):
-        return '$anyIdentifier'
-
-    def Keyword(self, text):
-        return text
-
-    def Null(self, text):
-        return 'null'
-
-    def Numeric(self, text):
-        return '/*any-number*/0'
-
-    def Punctuator(self, text):
-        return text
-
-    def String(self, text):
-        return '"any-string"'
-
-    def RegularExpression(self, text):
-        return '/any-regexp/'
-
-    def Template(self, text):
-        assert len(text) >= 2
-        if text.startswith('`'):
-            if text.endswith('`'):
-                return '`standalone-template`'
-            elif text.endswith('${'):
-                return '`template-head${'
-        elif text.startswith('}'):
-            if text.endswith('`'):
-                return '}template-tail`'
-            elif text.endswith('${'):
-                return '}template-middle${'
-        raise TypeError('Unhandled template literal: ' + text)
-
-
 if __name__ == '__main__':
     import sys
     _, filename = sys.argv
@@ -135,6 +61,6 @@ if __name__ == '__main__':
 
     for file_tokens in tqdm(corpus, total=len(corpus)):
         for token in file_tokens:
-            vocab.add(useful_token(token))
+            vocab.add(stringify_token(token))
 
     summarize(vocab)
