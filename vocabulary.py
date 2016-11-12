@@ -56,8 +56,8 @@ first_elements = [
 
 def summarize(vocab):
     """
-    >>> summarize({'var', '{', '/*regexp*.'})
-    The size of vocabulary is 6
+    >>> summarize({'var', '{', '/regexp/'})
+    The size of vocabulary is 5
     """
     size = len(vocab) + len(first_elements)
 
