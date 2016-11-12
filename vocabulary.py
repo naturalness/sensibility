@@ -48,7 +48,9 @@ from corpus import Corpus
 t = Terminal()
 
 first_elements = [
-    '/*<unknown>*/', '/*<start>*/', '/*<end>*/'
+    #'/*<unknown>*/', Unknown token is signified by a zero vector.
+    '/*<start>*/',
+    '/*<end>*/'
 ]
 
 
