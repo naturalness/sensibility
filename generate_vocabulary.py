@@ -21,12 +21,9 @@ from blessings import Terminal
 
 from corpus import Corpus
 from stringify_token import stringify_token
+from vocabulary import START_TOKEN, END_TOKEN
 
 t = Terminal()
-
-UNK_TOKEN   = '/*<unknown>*/'
-START_TOKEN = '/*<start>*/'
-END_TOKEN   = '/*<end>*/'
 
 
 def summarize(vocab):
