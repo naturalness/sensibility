@@ -24,6 +24,7 @@ def vectorize_tokens(tokens):
 
     return tuple(generate())
 
+
 def create_one_hot_vector(index):
     """
     >>> v = create_one_hot_vector(1)
@@ -35,6 +36,7 @@ def create_one_hot_vector(index):
     True
     """
     return tuple(1 if i == index else 0 for i in range(len(vocabulary)))
+
 
 def matrixify_tokens(tokens):
     """
