@@ -10,7 +10,6 @@ All observed vocabulary tokens as witnessed by vocabulary.py on the October
 
 VOCAB = [
  '/*<start>*/',
- '/*<end>*/',
  '!',
  '!=',
  '!==',
@@ -108,5 +107,6 @@ VOCAB = [
  '}',
  '}template-middle${',
  '}template-tail`',
- '~'
+ '~',
+ '/*<end>*/'
 ]
