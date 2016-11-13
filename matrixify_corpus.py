@@ -7,23 +7,28 @@ Creates corpus.npz from a full corpus stored as an SQLite database.
 The file contains one-hot encoded matrices.
 """
 
-import gc
+import sys
 
 import numpy as np
 from tqdm import tqdm
 
 from corpus import Corpus
-from vectorize_tokens import matrixify_tokens
+from vectorize_tokens import vectorize_tokens
+from vocabulary import vocabulary
 
 if __name__ == '__main__':
-    import sys
-    _, filename = sys.argv
+    _, filename, size = sys.argv
+
     corpus = Corpus.connect_to(filename)
-    array = np.empty(len(corpus), dtype=np.object_)
+    n_files = len(corpus)
+    n_vocab = len(vocabulary)
+    dimensions = (n_files, maxlen, n_vocab)
+
+    array = np.zero(dimensions, dtype=np.bool8)
 
     for i, tokens in enumerate(tqdm(corpus, total=len(corpus))):
-        array[i] = matrixify_tokens(tokens)
-        if i % 64 == 0:
-            gc.collect(0)
+        for t, index in enumerate(vectorize_tokens(tokens)):
+            array[i, t, index] = 1
+        del tokens
 
-    np.save('corpus', array)
+    np.save('corpus-bytearray', array)
