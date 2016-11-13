@@ -68,6 +68,27 @@ class Corpus:
         self.conn = connection
 
     def __iter__(self):
+        return self.iterate(skip_empty=False,
+                            with_hash=False)
+
+    def iterate(self, skip_empty=False, with_hash=False):
+        """
+        >>> corpus = Corpus(test_corpus())
+        >>> files = tuple(corpus.iterate())
+        >>> len(files)
+        1
+        >>> hash_, raw_tokens = next((corpus.iterate(with_hash=True)))
+        >>> hash_
+        'c48ebd00b8a0f8ccc10eaaffd26bf474ae8076dc9b4077fc1ba6bc6aee15d851'
+        >>> token = raw_tokens[0]
+        >>> isinstance(token, Token)
+        True
+        >>> token.type
+        'Keyword'
+        >>> token.value
+        'var'
+
+        """
         cur = self.conn.cursor()
         cur.execute('''SELECT hash, tokens FROM parsed_source''')
         row = cur.fetchone()
@@ -78,11 +99,21 @@ class Corpus:
             except json.decoder.JSONDecodeError:
                 logging.warn("Could not parse file: %s", hash_id)
             else:
-                yield tuple(Token.from_json(raw_token)
-                            for raw_token in tokens)
+                # Some pretty gross code...
+                if skip_empty and len(tokens) < 1:
+                    pass
+                else:
+                    result = tuple(Token.from_json(raw_token)
+                                   for raw_token in tokens)
+                    if with_hash:
+                        yield hash_id, result
+                    else:
+                        yield result
+
             row = cur.fetchone()
 
         cur.close()
+
 
     def __len__(self):
         cur = self.conn.cursor()
