@@ -36,21 +36,31 @@ import sqlite3
 import json
 import logging
 
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
+import functools
 
 from path import Path
 
 logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
+@functools.lru_cache(maxsize=256)
+def _make_token(value, type_):
+    """
+    Caches tokens in an LRU cache, completley ignoring the location (location
+    is always set to None).
+    """
+    return Token(value=value, type=type_, loc=None)
+
 
 class Token(namedtuple('BaseToken', 'value type loc')):
     @classmethod
-    def from_json(cls, obj):
-        assert isinstance(obj, dict)
-        return cls(value=obj.get('value'),
-                   type=obj.get('type'),
-                   loc=None)
+    def from_json(cls, obj, factory=_make_token):
+        """
+        Converts the Esprima JSON token into a token WITHOUT location
+        information! Caches tokens to keep memoy usage down.
+        """
+        return factory(obj['value'], obj['type'])
 
 
 class Corpus:
@@ -68,7 +78,8 @@ class Corpus:
             except json.decoder.JSONDecodeError:
                 logging.warn("Could not parse file: %s", hash_id)
             else:
-                yield [Token.from_json(raw_token) for raw_token in tokens]
+                yield tuple(Token.from_json(raw_token)
+                            for raw_token in tokens)
             row = cur.fetchone()
 
         cur.close()

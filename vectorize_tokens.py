@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 from stringify_token import stringify_token
 
