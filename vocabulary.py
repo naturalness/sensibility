@@ -27,7 +27,7 @@ class Vocabulary:
         assert isinstance(array, list)
         assert array[0] == START_TOKEN
         assert array[-1] == END_TOKEN
-        self._index2text = array
+        self._index2text = tuple(array)
         self._text2index = {text: index for index, text in enumerate(array)}
         assert self._text2index[START_TOKEN] == 0
         assert self._text2index[END_TOKEN] == len(array) - 1
