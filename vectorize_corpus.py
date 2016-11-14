@@ -23,6 +23,9 @@ The file contains one-hot encoded matrices.
 """
 
 import logging
+import argparse
+
+from time import sleep
 
 import os
 import sys
@@ -34,27 +37,42 @@ from corpus import Corpus
 from condensed_corpus import CondensedCorpus
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument('filename', type=Path)
+parser.add_argument('min_rowid', nargs='?', type=int, default=None)
+parser.add_argument('max_rowid', nargs='?', type=int, default=None)
+
+
 def main():
-    _, filename, min_rowid, max_rowid = sys.argv
-    min_rowid = int(min_rowid)
-    max_rowid = int(max_rowid)
+    args = parser.parse_args()
+    corpus = Corpus.connect_to(args.filename)
+
+    min_rowid = args.min_rowid if args.min_rowid is not None else 1
+    max_rowid = int(max_rowid) if args.max_rowid is not None else len(corpus)
     assert min_rowid <= max_rowid
 
-    dest_filename = Path('matrix-corpus-{}.sqlite3'.format(os.getpid()))
-    assert not dest_filename.exists()
-
-    corpus = Corpus.connect_to(filename)
+    dest_filename = Path('vector-corpus-{}.sqlite3'.format(os.getpid()))
+    assert not dest_filename.exists(), dest_filename
     destination = CondensedCorpus.connect_to(dest_filename)
 
     # Insert every file in the given subset.
     files = corpus.iterate(min_rowid=min_rowid,
                            max_rowid=max_rowid,
                            with_hash=True)
-    for file_hash, tokens in tqdm(files, total=max_rowid - min_rowid):
-        if len(tokens) == 0:
-            logging.warn('Skipping empty file: %s', file_hash)
-        else:
-            destination.insert(file_hash, tokens)
+    progress_bar = tqdm(files, initial=min_rowid, total=max_rowid)
+
+    for file_hash, tokens in progress_bar:
+        try:
+            sleep(5)
+            if len(tokens) == 0:
+                logging.warn('Skipping empty file: %s', file_hash)
+            else:
+                progress_bar.set_description('Processing %s' % (file_hash,))
+                destination.insert(file_hash, tokens)
+        except KeyboardInterrupt:
+            logging.exception('Last file before interrupt: %s',
+                              file_hash)
+            break
 
 
 if __name__ == '__main__':

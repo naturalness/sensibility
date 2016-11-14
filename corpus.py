@@ -180,7 +180,7 @@ class Corpus:
         Connects to the database (read-only) with the given filename.
         """
         filename = Path(filename).abspath()
-        assert filename.exists()
+        assert filename.exists(), '%r does not exist' %(filename,)
         conn = sqlite3.connect('file:{}?mode=ro'.format(filename),
                                uri=True)
         return Corpus(conn)
