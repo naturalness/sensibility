@@ -44,6 +44,7 @@ from path import Path
 logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
+
 @functools.lru_cache(maxsize=256)
 def _make_token(value, type_):
     """
@@ -126,7 +127,8 @@ class Corpus:
         >>> file_hash
         'fd30ede6650fc5f42c1aeb13e261f10eab31e8a50e8f69d461c10ee36a307b84'
 
-        >>> results = list(corpus.iterate(min_rowid=2, max_rowid=2, with_hash=True))
+        >>> it = corpus.iterate(min_rowid=2, max_rowid=2, with_hash=True)
+        >>> results = list(it)
         >>> len(results)
         1
         >>> file_hash, _ = results[0]
@@ -151,7 +153,7 @@ class Corpus:
         while row is not None:
             hash_id, blob = row
             try:
-                 tokens = json.loads(blob)
+                tokens = json.loads(blob)
             except json.decoder.JSONDecodeError:
                 logging.warn("Could not parse file: %s", hash_id)
             else:
@@ -166,13 +168,11 @@ class Corpus:
 
         cur.close()
 
-
     def __len__(self):
         cur = self.conn.cursor()
         cur.execute('SELECT COUNT(*) FROM parsed_source')
         count, = cur.fetchone()
         return int(count)
-
 
     @classmethod
     def connect_to(cls, filename):

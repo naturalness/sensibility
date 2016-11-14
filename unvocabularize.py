@@ -26,7 +26,7 @@ def unvocabularize(vector):
     >>> unvocabularize((0, 86, 5, 31, 99))
     '/*<start>*/ var $anyIdentifier ; /*<end>*/'
     """
- 
+
     return ' '.join(vocabulary.to_text(element) for element in vector)
 
 

@@ -34,7 +34,7 @@ class stringify_token:
         try:
             fn = getattr(self, token.type)
         except AttributeError:
-            raise TypeError('Unhandled type: %s' %(token.type,))
+            raise TypeError('Unhandled type: %s' % (token.type,))
         return fn(token.value)
 
     def Boolean(self, text):

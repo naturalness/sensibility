@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from corpus import Corpus
 
+
 def main(len=len):
     _, filename = sys.argv
     corpus = Corpus.connect_to(filename)

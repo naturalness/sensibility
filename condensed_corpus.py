@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import io
+import sqlite3
+
+import numpy as np
+
+from vectorize_tokens import vectorize_tokens
+from vocabulary import vocabulary
+
+
+assert len(vocabulary) < 256
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS source_matrix(
@@ -9,18 +19,6 @@ CREATE TABLE IF NOT EXISTS source_matrix(
     n_tokens INTEGER NOT NULL   -- the amount of tokens, (excluding start/end)
 );
 """
-
-import io
-import sqlite3
-
-import io
-import numpy as np
-
-from vectorize_tokens import vectorize_tokens
-from vocabulary import vocabulary
-
-
-assert len(vocabulary) < 256
 
 
 class CondensedCorpus:

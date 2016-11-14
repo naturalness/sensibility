@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+import numpy as np
+
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 from stringify_token import stringify_token
 
-import numpy as np
 
 def vectorize_tokens(tokens):
     """
@@ -42,7 +43,8 @@ def matrixify_tokens(tokens):
     File's raw tokens -> one-hot encoded matrix that represents the file.
 
     >>> from corpus import Token
-    >>> matrix = matrixify_tokens([Token(value='var', type='Keyword', loc=None)])
+    >>> tokens = [Token(value='var', type='Keyword', loc=None)]
+    >>> matrix = matrixify_tokens(tokens)
     >>> matrix.shape == (3, len(vocabulary))
     True
     >>> matrix.sum()
