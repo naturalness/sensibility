@@ -25,8 +25,6 @@ The file contains one-hot encoded matrices.
 import logging
 import argparse
 
-from time import sleep
-
 import os
 import sys
 
@@ -63,7 +61,6 @@ def main():
 
     for file_hash, tokens in progress_bar:
         try:
-            sleep(5)
             if len(tokens) == 0:
                 logging.warn('Skipping empty file: %s', file_hash)
             else:
