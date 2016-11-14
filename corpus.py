@@ -155,7 +155,7 @@ class Corpus:
             try:
                 tokens = json.loads(blob)
             except json.decoder.JSONDecodeError:
-                logging.warn("Could not parse file: %s", hash_id)
+                logger.warn("Could not parse file: %s", hash_id)
             else:
                 result = tuple(Token.from_json(raw_token)
                                for raw_token in tokens)
