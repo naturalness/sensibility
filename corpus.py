@@ -68,8 +68,7 @@ class Corpus:
         self.conn = connection
 
     def __iter__(self):
-        return self.iterate(skip_empty=False,
-                            with_hash=False)
+        return self.iterate(with_hash=False)
 
     @property
     def first_rowid(self):
@@ -94,7 +93,7 @@ class Corpus:
         number, = cur.fetchone()
         return number
 
-    def iterate(self, skip_empty=False, with_hash=False,
+    def iterate(self, with_hash=False,
                 min_rowid=None, max_rowid=None):
         """
         >>> corpus = Corpus(test_corpus())
@@ -156,15 +155,12 @@ class Corpus:
             except json.decoder.JSONDecodeError:
                 logging.warn("Could not parse file: %s", hash_id)
             else:
-                if skip_empty and len(tokens) < 1:
-                    pass
+                result = tuple(Token.from_json(raw_token)
+                               for raw_token in tokens)
+                if with_hash:
+                    yield hash_id, result
                 else:
-                    result = tuple(Token.from_json(raw_token)
-                                   for raw_token in tokens)
-                    if with_hash:
-                        yield hash_id, result
-                    else:
-                        yield result
+                    yield result
 
             row = cur.fetchone()
 
