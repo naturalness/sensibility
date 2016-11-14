@@ -19,9 +19,9 @@
 
 >>> corpus = Corpus(test_corpus())
 >>> len(corpus)
-1
+3
 >>> len(list(corpus))
-1
+3
 >>> raw_tokens = next(iter(corpus))
 >>> token = raw_tokens[0]
 >>> isinstance(token, Token)
@@ -100,7 +100,8 @@ class Corpus:
         >>> corpus = Corpus(test_corpus())
         >>> files = tuple(corpus.iterate())
         >>> len(files)
-        1
+        3
+
         >>> hash_, raw_tokens = next((corpus.iterate(with_hash=True)))
         >>> hash_
         'c48ebd00b8a0f8ccc10eaaffd26bf474ae8076dc9b4077fc1ba6bc6aee15d851'
@@ -111,6 +112,27 @@ class Corpus:
         'Keyword'
         >>> token.value
         'var'
+
+        >>> results = list(corpus.iterate(min_rowid=2, with_hash=True))
+        >>> len(results)
+        2
+        >>> file_hash, _ = results[1]
+        >>> file_hash
+        '6d2f748e01c7a813b876ce2f3a3140048885aa2a120903882dad0c5d22756e7e'
+
+        >>> results = list(corpus.iterate(max_rowid=2, with_hash=True))
+        >>> len(results)
+        2
+        >>> file_hash, _ = results[1]
+        >>> file_hash
+        'fd30ede6650fc5f42c1aeb13e261f10eab31e8a50e8f69d461c10ee36a307b84'
+
+        >>> results = list(corpus.iterate(min_rowid=2, max_rowid=2, with_hash=True))
+        >>> len(results)
+        1
+        >>> file_hash, _ = results[0]
+        >>> file_hash
+        'fd30ede6650fc5f42c1aeb13e261f10eab31e8a50e8f69d461c10ee36a307b84'
         """
 
         if min_rowid is None:
