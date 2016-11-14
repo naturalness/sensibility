@@ -71,7 +71,31 @@ class Corpus:
         return self.iterate(skip_empty=False,
                             with_hash=False)
 
-    def iterate(self, skip_empty=False, with_hash=False):
+    @property
+    def first_rowid(self):
+        """
+        >>> Corpus(test_corpus()).first_rowid
+        1
+        """
+        cur = self.conn.cursor()
+        cur.execute('''SELECT MIN(rowid) FROM parsed_source''')
+        number, = cur.fetchone()
+        return number
+
+    @property
+    def last_rowid(self):
+        """
+        >>> corpus = Corpus(test_corpus())
+        >>> corpus.last_rowid == len(corpus)
+        True
+        """
+        cur = self.conn.cursor()
+        cur.execute('''SELECT MAX(rowid) FROM parsed_source''')
+        number, = cur.fetchone()
+        return number
+
+    def iterate(self, skip_empty=False, with_hash=False,
+                min_rowid=None, max_rowid=None):
         """
         >>> corpus = Corpus(test_corpus())
         >>> files = tuple(corpus.iterate())
@@ -87,11 +111,22 @@ class Corpus:
         'Keyword'
         >>> token.value
         'var'
-
         """
+
+        if min_rowid is None:
+            min_rowid = self.first_rowid
+        if max_rowid is None:
+            max_rowid = self.last_rowid
+
         cur = self.conn.cursor()
-        cur.execute('''SELECT hash, tokens FROM parsed_source''')
+        cur.execute('''
+            SELECT hash, tokens
+              FROM parsed_source
+             WHERE rowid >= :min AND rowid <= :max
+        ''', {'min': min_rowid, 'max': max_rowid})
         row = cur.fetchone()
+
+        # INCOMING: some pretty grody code...
         while row is not None:
             hash_id, blob = row
             try:
@@ -99,7 +134,6 @@ class Corpus:
             except json.decoder.JSONDecodeError:
                 logging.warn("Could not parse file: %s", hash_id)
             else:
-                # Some pretty gross code...
                 if skip_empty and len(tokens) < 1:
                     pass
                 else:

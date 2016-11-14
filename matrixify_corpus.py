@@ -35,15 +35,18 @@ class CondensedCorpus:
     """
     Represents a corpus with condensed tokens according to a vocabulary.
 
+    Can get results by rowid (ONE-INDEXED!) or by file SHA 256 hash.
+
     >>> from corpus import Token
-    >>> conn = sqlite3.connect(':memory:')
-    >>> c = CondensedCorpus(conn)
+    >>> c = CondensedCorpus.connect_to(':memory:')
     >>> tokens = (Token(value='var', type='Keyword', loc=None),)
     >>> c.insert('123abc', tokens)
     >>> x, y, z = c['123abc']
     >>> x, y, z
     (0, 86, 99)
     >>> file_hash, rtokens = c[1]
+    >>> file_hash
+    '123abc'
     >>> x, y, z = rtokens
     >>> x, y, z
     (0, 86, 99)
@@ -55,8 +58,8 @@ class CondensedCorpus:
         self.conn = conn
 
     @classmethod
-    def connect_to(filename):
-        conn = sqlite3.connect(DESTINATION)
+    def connect_to(cls, filename):
+        conn = sqlite3.connect(filename)
         return cls(conn)
 
     def get_tokens_by_hash(self, file_hash):
@@ -84,9 +87,9 @@ class CondensedCorpus:
         else:
             return self.get_result_by_rowid(key)
 
-    def insert(self, hash_, tokens, dtype=np.uint8):
+    def insert(self, hash_, tokens):
         dimensions = 2 + len(tokens)
-        array = np.zeros(dimensions, dtype=dtype)
+        array = np.empty(dimensions, dtype=np.uint8)
 
         for t, index in enumerate(vectorize_tokens(tokens)):
             array[t] = index
@@ -120,7 +123,7 @@ def main():
     corpus = Corpus.connect_to(filename)
     destination = CondensedCorpus.connect_to(dest_filename)
 
-    # Insert every file.
+    # Insert every file in the given subset.
     files = corpus.iterate(with_hash=True, skip_empty=True)
     for file_hash, tokens in tqdm(files, total=len(corpus)):
         destination.insert(file_hash, tokens)
