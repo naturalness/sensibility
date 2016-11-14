@@ -9,18 +9,19 @@ The file contains one-hot encoded matrices.
 
 import logging
 
+import os
 import io
 import sys
 import sqlite3
 
 import numpy as np
 from tqdm import tqdm
+from path import Path
 
 from corpus import Corpus
 from vectorize_tokens import vectorize_tokens
 from vocabulary import vocabulary
 
-DESTINATION = 'matrix-corpus.sqlite3'
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS source_matrix(
     hash TEXT PRIMARY KEY,
@@ -30,36 +31,99 @@ CREATE TABLE IF NOT EXISTS source_matrix(
 """
 
 
-def insert(conn, hash_, tokens, n_vocab=len(vocabulary)):
-    dimensions = (2 + len(tokens), n_vocab)
-    array = np.zeros(dimensions, dtype=np.bool_)
-    for t, index in enumerate(vectorize_tokens(tokens)):
-        array[t, index] = 1
+class CondensedCorpus:
+    """
+    Represents a corpus with condensed tokens according to a vocabulary.
 
-    filelike = io.BytesIO()
-    np.save(filelike, array)
+    >>> from corpus import Token
+    >>> conn = sqlite3.connect(':memory:')
+    >>> c = CondensedCorpus(conn)
+    >>> tokens = (Token(value='var', type='Keyword', loc=None),)
+    >>> c.insert('123abc', tokens)
+    >>> x, y, z = c['123abc']
+    >>> x, y, z
+    (0, 86, 99)
+    >>> file_hash, rtokens = c[1]
+    >>> x, y, z = rtokens
+    >>> x, y, z
+    (0, 86, 99)
+    """
 
-    conn.execute("""
-        INSERT INTO source_matrix(hash, np_array, n_tokens)
-             VALUES (?, ?, ?)
-     """, (hash_, filelike.getbuffer(), len(tokens)))
-    conn.commit()
+    def __init__(self, conn):
+        conn.executescript(SCHEMA)
+        conn.commit()
+        self.conn = conn
+
+    @classmethod
+    def connect_to(filename):
+        conn = sqlite3.connect(DESTINATION)
+        return cls(conn)
+
+    def get_tokens_by_hash(self, file_hash):
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT np_array FROM source_matrix
+            WHERE hash = ?
+        """, (file_hash,))
+        blob, = cur.fetchone()
+        return unblob(blob)
+
+    def get_result_by_rowid(self, rowid):
+        assert isinstance(rowid, int)
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT hash, np_array FROM source_matrix
+            WHERE rowid = ?
+        """, (rowid,))
+        file_hash, blob = cur.fetchone()
+        return file_hash, unblob(blob)
+
+    def __getitem__(self, key):
+        if isinstance(key, (str, bytes)):
+            return self.get_tokens_by_hash(key)
+        else:
+            return self.get_result_by_rowid(key)
+
+    def insert(self, hash_, tokens, dtype=np.uint8):
+        dimensions = 2 + len(tokens)
+        array = np.zeros(dimensions, dtype=dtype)
+
+        for t, index in enumerate(vectorize_tokens(tokens)):
+            array[t] = index
+
+        filelike = io.BytesIO()
+        np.save(filelike, array)
+
+        self.conn.execute("""
+            INSERT INTO source_matrix(hash, np_array, n_tokens)
+                 VALUES (?, ?, ?)
+         """, (hash_, filelike.getbuffer(), len(tokens)))
+        self.conn.commit()
+
+
+def unblob(blob):
+    assert isinstance(blob, bytes)
+    with io.BytesIO(blob) as filelike:
+        return np.load(filelike)
 
 
 def main():
-    _, filename = sys.argv
+    _, filename, min_rowid, max_rowid = sys.argv
+    min_rowid = int(min_rowid)
+    max_rowid = int(max_rowid)
+
+    assert len(vocabulary) < 256
+
+    dest_filename = Path('matrix-corpus-{}.sqlite3'.format(os.getpid()))
+    assert not dest_filename.exists()
 
     corpus = Corpus.connect_to(filename)
+    destination = CondensedCorpus.connect_to(dest_filename)
 
-    # Create the schema
-    conn = sqlite3.connect(DESTINATION)
-    conn.executescript(SCHEMA)
-    conn.commit()
-
+    # Insert every file.
     files = corpus.iterate(with_hash=True, skip_empty=True)
-    for i, result in enumerate(tqdm(files, total=len(corpus))):
-        hash_, tokens = result
-        insert(conn, hash_, tokens)
+    for file_hash, tokens in tqdm(files, total=len(corpus)):
+        destination.insert(file_hash, tokens)
 
 
 if __name__ == '__main__':
