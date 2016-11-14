@@ -114,6 +114,7 @@ def main():
     _, filename, min_rowid, max_rowid = sys.argv
     min_rowid = int(min_rowid)
     max_rowid = int(max_rowid)
+    assert min_rowid <= max_rowid
 
     assert len(vocabulary) < 256
 
@@ -124,10 +125,17 @@ def main():
     destination = CondensedCorpus.connect_to(dest_filename)
 
     # Insert every file in the given subset.
-    files = corpus.iterate(with_hash=True, skip_empty=True)
-    for file_hash, tokens in tqdm(files, total=len(corpus)):
-        destination.insert(file_hash, tokens)
+    files = corpus.iterate(min_rowid=min_rowid,
+                           max_rowid=max_rowid,
+                           with_hash=True)
+    for file_hash, tokens in tqdm(files, total=max_rowid - min_rowid):
+        if len(tokens) == 0:
+            logging.warn('Skipping empty file: %s', file_hash)
+        else:
+            destination.insert(file_hash, tokens)
 
 
 if __name__ == '__main__':
+    log_name = "{:s}.{:d}.log".format(__file__, os.getpid())
+    logging.basicConfig(filename=log_name)
     main()
