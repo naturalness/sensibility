@@ -28,7 +28,7 @@ from vocabulary import vocabulary
 assert len(vocabulary) < 256
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS source_matrix(
+CREATE TABLE IF NOT EXISTS vectorized_source(
     hash TEXT PRIMARY KEY,
     np_array BLOB NOT NULL,     -- the numpy array, as a blob.
     n_tokens INTEGER NOT NULL   -- the amount of tokens, (excluding start/end)
@@ -70,7 +70,7 @@ class CondensedCorpus:
     def get_tokens_by_hash(self, file_hash):
         cur = self.conn.cursor()
         cur.execute("""
-            SELECT np_array FROM source_matrix
+            SELECT np_array FROM vectorized_source
             WHERE hash = ?
         """, (file_hash,))
         blob, = cur.fetchone()
@@ -80,7 +80,7 @@ class CondensedCorpus:
         assert isinstance(rowid, int)
         cur = self.conn.cursor()
         cur.execute("""
-            SELECT hash, np_array FROM source_matrix
+            SELECT hash, np_array FROM vectorized_source
             WHERE rowid = ?
         """, (rowid,))
         file_hash, blob = cur.fetchone()
@@ -103,7 +103,7 @@ class CondensedCorpus:
         np.save(filelike, array)
 
         self.conn.execute("""
-            INSERT INTO source_matrix(hash, np_array, n_tokens)
+            INSERT INTO vectorized_source(hash, np_array, n_tokens)
                  VALUES (?, ?, ?)
          """, (hash_, filelike.getbuffer(), len(tokens)))
         self.conn.commit()
