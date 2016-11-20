@@ -74,7 +74,7 @@ class CondensedCorpus:
             WHERE hash = ?
         """, (file_hash,))
         blob, = cur.fetchone()
-        return unblob(blob)
+        return file_hash, unblob(blob)
 
     def get_result_by_rowid(self, rowid):
         assert isinstance(rowid, int)
