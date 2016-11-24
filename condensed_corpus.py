@@ -46,9 +46,11 @@ class CondensedCorpus:
     >>> c = CondensedCorpus.connect_to(':memory:')
     >>> tokens = (Token(value='var', type='Keyword', loc=None),)
     >>> c.insert('123abc', tokens)
-    >>> x, y, z = c['123abc']
+    >>> file_hash, (x, y, z) = c['123abc']
     >>> x, y, z
     (0, 86, 99)
+    >>> file_hash
+    '123abc'
     >>> file_hash, rtokens = c[1]
     >>> file_hash
     '123abc'
