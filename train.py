@@ -9,6 +9,10 @@ import argparse
 
 import numpy as np
 from path import Path
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+from keras.layers import LSTM
+from keras.optimizers import RMSprop
 
 from vocabulary import vocabulary
 from condensed_corpus import CondensedCorpus
@@ -128,7 +132,7 @@ def at_least(value, *args):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('filename', Path)
+parser.add_argument('filename', type=Path)
 
 def define_model():
     model = Sequential()
@@ -161,6 +165,7 @@ def main():
 
     model.save('javascript')
     import pdb; pdb.set_trace()
+
 
 if __name__ == '__main__':
     main()
