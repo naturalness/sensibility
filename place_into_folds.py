@@ -33,12 +33,12 @@ error = partial(print, file=sys.stderr)
 
 FOLDS = 10
 
-if __name__ == '__main__':
+def main():
     _, filename = sys.argv
     filename = Path(filename)
     assert filename.exists()
 
-    corpus = CondensedCorpus.connect_to(filename)
+    corpus = CondensedCorpus.connect_to(str(filename))
 
     # We maintain a priority queue of heaps. At the top of the heap is the
     # one with the fewest tokens.
@@ -56,14 +56,19 @@ if __name__ == '__main__':
 
     def push(n_tokens, fold_no):
         assert isinstance(file_hash, str)
-        assert isinstance(fold_no, str)
+        assert isinstance(fold_no, int)
         return heapq.heappush(heap, (n_tokens, fold_no))
+
+    def viz_progress():
+        return ', '.join('%d => %d' % (fold_id, n_tokens)
+                         for n_tokens, fold_id in heap)
 
     progress = tqdm(shuffled_ids)
     for file_id in progress:
         try:
-            file_hash, tokens = corpus[fold_id]
+            file_hash, tokens = corpus[file_id]
         except:
+            error("file not found in corpus:", file_id)
             continue
         else:
             n_tokens = len(tokens)
@@ -71,6 +76,10 @@ if __name__ == '__main__':
         # Assign to the min fold
         tokens_in_fold, fold_no = pop()
 
-        corpus.add_to_fold(file_hash, foldno)
-        push(tokens_in_fold + n_tokens, foldno)
-        progress.set_description(heap)
+        corpus.add_to_fold(file_hash, fold_no)
+        push(tokens_in_fold + n_tokens, fold_no)
+        progress.set_description(viz_progress())
+
+
+if __name__ == '__main__':
+    main()
