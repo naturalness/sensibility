@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS vectorized_source(
     np_array BLOB NOT NULL,     -- the numpy array, as a blob.
     n_tokens INTEGER NOT NULL   -- the amount of tokens, (excluding start/end)
 );
+
+CREATE TABLE IF NOT EXISTS fold_assignment(
+    hash TEXT PRIMARY KEY,
+    fold INTEGER NOT NULL   -- the fold assignment
+);
 """
 
 
@@ -62,11 +67,18 @@ class CondensedCorpus:
     >>> c.insert('foobar', tokens)
     >>> c.max_index
     2
+    >>> list(c.hashes_in_fold(0))
+    []
+    >>> c.add_to_fold('foobar', 0)
+    >>> list(c.hashes_in_fold(0))
+    ['foobar']
+
+
     """
 
     def __init__(self, conn):
-        conn.executescript(SCHEMA)
-        conn.commit()
+        with conn:
+            conn.executescript(SCHEMA)
         self.conn = conn
 
     @classmethod
@@ -107,6 +119,17 @@ class CondensedCorpus:
         """).fetchone()
         return result
 
+    def hashes_in_fold(self, fold_no):
+        """
+        Generate all hashes in the given fold number.
+        """
+        assert isinstance(fold_no, int)
+
+        cur = self.conn.execute("""
+            SELECT hash FROM fold_assignment WHERE fold = ?
+        """, (fold_no,))
+        yield from (result for result, in cur.fetchall())
+
     def __getitem__(self, key):
         if isinstance(key, (str, bytes)):
             return self.get_tokens_by_hash(key)
@@ -123,11 +146,21 @@ class CondensedCorpus:
         filelike = io.BytesIO()
         np.save(filelike, array)
 
-        self.conn.execute("""
-            INSERT INTO vectorized_source(hash, np_array, n_tokens)
-                 VALUES (?, ?, ?)
-         """, (hash_, filelike.getbuffer(), len(tokens)))
-        self.conn.commit()
+        with self.conn:
+            self.conn.execute("""
+                INSERT INTO vectorized_source(hash, np_array, n_tokens)
+                     VALUES (?, ?, ?)
+             """, (hash_, filelike.getbuffer(), len(tokens)))
+
+    def add_to_fold(self, file_hash, fold_no):
+        """
+        Add a file hash to a fold.
+        """
+        assert isinstance(fold_no, int)
+        with self.conn:
+            self.conn.execute("""
+                INSERT INTO fold_assignment(hash, fold) VALUES (?, ?)
+             """, (file_hash, fold_no))
 
 
 def unblob(blob):
