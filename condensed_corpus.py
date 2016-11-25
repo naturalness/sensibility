@@ -91,6 +91,9 @@ class CondensedCorpus:
         conn = sqlite3.connect(filename)
         return cls(conn)
 
+    def disconnect(self):
+        self.conn.close()
+
     def get_tokens_by_hash(self, file_hash):
         cur = self.conn.cursor()
         cur.execute("""

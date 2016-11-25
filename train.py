@@ -5,13 +5,19 @@
 Trains an LSTM using Keras.
 """
 
+import argparse
+
 import numpy as np
+from path import Path
 
 from vocabulary import vocabulary
+from condensed_corpus import CondensedCorpus
+
 
 # Based on White et al. 2015
 DEFAULT_SIZE = 20
 SIGMOID_ACTIVATIONS = 300
+
 
 class Sentences:
     """
@@ -53,6 +59,7 @@ class Sentences:
         x = np.zeros((n_sentences, sentence_len, vocab_size), dtype=np.bool)
         y = np.zeros((n_sentences, vocab_size), dtype=np.bool)
 
+        # Fill in the vectors.
         for sentence_id in range(n_sentences):
             for i, token_id in enumerate(range(sentence_id, sentence_id +
                                                sentence_len)):
@@ -69,10 +76,91 @@ class Sentences:
         return at_least(0, sentences_possible)
 
 
+class LoopSentencesEndlessly:
+    def __init__(self, corpus_filename, folds):
+        assert Path(corpus_filename).exists()
+        self.filename = corpus_filename
+        self.folds = folds
+        self.corpus = None
+
+    def __iter__(self):
+        self.corpus = corpus = CondensedCorpus.connect_to(self.filename)
+        while True:
+            for fold in training_folds:
+                for file_hash in corpus.hashes_in_fold(fold):
+                    _, tokens = corpus[file_hash]
+                    yield from Sentences(tokens)
+
+    def __del__(self):
+        if self.corpus is not None:
+            corpus.disconnect()
+
+    @classmethod
+    def for_training(cls, corpus_filename, fold):
+        """
+        Endlessly yields (X, Y) pairs from the corpus for training.
+        """
+        # XXX: hardcode a lot of stuff
+        # Assume there are 10 folds.
+        assert 0 <= fold <= 9
+        training_folds = tuple(num for num in range(10) if num != fold)
+        assert len(training_folds) == 9
+        return cls(corpus_filename, training_folds)
+
+    @classmethod
+    def for_evaluation(cls, corpus_filename, fold):
+        """
+        Endlessly yields (X, Y) pairs from the corpus for evaluation.
+        """
+        # XXX: hardcode a lot of stuff
+        # Assume there are 10 folds.
+        assert 0 <= fold <= 9
+        return cls(corpus_filename, (fold,))
+
+
 def at_least(value, *args):
     """
-    Returns at least the given number.
+    Returns **at least** the given number.
 
     For Dr. Hindle's sanity.
     """
     return max(value, *args)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('filename', Path)
+
+def define_model():
+    model = Sequential()
+    model.add(LSTM(128, input_shape=(DEFAULT_SIZE, len(vocabulary))))
+    model.add(Dense(len(vocabulary)))
+    model.add(Activation('softmax'))
+    optimizer = RMSprop(lr=0.01)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=optimizer,
+                  metrics=['accuracy'])
+    return model
+
+
+def main():
+    args = parser.parse_args()
+    assert args.filename.exists()
+
+    # define a model
+    model = define_model()
+
+    # Number of tokens divided by 10?
+    NUM_SAMPLES = 150000000
+
+    # train the model
+    training_data = LoopSentencesEndlessly.for_training(args.filename, fold=0)
+    history = model.fit_generator(training_data,
+                                  nb_epoch=10,
+                                  samples_per_epoch=NUM_SAMPLES,
+                                  pickle_safe=True)
+
+    model.save('javascript')
+    import pdb; pdb.set_trace()
+
+if __name__ == '__main__':
+    main()
