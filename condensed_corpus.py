@@ -72,8 +72,13 @@ class CondensedCorpus:
     >>> c.add_to_fold('foobar', 0)
     >>> list(c.hashes_in_fold(0))
     ['foobar']
-
-
+    >>> c.add_to_fold('foobar', 1)
+    Traceback (most recent call last):
+      ...
+    sqlite3.IntegrityError: UNIQUE constraint failed: fold_assignment.hash
+    >>> c.add_to_fold('123abc', 0)
+    >>> list(c.hashes_in_fold(0))
+    ['foobar', '123abc']
     """
 
     def __init__(self, conn):
