@@ -1,8 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
-Trains an LSTM using Keras.
+Trains an LSTM from sentences in the vectorized corpus.
 """
 
 import argparse
@@ -81,6 +96,13 @@ class Sentences:
 
 
 class LoopSentencesEndlessly:
+    """
+
+    This test only works on my computer...
+
+    >>> loop = LoopSentencesEndlessly.for_training('trial.sqlite3', fold=0)
+    >>> x, y = next(iter(loop))
+    """
     def __init__(self, corpus_filename, folds):
         assert Path(corpus_filename).exists()
         self.filename = corpus_filename
@@ -90,14 +112,14 @@ class LoopSentencesEndlessly:
     def __iter__(self):
         self.corpus = corpus = CondensedCorpus.connect_to(self.filename)
         while True:
-            for fold in training_folds:
+            for fold in self.folds:
                 for file_hash in corpus.hashes_in_fold(fold):
                     _, tokens = corpus[file_hash]
                     yield from Sentences(tokens)
 
     def __del__(self):
         if self.corpus is not None:
-            corpus.disconnect()
+            self.corpus.disconnect()
 
     @classmethod
     def for_training(cls, corpus_filename, fold):
