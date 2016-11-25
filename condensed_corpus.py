@@ -57,6 +57,11 @@ class CondensedCorpus:
     >>> x, y, z = rtokens
     >>> x, y, z
     (0, 86, 99)
+    >>> c.min_index
+    1
+    >>> c.insert('foobar', tokens)
+    >>> c.max_index
+    2
     """
 
     def __init__(self, conn):
@@ -87,6 +92,20 @@ class CondensedCorpus:
         """, (rowid,))
         file_hash, blob = cur.fetchone()
         return file_hash, unblob(blob)
+
+    @property
+    def min_index(self):
+        result, = self.conn.execute("""
+            SELECT MIN(rowid) FROM vectorized_source
+        """).fetchone()
+        return result
+
+    @property
+    def max_index(self):
+        result, = self.conn.execute("""
+            SELECT MAX(rowid) FROM vectorized_source
+        """).fetchone()
+        return result
 
     def __getitem__(self, key):
         if isinstance(key, (str, bytes)):
