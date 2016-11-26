@@ -38,6 +38,14 @@ from condensed_corpus import CondensedCorpus
 DEFAULT_SIZE = 20
 SIGMOID_ACTIVATIONS = 300
 
+LOG_FILE = 'log.csv'
+
+
+def log_size(vec, n_sentences, sentence_len, vocab_size):
+    with open(LOG_FILE, 'a') as logfile:
+        print(len(vec), n_sentences * sentence_len * vocab_size,
+              file=logfile, sep=',')
+
 
 class Sentences:
     """
@@ -74,6 +82,8 @@ class Sentences:
         sentence_len = self.size
         token_vector = self.vector
         vocab_size = len(vocabulary)
+
+        log_size(token_vector, n_sentences, sentence_len, vocab_size)
 
         # Create empty one-hot vectors
         x = np.zeros((n_sentences, sentence_len, vocab_size), dtype=np.bool)
@@ -194,8 +204,17 @@ def main():
     args = parser.parse_args()
     assert args.filename.exists()
 
-    print("Counting samples...")
-    n_samples = count_samples_slow(args.filename, 0)
+    n_samples = 128
+    """
+    try:
+        from samples import FOLD_0
+    except ImportError:
+        print("Counting samples...")
+        n_samples = count_samples_slow(args.filename, 0)
+    else:
+        n_samples = FOLD_0
+    """
+
     print(n_samples, "samples")
 
     # define a model
@@ -217,4 +236,9 @@ def main():
 
 
 if __name__ == '__main__':
+    import os
+    try:
+        os.remove(LOG_FILE)
+    except FileNotFoundError:
+        pass
     main()
