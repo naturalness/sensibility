@@ -89,14 +89,11 @@ class Sentences:
 
             # Fill in the one-hot matrix for X
             for i, token_id in enumerate(sentence):
-                #print(vocabulary.to_text(token_id), end=' ')
                 x[sentence_id, i, token_id] = 1
 
             # Add the last token for the one-hot vector Y.
             last_token_id = token_vector[end]
-            #print('⌇', vocabulary.to_text(last_token_id))
             y[sentence_id, last_token_id] = 1
-            print()
 
         yield x, y
 
@@ -197,8 +194,7 @@ def main():
     history = model.fit_generator(iter(training_data),
                                   nb_epoch=10,
                                   samples_per_epoch=NUM_SAMPLES,
-                                  pickle_safe=False)
-                                  #pickle_safe=True)
+                                  pickle_safe=True)
 
     model.save('javascript')
     import pdb; pdb.set_trace()
