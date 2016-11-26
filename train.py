@@ -177,7 +177,7 @@ def define_model():
 
 
 def count_samples_slow(filename, fold):
-    corpus = CondensedCorpus.connect(filename)
+    corpus = CondensedCorpus.connect_to(filename)
     folds = tuple(num for num in range(10) if num != fold)
     n_samples = 0
     for n in folds:
@@ -208,7 +208,7 @@ def main():
     training_data = LoopSentencesEndlessly.for_training(args.filename, fold=0)
     history = model.fit_generator(iter(training_data),
                                   nb_epoch=10,
-                                  samples_per_epoch=NUM_SAMPLES,
+                                  samples_per_epoch=n_samples,
                                   verbose=2,
                                   pickle_safe=True)
 
