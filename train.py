@@ -21,6 +21,7 @@ Trains an LSTM from sentences in the vectorized corpus.
 """
 
 import argparse
+from itertools import islice
 
 import numpy as np
 from path import Path
@@ -55,7 +56,7 @@ class Sentences:
     >>> v = vectorize_tokens([t] * 19)
     >>> sentences = Sentences(v, size=20)
     >>> len(sentences)
-    2
+    1
     >>> x, y = next(iter(sentences))
     """
 
@@ -80,10 +81,22 @@ class Sentences:
 
         # Fill in the vectors.
         for sentence_id in range(n_sentences):
-            for i, token_id in enumerate(range(sentence_id, sentence_id +
-                                               sentence_len)):
+            start = sentence_id
+            end = sentence_id + sentence_len
+            assert end < len(token_vector), "not: %d < %d" %(end,
+                                                        len(token_vector))
+            sentence = islice(token_vector, start, end)
+
+            # Fill in the one-hot matrix for X
+            for i, token_id in enumerate(sentence):
+                #print(vocabulary.to_text(token_id), end=' ')
                 x[sentence_id, i, token_id] = 1
-            y[sentence_id, token_id] = 1
+
+            # Add the last token for the one-hot vector Y.
+            last_token_id = token_vector[end]
+            #print('⌇', vocabulary.to_text(last_token_id))
+            y[sentence_id, last_token_id] = 1
+            print()
 
         yield x, y
 
@@ -91,7 +104,7 @@ class Sentences:
         """
         Returns how many sentences this will produce. Can be zero!
         """
-        sentences_possible = 1 + len(self.vector) - self.size
+        sentences_possible = len(self.vector) - self.size
         return at_least(0, sentences_possible)
 
 
@@ -118,6 +131,7 @@ class LoopSentencesEndlessly:
                     yield from Sentences(tokens)
 
     def __del__(self):
+        return
         if self.corpus is not None:
             self.corpus.disconnect()
 
@@ -180,10 +194,11 @@ def main():
 
     # train the model
     training_data = LoopSentencesEndlessly.for_training(args.filename, fold=0)
-    history = model.fit_generator(training_data,
+    history = model.fit_generator(iter(training_data),
                                   nb_epoch=10,
                                   samples_per_epoch=NUM_SAMPLES,
-                                  pickle_safe=True)
+                                  pickle_safe=False)
+                                  #pickle_safe=True)
 
     model.save('javascript')
     import pdb; pdb.set_trace()
