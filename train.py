@@ -164,9 +164,6 @@ def at_least(value, *args):
     return max(value, *args)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('filename', type=Path)
-
 def define_model():
     model = Sequential()
     model.add(LSTM(128, input_shape=(DEFAULT_SIZE, len(vocabulary))))
@@ -179,21 +176,40 @@ def define_model():
     return model
 
 
+def count_samples_slow(filename, fold):
+    corpus = CondensedCorpus.connect(filename)
+    folds = tuple(num for num in range(10) if num != fold)
+    n_samples = 0
+    for n in folds:
+        for file_hash in corpus.hashes_in_fold(n):
+            _, tokens = corpus[file_hash]
+            n_samples += len(Sentences(tokens))
+    return n_samples
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', type=Path)
+
     args = parser.parse_args()
     assert args.filename.exists()
 
-    # define a model
-    model = define_model()
+    print("Counting samples...")
+    n_samples = count_samples_slow(args.filename, 0)
+    print(n_samples, "samples")
 
-    # Number of tokens divided by 10?
-    NUM_SAMPLES = 150000000
+    # define a model
+    print("Compiling the model...")
+    model = define_model()
+    print("Done")
 
     # train the model
+    print("Training")
     training_data = LoopSentencesEndlessly.for_training(args.filename, fold=0)
     history = model.fit_generator(iter(training_data),
                                   nb_epoch=10,
                                   samples_per_epoch=NUM_SAMPLES,
+                                  verbose=2,
                                   pickle_safe=True)
 
     model.save('javascript')
