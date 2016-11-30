@@ -66,13 +66,14 @@ if __name__ == '__main__':
     # Get the tokens from the 9 training folds.
     FOLD = 0
     training_folds = tuple(num for num in range(10) if num != FOLD)
-    corpus = CondensedCorpus.connect_to(filename)
 
     def generate_sentences(folds):
+        corpus = CondensedCorpus.connect_to(filename)
         for fold in folds:
             for file_hash in corpus.hashes_in_fold(fold):
                 _, tokens = corpus[file_hash]
                 yield from Sentences(tokens, size=SENTENCE_LENGTH)
+        corpus.disconnect()
 
     batch_of_vectors = chunked(generate_sentences(training_folds), BATCH_SIZE)
 
@@ -93,6 +94,28 @@ if __name__ == '__main__':
             # Add the last token for the one-hot vector Y.
             y[sentence_id, last_token_id] = 1
 
-        model.train_on_batch(x, y)
+        loss = model.train_on_batch(x, y)
+        print("loss:", loss)
 
-    model.save('javascript')
+    print("Evaluating")
+    batch_of_vectors = chunked(generate_sentences((9,)), BATCH_SIZE)
+    for batch in tqdm(batch_of_vectors):
+        vocab_size = len(vocabulary)
+
+        # Create empty one-hot vectors
+        x = np.zeros((BATCH_SIZE, SENTENCE_LENGTH, vocab_size), dtype=np.bool)
+        y = np.zeros((BATCH_SIZE, vocab_size), dtype=np.bool)
+
+        # Fill in the vectors.
+        for sentence_id, (sentence, last_token_id) in enumerate(batch):
+            # Fill in the one-hot matrix for X
+            for pos, token_id in enumerate(sentence):
+                x[sentence_id, pos, token_id] = 1
+
+            # Add the last token for the one-hot vector Y.
+            y[sentence_id, last_token_id] = 1
+
+        loss = model.test_on_batch(x, y)
+        print("loss:", loss)
+
+    model.save('javascript.h5')
