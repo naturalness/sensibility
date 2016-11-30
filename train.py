@@ -42,11 +42,11 @@ SENTENCE_LENGTH = 20
 SIGMOID_ACTIVATIONS = 300
 
 # This is arbitrary, but it should be fairly small.
-BATCH_SIZE = 8
+BATCH_SIZE = 128
 
 if __name__ == '__main__':
-    #filename = Path('/run/user/1004/corpus.sqlite3')
-    filename = Path('/run/user/1004/small-corpus.sqlite3')
+    filename = Path('/run/user/1004/corpus.sqlite3')
+    #filename = Path('/run/user/1004/small-corpus.sqlite3')
     assert filename.exists()
 
     # define a model
@@ -78,7 +78,8 @@ if __name__ == '__main__':
     batch_of_vectors = chunked(generate_sentences(training_folds), BATCH_SIZE)
 
     print("Training")
-    for batch in tqdm(batch_of_vectors):
+    progress = tqdm(batch_of_vectors)
+    for batch in progress:
         vocab_size = len(vocabulary)
 
         # Create empty one-hot vectors
@@ -94,7 +95,8 @@ if __name__ == '__main__':
             # Add the last token for the one-hot vector Y.
             y[sentence_id, last_token_id] = 1
 
-        model.train_on_batch(x, y)
+        loss, acc = model.train_on_batch(x, y)
+        progress.set_description("Loss => {}, acc => {}".format(loss, acc))
 
     print("Evaluating")
     batch_of_vectors = chunked(generate_sentences((9,)), BATCH_SIZE)
