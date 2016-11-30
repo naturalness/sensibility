@@ -16,11 +16,15 @@
 # limitations under the License.
 
 
+from itertools import islice
+
+
 class Sentences:
     """
     Generates samples from the given vector.
 
     >>> from corpus import Token
+    >>> from vocabulary import vocabulary
     >>> from vectorize_tokens import vectorize_tokens
     >>> t = Token(value='var', type='Keyword', loc=None)
     >>> v = vectorize_tokens([t])
@@ -35,6 +39,10 @@ class Sentences:
     >>> len(sentences)
     1
     >>> x, y = next(iter(sentences))
+    >>> list(x) == [0] + [86] * 19
+    True
+    >>> y
+    99
     """
 
     def __init__(self, vector, *, size=None):
@@ -53,6 +61,16 @@ class Sentences:
         sentence_len = self.size
         token_vector = self.vector
 
+        # Fill in the vectors.
+        for sentence_id in range(n_sentences):
+            start = sentence_id
+            end = sentence_id + sentence_len
+            assert end < len(token_vector), "not: %d < %d" %(end,
+                                                        len(token_vector))
+            sentence = islice(token_vector, start, end)
+
+            yield sentence, token_vector[end]
+
     def __len__(self):
         """
         Returns how many sentences this will produce. Can be zero!
@@ -62,13 +80,6 @@ class Sentences:
 
 
 class LoopSentencesEndlessly:
-    """
-
-    This test only works on my computer...
-
-    >>> loop = LoopSentencesEndlessly.for_training('trial.sqlite3', fold=0)
-    >>> x, y = next(iter(loop))
-    """
     def __init__(self, corpus_filename, folds):
         assert Path(corpus_filename).exists()
         self.filename = corpus_filename

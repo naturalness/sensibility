@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
 Trains an LSTM from sentences in the vectorized corpus.
 """
@@ -25,47 +24,75 @@ from itertools import islice
 
 import numpy as np
 from path import Path
+from tqdm import tqdm
+from more_itertools import chunked
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Dropout
 from keras.layers import LSTM
 from keras.optimizers import RMSprop
-from keras.utils.visualize_util import plot
 
 from vocabulary import vocabulary
 from condensed_corpus import CondensedCorpus
+from training_utils import Sentences
 
 
 # Based on White et al. 2015
-DEFAULT_SIZE = 20
+SENTENCE_LENGTH = 20
 SIGMOID_ACTIVATIONS = 300
 
-filename = Path('/run/user/1004/corpus.sqlite3')
-assert filename.exists()
+# This is arbitrary, but it should be fairly small.
+BATCH_SIZE = 8
 
-batch_size = 128
+if __name__ == '__main__':
+    #filename = Path('/run/user/1004/corpus.sqlite3')
+    filename = Path('/run/user/1004/small-corpus.sqlite3')
+    assert filename.exists()
 
-# define a model
-model = Sequential()
+    # define a model
+    model = Sequential()
 
-model.add(LSTM(SIGMOID_ACTIVATIONS, input_shape=(DEFAULT_SIZE, len(vocabulary))))
-model.add(Dense(len(vocabulary)))
-model.add(Activation('softmax'))
-optimizer = RMSprop(lr=0.001)
+    model.add(LSTM(SIGMOID_ACTIVATIONS, input_shape=(SENTENCE_LENGTH, len(vocabulary))))
+    model.add(Dense(len(vocabulary)))
+    model.add(Activation('softmax'))
+    optimizer = RMSprop(lr=0.001)
 
-print("Compiling the model...")
-model.compile(loss='categorical_crossentropy',
-              optimizer=optimizer,
-              metrics=['accuracy'])
-print("Done")
+    print("Compiling the model...")
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=optimizer,
+                  metrics=['accuracy'])
+    print("Done")
 
-# train the model
-print("Training")
-training_data = LoopSentencesEndlessly.for_training(args.filename, fold=0)
-history = model.fit_generator(iter(training_data),
-                              nb_epoch=10,
-                              samples_per_epoch=n_samples,
-                              verbose=2,
-                              pickle_safe=True)
+    # Get the tokens from the 9 training folds.
+    FOLD = 0
+    training_folds = tuple(num for num in range(10) if num != FOLD)
+    corpus = CondensedCorpus.connect_to(filename)
 
-model.save('javascript')
+    def generate_sentences(folds):
+        for fold in folds:
+            for file_hash in corpus.hashes_in_fold(fold):
+                _, tokens = corpus[file_hash]
+                yield from Sentences(tokens, size=SENTENCE_LENGTH)
+
+    batch_of_vectors = chunked(generate_sentences(training_folds), BATCH_SIZE)
+
+    print("Training")
+    for batch in tqdm(batch_of_vectors):
+        vocab_size = len(vocabulary)
+
+        # Create empty one-hot vectors
+        x = np.zeros((BATCH_SIZE, SENTENCE_LENGTH, vocab_size), dtype=np.bool)
+        y = np.zeros((BATCH_SIZE, vocab_size), dtype=np.bool)
+
+        # Fill in the vectors.
+        for sentence_id, (sentence, last_token_id) in enumerate(batch):
+            # Fill in the one-hot matrix for X
+            for pos, token_id in enumerate(sentence):
+                x[sentence_id, pos, token_id] = 1
+
+            # Add the last token for the one-hot vector Y.
+            y[sentence_id, last_token_id] = 1
+
+        model.train_on_batch(x, y)
+
+    model.save('javascript')

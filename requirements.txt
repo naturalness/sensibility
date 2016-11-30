@@ -3,3 +3,5 @@ tqdm
 path.py
 blessings
 Keras==1.1.1
+more-itertools==2.3
+h5py==2.6.0
