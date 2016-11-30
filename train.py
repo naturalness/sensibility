@@ -94,12 +94,12 @@ if __name__ == '__main__':
             # Add the last token for the one-hot vector Y.
             y[sentence_id, last_token_id] = 1
 
-        loss = model.train_on_batch(x, y)
-        print("loss:", loss)
+        model.train_on_batch(x, y)
 
     print("Evaluating")
     batch_of_vectors = chunked(generate_sentences((9,)), BATCH_SIZE)
-    for batch in tqdm(batch_of_vectors):
+    progress = tqdm(batch_of_vectors)
+    for batch in progress:
         vocab_size = len(vocabulary)
 
         # Create empty one-hot vectors
@@ -114,8 +114,8 @@ if __name__ == '__main__':
 
             # Add the last token for the one-hot vector Y.
             y[sentence_id, last_token_id] = 1
-
-        loss = model.test_on_batch(x, y)
-        print("loss:", loss)
+                
+        loss, acc = model.test_on_batch(x, y)
+        progress.set_description("Loss => {}, acc => {}".format(loss, acc))
 
     model.save('javascript.h5')
