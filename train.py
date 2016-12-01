@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
             # Add the last token for the one-hot vector Y.
             y[sentence_id, last_token_id] = 1
-                
+
         loss, acc = model.test_on_batch(x, y)
         progress.set_description("Loss => {}, acc => {}".format(loss, acc))
 
