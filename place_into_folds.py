@@ -24,6 +24,7 @@ import heapq
 import random
 from pathlib import Path
 from functools import partial
+from itertools import islice
 
 from tqdm import tqdm
 
@@ -34,9 +35,10 @@ error = partial(print, file=sys.stderr)
 FOLDS = 10
 
 def main():
-    _, filename = sys.argv
+    _, filename, max_iters = sys.argv
     filename = Path(filename)
     assert filename.exists()
+    max_iters = int(max_iters)
 
     corpus = CondensedCorpus.connect_to(str(filename))
 
@@ -51,6 +53,11 @@ def main():
     shuffled_ids = list(range(corpus.min_index, corpus.max_index + 1))
     random.shuffle(shuffled_ids)
 
+    if max_iters < 1:
+        print("Using full corpus")
+        max_iters = len(shuffled_ids)
+    iterations = min(max_iters, len(shuffled_ids))
+
     def pop():
         return heapq.heappop(heap)
 
@@ -59,11 +66,8 @@ def main():
         assert isinstance(fold_no, int)
         return heapq.heappush(heap, (n_tokens, fold_no))
 
-    def viz_progress():
-        return ', '.join('%d => %d' % (fold_id, n_tokens)
-                         for n_tokens, fold_id in heap)
 
-    progress = tqdm(shuffled_ids)
+    progress = tqdm(islice(shuffled_ids, max_iters), total=iterations)
     for file_id in progress:
         try:
             file_hash, tokens = corpus[file_id]
@@ -78,7 +82,6 @@ def main():
 
         corpus.add_to_fold(file_hash, fold_no)
         push(tokens_in_fold + n_tokens, fold_no)
-        progress.set_description(viz_progress())
 
 
 if __name__ == '__main__':
