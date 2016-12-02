@@ -34,6 +34,7 @@ error = partial(print, file=sys.stderr)
 
 FOLDS = 10
 
+
 def main():
     _, filename, max_iters = sys.argv
     filename = Path(filename)
@@ -67,7 +68,7 @@ def main():
         return heapq.heappush(heap, (n_tokens, fold_no))
 
 
-    progress = tqdm(islice(shuffled_ids, max_iters), total=iterations)
+    progress = tqdm(islice(shuffled_ids, iterations), total=iterations)
     for file_id in progress:
         try:
             file_hash, tokens = corpus[file_id]
@@ -82,6 +83,7 @@ def main():
 
         corpus.add_to_fold(file_hash, fold_no)
         push(tokens_in_fold + n_tokens, fold_no)
+        progress.set_description(str(file_id))
 
 
 if __name__ == '__main__':

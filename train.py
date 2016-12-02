@@ -42,11 +42,13 @@ SENTENCE_LENGTH = 20
 SIGMOID_ACTIVATIONS = 300
 
 # This is arbitrary, but it should be fairly small.
-BATCH_SIZE = 128
+#BATCH_SIZE = 128
+BATCH_SIZE = 1024
 
 if __name__ == '__main__':
-    filename = Path('/run/user/1004/corpus.sqlite3')
+    #filename = Path('/run/user/1004/corpus.sqlite3')
     #filename = Path('/run/user/1004/small-corpus.sqlite3')
+    filename = Path('/dev/shm/vectors.sqlite3')
     assert filename.exists()
 
     # define a model
@@ -98,6 +100,8 @@ if __name__ == '__main__':
         loss, acc = model.train_on_batch(x, y)
         progress.set_description("Loss => {}, acc => {}".format(loss, acc))
 
+    model.save('javascript.h5')
+
     print("Evaluating")
     batch_of_vectors = chunked(generate_sentences((9,)), BATCH_SIZE)
     progress = tqdm(batch_of_vectors)
@@ -120,4 +124,3 @@ if __name__ == '__main__':
         loss, acc = model.test_on_batch(x, y)
         progress.set_description("Loss => {}, acc => {}".format(loss, acc))
 
-    model.save('javascript.h5')
