@@ -154,6 +154,39 @@ class LoopSentencesEndlessly:
         return cls(corpus_filename, (fold,))
 
 
+def training_folds(fold, k=10):
+    """
+    Return a tuple of all the training folds.
+    >>> training_folds(7)
+    (0, 1, 2, 3, 4, 5, 6, 8, 9)
+    """
+    assert fold < k
+    return tuple(num for num in range(10) if num != fold)
+
+
+def testing_folds(fold, k=10):
+    """
+    Return a tuple of all the training folds.
+    >>> testing_folds(4)
+    (4,)
+    """
+    assert fold < k
+    return (fold,)
+
+
+def count_samples_slow(filename, folds):
+    corpus = CondensedCorpus.connect_to(filename)
+    n_samples = 0
+    for n in folds:
+        for file_hash in corpus.hashes_in_fold(n):
+            _, tokens = corpus[file_hash]
+            n_samples += len(Sentences(tokens))
+    try:
+        return n_samples
+    finally:
+        corpus.disconnect()
+
+
 def at_least(value, *args):
     """
     Returns **at least** the given number.
