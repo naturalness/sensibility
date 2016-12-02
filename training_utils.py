@@ -20,7 +20,6 @@ from itertools import islice
 import numpy as np
 from more_itertools import chunked
 from path import Path
-from tqdm import tqdm
 
 from vocabulary import vocabulary
 from condensed_corpus import CondensedCorpus
@@ -148,14 +147,10 @@ class LoopBatchesEndlessly:
         """
         sentence_length = self.sentence_length
         corpus = CondensedCorpus.connect_to(self.filename)
-        progress = tqdm(total=self.samples_per_epoch)
         for fold in self.folds:
             for file_hash in corpus.hashes_in_fold(fold):
                 _, tokens = corpus[file_hash]
-                sents = Sentences(tokens, size=sentence_length)
-                yield from sents
-                progress.update(len(sents))
-        progress.close()
+                yield from = Sentences(tokens, size=sentence_length)
         corpus.disconnect()
 
         batch_size = self.batch_size

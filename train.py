@@ -53,10 +53,7 @@ def round_up_to(value, magnitude):
 
 
 if __name__ == '__main__':
-    #filename = Path('/run/user/1004/corpus.sqlite3')
-    #filename = Path('/run/user/1004/small-corpus.sqlite3')
-    filename = Path('/dev/shm/vectors.sqlite3')
-    filename = Path('./trial.sqlite3')
+    filename = Path('/dev/shm/tiny-corpus.sqlite3')
 
     # Get the tokens from the 9 training folds.
     training_batches = LoopBatchesEndlessly\
@@ -89,7 +86,7 @@ if __name__ == '__main__':
                         samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
                         nb_val_samples=eval_batches.samples_per_epoch // BATCH_SIZE,
-                        verbose=2,
+                        verbose=1,
                         pickle_safe=True,
                         nb_epoch=1)
 
