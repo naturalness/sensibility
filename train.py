@@ -59,11 +59,13 @@ if __name__ == '__main__':
     training_batches = LoopBatchesEndlessly\
         .for_training(filename, FOLD,
                       batch_size=BATCH_SIZE,
-                      sentence_length=SENTENCE_LENGTH)
+                      sentence_length=SENTENCE_LENGTH,
+                      backwards=True)
     eval_batches = LoopBatchesEndlessly\
         .for_evaluation(filename, FOLD,
                       batch_size=BATCH_SIZE,
-                      sentence_length=SENTENCE_LENGTH)
+                      sentence_length=SENTENCE_LENGTH,
+                      backwards=True)
     print("Will train on", training_batches.samples_per_epoch, "samples")
 
     # Defining the model:
@@ -79,6 +81,8 @@ if __name__ == '__main__':
                   metrics=['categorical_accuracy'])
     print("Done")
 
+    #model.load_weights("javascript.2.h5")
+
     print("Training for one epoch...")
     model.fit_generator(iter(training_batches),
                         #samples_per_epoch=round_up_to(training_batches.samples_per_epoch,
@@ -88,7 +92,7 @@ if __name__ == '__main__':
                         nb_val_samples=eval_batches.samples_per_epoch // BATCH_SIZE,
                         verbose=1,
                         pickle_safe=True,
-                        nb_epoch=1)
+                        nb_epoch=2)
 
     print("Saving model.")
-    model.save('javascript.h5')
+    model.save_weights('javascript-backwards.2.h5')
