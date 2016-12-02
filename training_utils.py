@@ -15,11 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from itertools import islice
-from vocabulary import vocabulary
 
 import numpy as np
+from more_itertools import chunked
+from path import Path
+from tqdm import tqdm
+
+from vocabulary import vocabulary
+from condensed_corpus import CondensedCorpus
 
 
 class Sentences:
@@ -108,50 +112,73 @@ def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
         # Add the last token for the one-hot vector Y.
         y[sentence_id, last_token_id] = True
 
+    samples_produced = sentence_id + 1
+
+    if samples_produced < batch_size:
+        print("less samples than batch size", samples_produced)
+        np.resize(x, ((samples_produced, sentence_length, vocab_size)))
+        np.resize(y, ((samples_produced, vocab_size)))
+
     return x, y
 
 
-class LoopSentencesEndlessly:
-    def __init__(self, corpus_filename, folds):
+class LoopBatchesEndlessly:
+    def __init__(self, corpus_filename, folds,
+                 batch_size=None,
+                 sentence_length=None):
         assert Path(corpus_filename).exists()
+        assert isinstance(batch_size, int)
+        assert isinstance(sentence_length, int)
         self.filename = corpus_filename
         self.folds = folds
-        self.corpus = None
+        self.batch_size = batch_size
+        self.sentence_length = sentence_length
+        self.samples_per_epoch = count_samples_slow(corpus_filename, folds,
+                                                    sentence_length)
 
     def __iter__(self):
-        self.corpus = corpus = CondensedCorpus.connect_to(self.filename)
+        batch_size = self.batch_size
+        sent_len = self.sentence_length
+        # Batch into samples of sequences; need one-hot vector arrays.
+        batch_of_vectors = chunked(self._yield_sentences_endlessly(),
+                                   batch_size)
+        for batch in batch_of_vectors:
+            yield one_hot_batch(batch, batch_size=batch_size,
+                                sentence_length=self.sentence_length)
+
+    def _yield_sentences_endlessly(self):
+        sentence_length = self.sentence_length
         while True:
+            corpus = CondensedCorpus.connect_to(self.filename)
+            progress = tqdm(total=self.samples_per_epoch)
             for fold in self.folds:
                 for file_hash in corpus.hashes_in_fold(fold):
                     _, tokens = corpus[file_hash]
-                    yield from Sentences(tokens)
-
-    def __del__(self):
-        return
-        if self.corpus is not None:
-            self.corpus.disconnect()
+                    sents = Sentences(tokens, size=sentence_length)
+                    yield from sents
+                    progress.update(len(sents))
+            progress.close()
+            corpus.disconnect()
 
     @classmethod
-    def for_training(cls, corpus_filename, fold):
+    def for_training(cls, corpus_filename, fold, **kwargs):
         """
         Endlessly yields (X, Y) pairs from the corpus for training.
         """
         # XXX: hardcode a lot of stuff
         # Assume there are 10 folds.
         assert 0 <= fold <= 9
-        training_folds = tuple(num for num in range(10) if num != fold)
-        assert len(training_folds) == 9
-        return cls(corpus_filename, training_folds)
+        return cls(corpus_filename, training_folds(fold), **kwargs)
 
     @classmethod
-    def for_evaluation(cls, corpus_filename, fold):
+    def for_evaluation(cls, corpus_filename, fold, **kwargs):
         """
         Endlessly yields (X, Y) pairs from the corpus for evaluation.
         """
         # XXX: hardcode a lot of stuff
         # Assume there are 10 folds.
         assert 0 <= fold <= 9
-        return cls(corpus_filename, (fold,))
+        return cls(corpus_filename, testing_folds(fold), **kwargs)
 
 
 def training_folds(fold, k=10):
@@ -174,13 +201,13 @@ def testing_folds(fold, k=10):
     return (fold,)
 
 
-def count_samples_slow(filename, folds):
+def count_samples_slow(filename, folds, sentence_length):
     corpus = CondensedCorpus.connect_to(filename)
     n_samples = 0
     for n in folds:
         for file_hash in corpus.hashes_in_fold(n):
             _, tokens = corpus[file_hash]
-            n_samples += len(Sentences(tokens))
+            n_samples += len(Sentences(tokens, size=sentence_length))
     try:
         return n_samples
     finally:
