@@ -115,7 +115,7 @@ def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
     samples_produced = sentence_id + 1
 
     if samples_produced < batch_size:
-        print("less samples than batch size", samples_produced)
+        #print("warning: less samples than batch size:", samples_produced)
         np.resize(x, ((samples_produced, sentence_length, vocab_size)))
         np.resize(y, ((samples_produced, vocab_size)))
 
@@ -138,27 +138,37 @@ class LoopBatchesEndlessly:
 
     def __iter__(self):
         batch_size = self.batch_size
-        sent_len = self.sentence_length
-        # Batch into samples of sequences; need one-hot vector arrays.
-        batch_of_vectors = chunked(self._yield_sentences_endlessly(),
-                                   batch_size)
-        for batch in batch_of_vectors:
+        for batch in self._yield_batches_endlessly():
             yield one_hot_batch(batch, batch_size=batch_size,
                                 sentence_length=self.sentence_length)
 
-    def _yield_sentences_endlessly(self):
+    def _yield_sentences_from_corpus(self):
+        """
+        Yields all sentences from the corpus exactly once.
+        """
         sentence_length = self.sentence_length
+        corpus = CondensedCorpus.connect_to(self.filename)
+        progress = tqdm(total=self.samples_per_epoch)
+        for fold in self.folds:
+            for file_hash in corpus.hashes_in_fold(fold):
+                _, tokens = corpus[file_hash]
+                sents = Sentences(tokens, size=sentence_length)
+                yield from sents
+                progress.update(len(sents))
+        progress.close()
+        corpus.disconnect()
+
+        batch_size = self.batch_size
+
+    def _yield_batches_endlessly(self):
+        """
+        Yields batches of samples, in vectorized format, but NOT one-hot
+        encoded.
+        """
+        batch_size = self.batch_size
         while True:
-            corpus = CondensedCorpus.connect_to(self.filename)
-            progress = tqdm(total=self.samples_per_epoch)
-            for fold in self.folds:
-                for file_hash in corpus.hashes_in_fold(fold):
-                    _, tokens = corpus[file_hash]
-                    sents = Sentences(tokens, size=sentence_length)
-                    yield from sents
-                    progress.update(len(sents))
-            progress.close()
-            corpus.disconnect()
+            yield from chunked(self._yield_sentences_from_corpus(),
+                               batch_size)
 
     @classmethod
     def for_training(cls, corpus_filename, fold, **kwargs):
