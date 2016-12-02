@@ -86,16 +86,16 @@ class Sentences:
 
 
 def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
-                  vocab_size=len(vocabulary)):
+                  vocab_size=len(vocabulary), np=np):
     """
     Creates a one hot vector of the batch.
-    >>> x, y = one_hot_batch([([36], 48)], batch_size=1024, sentence_length=20)
+    >>> x, y = one_hot_batch([(np.array([36]), 48)], batch_size=1024, sentence_length=20)
     >>> x.shape
-    (1024, 20, 100)
+    (1, 20, 100)
     >>> x[0, 0, 36]
     1
     >>> y.shape
-    (1024, 100)
+    (1, 100)
     >>> y[0, 48]
     1
     """
@@ -116,8 +116,8 @@ def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
 
     if samples_produced < batch_size:
         #print("warning: less samples than batch size:", samples_produced)
-        np.resize(x, ((samples_produced, sentence_length, vocab_size)))
-        np.resize(y, ((samples_produced, vocab_size)))
+        x = np.resize(x, ((samples_produced, sentence_length, vocab_size)))
+        y = np.resize(y, ((samples_produced, vocab_size)))
 
     return x, y
 

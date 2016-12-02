@@ -84,8 +84,9 @@ if __name__ == '__main__':
 
     print("Training for one epoch...")
     model.fit_generator(iter(training_batches),
-                        samples_per_epoch=round_up_to(training_batches.samples_per_epoch,
-                                                      BATCH_SIZE),
+                        #samples_per_epoch=round_up_to(training_batches.samples_per_epoch,
+                                                      #BATCH_SIZE),
+                        samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
                         nb_val_samples=eval_batches.samples_per_epoch // BATCH_SIZE,
                         verbose=2,
