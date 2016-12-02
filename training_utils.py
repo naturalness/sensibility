@@ -72,7 +72,7 @@ class Sentences:
             end = sentence_id + sentence_len
             assert end < len(token_vector), "not: %d < %d" %(end,
                                                         len(token_vector))
-            sentence = islice(token_vector, start, end)
+            sentence = token_vector[start:end]
 
             yield sentence, token_vector[end]
 
@@ -150,7 +150,7 @@ class LoopBatchesEndlessly:
         for fold in self.folds:
             for file_hash in corpus.hashes_in_fold(fold):
                 _, tokens = corpus[file_hash]
-                yield from = Sentences(tokens, size=sentence_length)
+                yield from Sentences(tokens, size=sentence_length)
         corpus.disconnect()
 
         batch_size = self.batch_size
