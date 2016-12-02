@@ -17,6 +17,9 @@
 
 
 from itertools import islice
+from vocabulary import vocabulary
+
+import numpy as np
 
 
 class Sentences:
@@ -24,7 +27,6 @@ class Sentences:
     Generates samples from the given vector.
 
     >>> from corpus import Token
-    >>> from vocabulary import vocabulary
     >>> from vectorize_tokens import vectorize_tokens
     >>> t = Token(value='var', type='Keyword', loc=None)
     >>> v = vectorize_tokens([t])
@@ -77,6 +79,36 @@ class Sentences:
         """
         sentences_possible = len(self.vector) - self.size
         return at_least(0, sentences_possible)
+
+
+def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
+                  vocab_size=len(vocabulary)):
+    """
+    Creates a one hot vector of the batch.
+    >>> x, y = one_hot_batch([([36], 48)], batch_size=1024, sentence_length=20)
+    >>> x.shape
+    (1024, 20, 100)
+    >>> x[0, 0, 36]
+    1
+    >>> y.shape
+    (1024, 100)
+    >>> y[0, 48]
+    1
+    """
+    # Create empty one-hot vectors
+    x = np.zeros((batch_size, sentence_length, vocab_size), dtype=np.bool)
+    y = np.zeros((batch_size, vocab_size), dtype=np.bool)
+
+    # Fill in the vectors.
+    for sentence_id, (sentence, last_token_id) in enumerate(batch):
+        # Fill in the one-hot matrix for X
+        for pos, token_id in enumerate(sentence):
+            x[sentence_id, pos, token_id] = True
+
+        # Add the last token for the one-hot vector Y.
+        y[sentence_id, last_token_id] = True
+
+    return x, y
 
 
 class LoopSentencesEndlessly:

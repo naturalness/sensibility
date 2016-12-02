@@ -34,7 +34,7 @@ from keras.optimizers import RMSprop
 
 from vocabulary import vocabulary
 from condensed_corpus import CondensedCorpus
-from training_utils import Sentences
+from training_utils import Sentences, one_hot_batch
 
 
 # Based on White et al. 2015
@@ -51,10 +51,11 @@ if __name__ == '__main__':
     filename = Path('/dev/shm/vectors.sqlite3')
     assert filename.exists()
 
-    # define a model
+    # Define a model:
     model = Sequential()
 
-    model.add(LSTM(SIGMOID_ACTIVATIONS, input_shape=(SENTENCE_LENGTH, len(vocabulary))))
+    model.add(LSTM(SIGMOID_ACTIVATIONS,
+                   input_shape=(SENTENCE_LENGTH, len(vocabulary))))
     model.add(Dense(len(vocabulary)))
     model.add(Activation('softmax'))
     optimizer = RMSprop(lr=0.001)
@@ -106,21 +107,6 @@ if __name__ == '__main__':
     batch_of_vectors = chunked(generate_sentences((9,)), BATCH_SIZE)
     progress = tqdm(batch_of_vectors)
     for batch in progress:
-        vocab_size = len(vocabulary)
-
-        # Create empty one-hot vectors
-        x = np.zeros((BATCH_SIZE, SENTENCE_LENGTH, vocab_size), dtype=np.bool)
-        y = np.zeros((BATCH_SIZE, vocab_size), dtype=np.bool)
-
-        # Fill in the vectors.
-        for sentence_id, (sentence, last_token_id) in enumerate(batch):
-            # Fill in the one-hot matrix for X
-            for pos, token_id in enumerate(sentence):
-                x[sentence_id, pos, token_id] = 1
-
-            # Add the last token for the one-hot vector Y.
-            y[sentence_id, last_token_id] = 1
-
         loss, acc = model.test_on_batch(x, y)
         progress.set_description("Loss => {}, acc => {}".format(loss, acc))
 
