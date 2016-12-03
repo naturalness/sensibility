@@ -21,7 +21,15 @@ import json
 import subprocess
 from pathlib import Path
 
+import numpy as np
 from keras.models import model_from_json
+
+from unvocabularize import unvocabularize
+from vectorize_tokens import vectorize_tokens
+from corpus import Token
+from vocabulary import vocabulary
+from training_utils import Sentences, one_hot_batch
+
 
 THIS_DIRECTORY = Path(__file__).parent
 TOKENIZE_JS_BIN = ('node', str(THIS_DIRECTORY / 'tokenize-js'))
@@ -46,21 +54,39 @@ def tokenize_file(file_obj):
     0
     >>> len(tokens)
     5
+    >>> isinstance(tokens[0], Token)
+    True
     """
-    status =subprocess.run(TOKENIZE_JS_BIN,
+    status = subprocess.run(TOKENIZE_JS_BIN,
                            check=True,
                            stdin=file_obj,
                            stdout=subprocess.PIPE)
-    return json.loads(status.stdout.decode('UTF-8'))
+    return [
+        Token.from_json(raw_token)
+        for raw_token in json.loads(status.stdout.decode('UTF-8'))
+    ]
 
 
 class Model:
     """
     >>> model = Model.from_filenames(architecture='model-architecture.json',
     ...                              weights='javascript-tiny.5.h5')
+    >>> comma = vocabulary.to_index(',')
+    >>> answer = model.predict([comma] * 19)
+    >>> len(answer) == len(vocabulary)
+    True
+    >>> answer[comma] > 0.5
+    True
     """
     def __init__(self, model):
         self.model = model
+
+    def predict(self, vector):
+        """
+        TODO: Create predict() for entire file as a batch?
+        """
+        x, y = one_hot_batch([(vector, 0)], batch_size=1, sentence_length=20)
+        return self.model.predict(x, batch_size=1)[0]
 
     @classmethod
     def from_filenames(cls, *, architecture=None, weights=None):
@@ -71,6 +97,9 @@ class Model:
         return cls(model)
 
 
+def rank(predictions):
+    return list(sorted(enumerate(predictions),
+                       key=lambda t: t[1], reverse=True))
 
 if __name__ == '__main__':
     globals().update(vars(parser.parse_args()))
@@ -79,11 +108,15 @@ if __name__ == '__main__':
     assert weights_forwards.exists()
 
     with open(str(filename), 'rt', encoding='UTF-8') as script:
-        raw_tokens = tokenize_file(script)
+        tokens = tokenize_file(script)
 
-    forwards = Model.from_filenames(architecture=architecture,
-                                    weights=weights_forwards)
+    file_vector = vectorize_tokens(tokens)
+    forwards = Model.from_filenames(architecture=str(architecture),
+                                    weights=str(weights_forwards))
 
-    # TODO: create sentences for the file
-    # TODO: Predict the next token with the model.
-    # TODO: Compare with actual (this is like validation!)
+    for sentence, actual in Sentences(file_vector, size=20):
+        predictions = forwards.predict(sentence)
+        print("For `{}`, got:".format(unvocabularize(sentence)))
+        for token_id, weight in rank(predictions)[:5]:
+            print("   {prob:2.2g}% -> {text}".format(text=vocabulary.to_text(token_id),
+                                                     prob=weight * 100.0))
