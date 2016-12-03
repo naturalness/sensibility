@@ -42,16 +42,6 @@ BATCH_SIZE = 512
 FOLD = 0
 
 
-def round_up_to(value, magnitude):
-    """
-    >>> round_up_to(3038, 512)
-    3072
-    """
-    if value % magnitude == 0:
-        return value
-    return magnitude * (value // magnitude + 1)
-
-
 if __name__ == '__main__':
     filename = Path('/dev/shm/tiny-corpus.sqlite3')
 
@@ -81,8 +71,6 @@ if __name__ == '__main__':
 
     print("Training for one epoch...")
     model.fit_generator(iter(training_batches),
-                        #samples_per_epoch=round_up_to(training_batches.samples_per_epoch,
-                                                      #BATCH_SIZE),
                         samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
                         nb_val_samples=eval_batches.samples_per_epoch // BATCH_SIZE,
