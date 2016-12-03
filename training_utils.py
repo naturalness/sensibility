@@ -48,12 +48,19 @@ class Sentences:
     True
     >>> y
     99
+    >>> sentences = Sentences(v, size=20, backwards=True)
+    >>> x, y = next(iter(sentences))
+    >>> list(x) == [86] * 19 + [99]
+    True
+    >>> y
+    0
     """
 
-    def __init__(self, vector, *, size=None):
+    def __init__(self, vector, *, size=None, backwards=False):
         # TODO: Step?
         self.vector = vector
         self.size= size
+        self.backwards = backwards
         if not isinstance(size, int):
             raise ValueError("Size must be an int.")
 
@@ -63,8 +70,20 @@ class Sentences:
         if n_sentences <= 0:
             raise StopIteration
 
+
         sentence_len = self.size
         token_vector = self.vector
+
+        if not self.backwards:
+            # Forwards
+            def make_sample(start, end):
+                sentence = token_vector[start:end]
+                return sentence, token_vector[end]
+        else:
+            # Backwards
+            def make_sample(start, end):
+                sentence = token_vector[start + 1:end + 1]
+                return sentence, token_vector[start]
 
         # Fill in the vectors.
         for sentence_id in range(n_sentences):
@@ -72,9 +91,7 @@ class Sentences:
             end = sentence_id + sentence_len
             assert end < len(token_vector), "not: %d < %d" %(end,
                                                         len(token_vector))
-            sentence = token_vector[start:end]
-
-            yield sentence, token_vector[end]
+            yield make_sample(start, end)
 
     def __len__(self):
         """
@@ -124,7 +141,8 @@ def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
 class LoopBatchesEndlessly:
     def __init__(self, corpus_filename, folds,
                  batch_size=None,
-                 sentence_length=None):
+                 sentence_length=None,
+                 backwards=False):
         assert Path(corpus_filename).exists()
         assert isinstance(batch_size, int)
         assert isinstance(sentence_length, int)
@@ -132,6 +150,7 @@ class LoopBatchesEndlessly:
         self.folds = folds
         self.batch_size = batch_size
         self.sentence_length = sentence_length
+        self.backwards = backwards
         self.samples_per_epoch = count_samples_slow(corpus_filename, folds,
                                                     sentence_length)
 
@@ -150,7 +169,9 @@ class LoopBatchesEndlessly:
         for fold in self.folds:
             for file_hash in corpus.hashes_in_fold(fold):
                 _, tokens = corpus[file_hash]
-                yield from Sentences(tokens, size=sentence_length)
+                yield from Sentences(tokens,
+                                     size=sentence_length,
+                                     backwards=self.backwards)
         corpus.disconnect()
 
         batch_size = self.batch_size
