@@ -23,6 +23,7 @@ from pathlib import Path
 
 import numpy as np
 from keras.models import model_from_json
+from blessings import Terminal
 
 from unvocabularize import unvocabularize
 from vectorize_tokens import vectorize_tokens
@@ -114,9 +115,28 @@ if __name__ == '__main__':
     forwards = Model.from_filenames(architecture=str(architecture),
                                     weights=str(weights_forwards))
 
+    t = Terminal()
+
     for sentence, actual in Sentences(file_vector, size=20):
         predictions = forwards.predict(sentence)
-        print("For `{}`, got:".format(unvocabularize(sentence)))
+        as_text = unvocabularize(sentence)
+        found_it = False
+
+        print("For {t.underline}{as_text}{t.normal}, "
+              "got:".format(t=t, as_text=as_text))
         for token_id, weight in rank(predictions)[:5]:
-            print("   {prob:2.2g}% -> {text}".format(text=vocabulary.to_text(token_id),
-                                                     prob=weight * 100.0))
+            color = t.green if token_id == actual else ''
+            if token_id == actual:
+                found_it = True
+            text = vocabulary.to_text(token_id)
+            prob = weight * 100.0
+            print("   {prob:5.2f}% → "
+                  "{color}{text}{t.normal}".format(text=text,
+                                                   prob=prob,
+                                                   color=color,
+                                                   t=t))
+
+        if not found_it:
+            print("{t.red}Actual{t.normal}: {t.underline}{actual}{t.normal}"
+                  "".format(t=t, actual=vocabulary.to_text(actual)))
+        print()
