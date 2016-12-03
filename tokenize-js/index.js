@@ -27,16 +27,20 @@ if (require.main === module) {
   console.log(JSON.stringify(tokenize(source)));
 }
 
+
 function tokenize(source) {
   // Remove the shebang line, if there is one.
   source = source.replace(/^#![^\r\n]+/, '');
 
+  /* TODO: retry on illegal tokens. */
+
   const sourceType = deduceSourceType(source);
   const tokens = esprima.tokenize(source, {
-    loc: true,
     sourceType,
+    loc: true,
     tolerant: true
   });
+
   return tokens;
 }
 

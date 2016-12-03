@@ -40,11 +40,24 @@ test('it can deal with erroneous input', t => {
   let tokens;
   t.notThrows(() => {
     tokens = tokenize(`
+      module.exports = function()
+        console.log('Hello, world!');
+      };
+    `);
+  });
+
+  t.is(16, tokens.length);
+});
+
+test.skip('it can deal with illegal tokens', t => {
+  let tokens;
+  t.notThrows(() => {
+    tokens = tokenize(`
       module.exports = function(# {
 
       };
     `);
   });
 
-  t.is(6, tokens.length);
+  t.is(10, tokens.length);
 });
