@@ -1,0 +1,17 @@
+{
+  "name": "tokenize-js",
+  "version": "1.0.0",
+  "description": "Tokenizes JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "ava"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "esprima": "^3.1.1"
+  },
+  "devDependencies": {
+    "ava": "^0.17.0"
+  }
+}
