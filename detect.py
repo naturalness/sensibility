@@ -20,6 +20,7 @@ import io
 import json
 import subprocess
 import sys
+import tempfile
 
 from pathlib import Path
 from itertools import islice
@@ -39,6 +40,7 @@ from training_utils import Sentences, one_hot_batch
 
 THIS_DIRECTORY = Path(__file__).parent
 TOKENIZE_JS_BIN = ('node', str(THIS_DIRECTORY / 'tokenize-js'))
+CHECK_SYNTAX_BIN = (*TOKENIZE_JS_BIN, '--check-syntax')
 
 SENTENCE_LENGTH = 20
 PREFIX_LENGTH = SENTENCE_LENGTH - 1
@@ -104,9 +106,22 @@ class Model:
         return cls(model, **kwargs)
 
 
+def check_syntax(source):
+    """
+    >>> check_syntax('function name() {}')
+    True
+    >>> check_syntax('function name() }')
+    False
+    """
+    with tempfile.TemporaryFile('w+t', encoding='utf-8') as source_file:
+        source_file.write(source)
+        source_file.seek(0)
+        status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
+    return status.returncode == 0
+
+
 def tokenize_file(file_obj):
     """
-    >>> import tempfile
     >>> with tempfile.TemporaryFile('w+t', encoding='utf-8') as f:
     ...     f.write('$("hello");')
     ...     f.seek(0)
