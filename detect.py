@@ -238,6 +238,9 @@ class Fixes:
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Insert(new_token, *next_token.loc.start))
 
+    def __bool__(self):
+        return len(self.fixes) > 0
+
     def __iter__(self):
         return iter(self.fixes)
 
@@ -256,6 +259,9 @@ def id_to_token(token_id):
 
 def suggest(**kwargs):
     common = common_args(**kwargs)
+    if check_syntax(tokens_to_source_code(common.tokens)):
+        print("No need to fix: Already syntactically correct!")
+        return
 
     least_agreements = []
     forwards_predictions = []
@@ -300,10 +306,13 @@ def suggest(**kwargs):
         fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
         fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
 
+    if not fixes:
+        t = Terminal()
+        print(t.red("I don't know how to fix it :C"))
+        return -1
+
     for fix in fixes:
         print(fix)
-
-
 
 
 def combined(**kwargs):
