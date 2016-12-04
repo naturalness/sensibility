@@ -5,6 +5,10 @@ $(document).ready(function() {
     if (name) {
       $form.addClass('highlight');
     }
+
+    $.get('/url', function () {
+      $('body').addClass('done');
+    });
   });
 });
 
