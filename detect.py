@@ -22,6 +22,8 @@ import subprocess
 import sys
 
 from pathlib import Path
+from itertools import islice
+from collections import namedtuple
 
 import numpy as np
 from keras.models import model_from_json
@@ -34,50 +36,14 @@ from vocabulary import vocabulary
 from training_utils import Sentences, one_hot_batch
 
 
-
 THIS_DIRECTORY = Path(__file__).parent
 TOKENIZE_JS_BIN = ('node', str(THIS_DIRECTORY / 'tokenize-js'))
 
 SENTENCE_LENGTH = 20
 PREFIX_LENGTH = SENTENCE_LENGTH - 1
 
-parser = argparse.ArgumentParser()
-parser.add_argument('filename', nargs='?', type=Path,
-                    default=Path('/dev/stdin'))
-parser.add_argument('--architecture', type=Path,
-                    default=THIS_DIRECTORY / 'model-architecture.json')
-parser.add_argument('--weights-forwards', type=Path,
-                    default=THIS_DIRECTORY / 'javascript-tiny.5.h5')
-parser.add_argument('--weights-backwards', type=Path,
-                    default=THIS_DIRECTORY / 'javascript-tiny.backwards.5.h5')
-group = parser.add_mutually_exclusive_group()
-group.add_argument('--forwards', action='store_true', default=True)
-group.add_argument('--backwards', dest='forwards', action='store_false')
 
-
-def tokenize_file(file_obj):
-    """
-    >>> import tempfile
-    >>> with tempfile.TemporaryFile('w+t', encoding='utf-8') as f:
-    ...     f.write('$("hello");')
-    ...     f.seek(0)
-    ...     tokens = tokenize_file(f)
-    11
-    0
-    >>> len(tokens)
-    5
-    >>> isinstance(tokens[0], Token)
-    True
-    """
-    status = subprocess.run(TOKENIZE_JS_BIN,
-                            check=True,
-                            stdin=file_obj,
-                            stdout=subprocess.PIPE)
-    return [
-        Token.from_json(raw_token)
-        for raw_token in json.loads(status.stdout.decode('UTF-8'))
-    ]
-
+Context = namedtuple('Context', 'forwards_model backwards_model file_vector')
 
 class Model:
     """
@@ -115,12 +81,78 @@ class Model:
         return cls(model, **kwargs)
 
 
+def tokenize_file(file_obj):
+    """
+    >>> import tempfile
+    >>> with tempfile.TemporaryFile('w+t', encoding='utf-8') as f:
+    ...     f.write('$("hello");')
+    ...     f.seek(0)
+    ...     tokens = tokenize_file(f)
+    11
+    0
+    >>> len(tokens)
+    5
+    >>> isinstance(tokens[0], Token)
+    True
+    """
+    status = subprocess.run(TOKENIZE_JS_BIN,
+                            check=True,
+                            stdin=file_obj,
+                            stdout=subprocess.PIPE)
+    return [
+        Token.from_json(raw_token)
+        for raw_token in json.loads(status.stdout.decode('UTF-8'))
+    ]
+
+
 def rank(predictions):
     return list(sorted(enumerate(predictions),
                        key=lambda t: t[1], reverse=True))
 
+
 def mean_reciprocal_rank(ranks):
     return sum(1.0 / rank for rank in ranks) / len(ranks)
+
+
+def common_context(*, filename=None,
+                   architecture=None,
+                   weights_forwards=None, weights_backwards=None,
+                   **kwargs):
+    assert architecture.exists()
+    assert weights_forwards.exists()
+
+    with open(str(filename), 'rt', encoding='UTF-8') as script:
+        tokens = tokenize_file(script)
+
+    file_vector = vectorize_tokens(tokens)
+    forwards_model = Model.from_filenames(architecture=str(architecture),
+                                          weights=str(weights_forwards),
+                                          backwards=False)
+    backwards_model = Model.from_filenames(architecture=str(architecture),
+                                           weights=str(weights_backwards),
+                                           backwards=True)
+
+    return Context(forwards_model, backwards_model, file_vector)
+
+
+def top_5(*, forwards=None, **kwargs):
+    context = common_context(**kwargs)
+    model = context.forwards_model if forwards else context.backwards_model
+    print_top_5(model, context.file_vector)
+
+
+def combined(**kwargs):
+    """
+    zip the three streams!
+    do a element-wise multiplication on the probabilities
+    rank based on highest probability.
+    cases is it an addition or deletion or substitution or transposition
+    transpositions are easy:
+      forwards thinks it's one over;
+      backwards thinks it's one over.
+    """
+    context = common_context(**kwargs)
+    raise NotImplementedError
 
 
 def print_top_5(model, file_vector):
@@ -170,31 +202,40 @@ def print_top_5(model, file_vector):
           100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
     ))
 
-# zip the three streams!
-# do a element-wise multiplication on the probabilities
-# rank based on highest probability.
-# cases is it an addition or deletion or substitution or transposition
-# transpositions are easy:
-#   forwards thinks it's one over;
-#   backwards thinks it's one over.
+
+def add_common_args(parser):
+    parser.add_argument('filename', nargs='?', type=Path,
+                        default=Path('/dev/stdin'))
+    parser.add_argument('--architecture', type=Path,
+                        default=THIS_DIRECTORY / 'model-architecture.json')
+    parser.add_argument('--weights-forwards', type=Path,
+                        default=THIS_DIRECTORY / 'javascript-tiny.5.h5')
+    parser.add_argument('--weights-backwards', type=Path,
+                        default=THIS_DIRECTORY / 'javascript-tiny.backwards.5.h5')
+
+
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(title='subcommands',
+                                   description='valid subcommands')
+
+top_5_parser = subparsers.add_parser('top-5')
+group = top_5_parser.add_mutually_exclusive_group()
+group.add_argument('--forwards', action='store_true', default=True)
+group.add_argument('--backwards', dest='forwards', action='store_false')
+add_common_args(top_5_parser)
+top_5_parser.set_defaults(func=top_5)
+
+combined_parser = subparsers.add_parser('combined')
+add_common_args(combined_parser)
+combined_parser.set_defaults(func=combined)
+
+parser.set_defaults(func=None)
+
 
 if __name__ == '__main__':
-    globals().update(vars(parser.parse_args()))
-
-    assert architecture.exists()
-    assert weights_forwards.exists()
-
-    with open(str(filename), 'rt', encoding='UTF-8') as script:
-        tokens = tokenize_file(script)
-
-    file_vector = vectorize_tokens(tokens)
-
-    if forwards:
-        model = Model.from_filenames(architecture=str(architecture),
-                                     weights=str(weights_forwards))
+    args = parser.parse_args()
+    if args.func:
+        args.func(**vars(args))
     else:
-        model = Model.from_filenames(architecture=str(architecture),
-                                     weights=str(weights_backwards),
-                                     backwards=True)
-
-    print_top_5(model, file_vector)
+        parser.print_usage()
+        exit(-1)
