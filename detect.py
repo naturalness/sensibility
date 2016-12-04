@@ -50,6 +50,9 @@ parser.add_argument('--weights-forwards', type=Path,
                     default=THIS_DIRECTORY / 'javascript-tiny.5.h5')
 parser.add_argument('--weights-backwards', type=Path,
                     default=THIS_DIRECTORY / 'javascript-tiny.backwards.5.h5')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('--forwards', action='store_true', default=True)
+group.add_argument('--backwards', dest='forwards', action='store_false')
 
 
 def tokenize_file(file_obj):
@@ -87,7 +90,7 @@ class Model:
     >>> answer[comma] > 0.5
     True
     """
-    def __init__(self, model, backwards=True):
+    def __init__(self, model, backwards=False):
         self.model = model
         self.backwards = backwards
 
@@ -185,10 +188,13 @@ if __name__ == '__main__':
         tokens = tokenize_file(script)
 
     file_vector = vectorize_tokens(tokens)
-    forwards = Model.from_filenames(architecture=str(architecture),
-                                    weights=str(weights_forwards))
-    backwards = Model.from_filenames(architecture=str(architecture),
+
+    if forwards:
+        model = Model.from_filenames(architecture=str(architecture),
+                                     weights=str(weights_forwards))
+    else:
+        model = Model.from_filenames(architecture=str(architecture),
                                      weights=str(weights_backwards),
                                      backwards=True)
 
-    print_top_5(backwards, file_vector)
+    print_top_5(model, file_vector)
