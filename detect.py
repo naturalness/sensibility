@@ -156,7 +156,6 @@ def combined(**kwargs):
     common = common_args(**kwargs)
 
     t = Terminal()
-    header = "For {t.underline}{sentence_text}{t.normal}, got:"
     ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
     actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
 
@@ -167,6 +166,7 @@ def combined(**kwargs):
                                size=SENTENCE_LENGTH,
                                backwards=True)
 
+    highest_weight = []
     ranks = []
     contexts = zip(chop_prefix(common.tokens, PREFIX_LENGTH),
                    sent_forwards, chop_prefix(sent_backwards))
@@ -195,6 +195,9 @@ def combined(**kwargs):
             print(ranking_line.format_map(locals()))
 
         ranks.append(ranked_vocab.index(actual) + 1)
+        highest_weight.append(
+            (paired_rankings[0], (prefix, token, suffix))
+        )
 
         if actual not in top_5_words:
             actual_text = vocabulary.to_text(actual)
@@ -211,6 +214,13 @@ def combined(**kwargs):
     print("Time at #1: {:.2f}%".format(
           100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
     ))
+
+    highest_weight.sort(key=lambda t: t[0][1])
+    for (pred, weight), (prefix, token, suffix) in highest_weight:
+        print(weight,
+              unvocabularize(prefix[-5:]),
+              t.bold_underline(token.value),
+              unvocabularize(suffix[:5])),
 
 
 def print_top_5(model, file_vector):
