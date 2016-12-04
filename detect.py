@@ -186,14 +186,87 @@ def chop_prefix(sequence, prefix=SENTENCE_LENGTH):
 def index_of_max(seq):
     return max(enumerate(seq), key=lambda t: t[1])[0]
 
+def tokens_to_source_code(tokens):
+    return ' '.join(token.value for token in tokens)
+
+
+class Remove:
+    def __init__(self, token):
+        self.token = token
+
+    def __str__(self):
+        token = self.token
+        text = token.value
+        line = token.line
+        column = token.column
+        return ("Try removing `{text}`"
+                "at line {line}:{column}".format_map(locals()))
+
+
+class Fixes:
+    def __init__(self, tokens, offset=PREFIX_LENGTH):
+        self.tokens = tokens
+        self.offset = offset
+        self.fixes = []
+
+    def try_remove(self, index):
+        pos = index + self.offset
+        suggestion = self.tokens[:pos] + self.tokens[pos + 1:]
+        if check_syntax(tokens_to_source_code(suggestion)):
+            self.fixes.append(Remove(self.tokens[pos]))
+
+    def __iter__(self):
+        return iter(self.fixes)
+
+
+def suggest(**kwargs):
+    common = common_args(**kwargs)
+
+    least_agreements = []
+    forwards_predictions = []
+    backwards_predictions = []
+
+    sent_forwards = Sentences(common.file_vector,
+                              size=SENTENCE_LENGTH,
+                              backwards=False)
+    sent_backwards = Sentences(common.file_vector,
+                               size=SENTENCE_LENGTH,
+                               backwards=True)
+
+    # Predict every context.
+    contexts = enumerate(zip(chop_prefix(common.tokens, PREFIX_LENGTH),
+                             sent_forwards, chop_prefix(sent_backwards)))
+
+    # Find disagreements.
+    for index, (token, (prefix, x1), (suffix, x2)) in contexts:
+        prefix_pred = common.forwards_model.predict(prefix)
+        suffix_pred = common.backwards_model.predict(suffix)
+
+        # Get its harmonic mean
+        mean = 2 * (prefix_pred * suffix_pred) / (prefix_pred + suffix_pred)
+        forwards_predictions.append(index_of_max(prefix_pred))
+        backwards_predictions.append(index_of_max(suffix_pred))
+        paired_rankings = rank(mean)
+        min_token_id, min_prob = paired_rankings[0]
+        least_agreements.append(Agreement(min_prob, index))
+
+    fixes = Fixes(common.tokens)
+
+    # For the top disagreements, synthesize fixes.
+    least_agreements.sort()
+    for disagreement in least_agreements[:3]:
+        # assume an addition. Let's try removing some tokens.
+        fixes.try_remove(disagreement.index + 1)
+        fixes.try_remove(disagreement.index)
+        fixes.try_remove(disagreement.index - 1)
+
+    for fix in fixes:
+        print(fix)
+
+
+
 
 def combined(**kwargs):
-    """
-    cases: an addition or deletion or substitution or transposition
-    transpositions are easy:
-      forwards thinks it's one over;
-      backwards thinks it's one over.
-    """
     common = common_args(**kwargs)
 
     t = Terminal()
@@ -353,6 +426,11 @@ top_5_parser.set_defaults(func=top_5)
 combined_parser = subparsers.add_parser('combined')
 add_common_args(combined_parser)
 combined_parser.set_defaults(func=combined)
+
+suggest_parser = subparsers.add_parser('suggest')
+add_common_args(suggest_parser)
+suggest_parser.set_defaults(func=suggest)
+
 
 parser.set_defaults(func=None)
 
