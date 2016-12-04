@@ -19,6 +19,8 @@ import argparse
 import io
 import json
 import subprocess
+import sys
+
 from pathlib import Path
 
 import numpy as np
@@ -46,6 +48,8 @@ parser.add_argument('--architecture', type=Path,
                     default=THIS_DIRECTORY / 'model-architecture.json')
 parser.add_argument('--weights-forwards', type=Path,
                     default=THIS_DIRECTORY / 'javascript-tiny.5.h5')
+parser.add_argument('--weights-backwards', type=Path,
+                    default=THIS_DIRECTORY / 'javascript-tiny.backwards.5.h5')
 
 
 def tokenize_file(file_obj):
@@ -83,8 +87,13 @@ class Model:
     >>> answer[comma] > 0.5
     True
     """
-    def __init__(self, model):
+    def __init__(self, model, backwards=True):
         self.model = model
+        self.backwards = backwards
+
+    @property
+    def forwards(self):
+        return not self.backwards
 
     def predict(self, vector):
         """
@@ -95,12 +104,12 @@ class Model:
         return self.model.predict(x, batch_size=1)[0]
 
     @classmethod
-    def from_filenames(cls, *, architecture=None, weights=None):
+    def from_filenames(cls, *, architecture=None, weights=None, **kwargs):
         with open(architecture) as archfile:
             model = model_from_json(archfile.read())
         model.load_weights(weights)
 
-        return cls(model)
+        return cls(model, **kwargs)
 
 
 def rank(predictions):
@@ -118,8 +127,10 @@ def print_top_5(model, file_vector):
     actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
 
     ranks = []
+    sentences = Sentences(file_vector, size=SENTENCE_LENGTH,
+                          backwards=model.backwards)
 
-    for sentence, actual in Sentences(file_vector, size=SENTENCE_LENGTH):
+    for sentence, actual in sentences:
         predictions = model.predict(sentence)
         paired_rankings = rank(predictions)
         ranked_vocab = list(tuple(zip(*paired_rankings))[0])
@@ -146,16 +157,21 @@ def print_top_5(model, file_vector):
 
         print()
 
+    if not ranks:
+        print(t.red("Could not analyze file!"), file=sys.stderr)
+        return
+
     print("MRR: ", mean_reciprocal_rank(ranks))
     print("Lowest rank:", max(ranks))
-    print("Time at #1:",
-          100 * sum(1 for rank in ranks if rank == 1) / len(ranks))
+    print("Time at #1: {:.2f}%".format(
+          100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
+    ))
 
 # zip the three streams!
 # do a element-wise multiplication on the probabilities
 # rank based on highest probability.
 # cases is it an addition or deletion or substitution or transposition
-# transfusions are easy:
+# transpositions are easy:
 #   forwards thinks it's one over;
 #   backwards thinks it's one over.
 
@@ -171,5 +187,8 @@ if __name__ == '__main__':
     file_vector = vectorize_tokens(tokens)
     forwards = Model.from_filenames(architecture=str(architecture),
                                     weights=str(weights_forwards))
+    backwards = Model.from_filenames(architecture=str(architecture),
+                                     weights=str(weights_backwards),
+                                     backwards=True)
 
-    print_top_5(forwards, file_vector)
+    print_top_5(backwards, file_vector)
