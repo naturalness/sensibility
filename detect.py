@@ -107,6 +107,9 @@ def rank(predictions):
     return list(sorted(enumerate(predictions),
                        key=lambda t: t[1], reverse=True))
 
+def mean_reciprocal_rank(ranks):
+    return sum(1.0 / rank for rank in ranks) / len(ranks)
+
 
 def print_top_5(model, file_vector):
     t = Terminal()
@@ -114,13 +117,20 @@ def print_top_5(model, file_vector):
     ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
     actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
 
+    ranks = []
+
     for sentence, actual in Sentences(file_vector, size=SENTENCE_LENGTH):
         predictions = model.predict(sentence)
-        sentence_text = unvocabularize(sentence)
-        found_it = False
+        paired_rankings = rank(predictions)
+        ranked_vocab = list(tuple(zip(*paired_rankings))[0])
+        top_5 = paired_rankings[:5]
+        top_5_words = ranked_vocab[:5]
 
+        sentence_text = unvocabularize(sentence)
         print(header.format_map(locals()))
-        for token_id, weight in rank(predictions)[:5]:
+
+
+        for token_id, weight in top_5:
             color = t.green if token_id == actual else ''
             if token_id == actual:
                 found_it = True
@@ -128,10 +138,16 @@ def print_top_5(model, file_vector):
             prob = weight * 100.0
             print(ranking_line.format_map(locals()))
 
-        if not found_it:
+        if actual not in top_5_words:
             actual_text = vocabulary.to_text(actual)
             print(actual_line.format_map(locals()))
+
+        ranks.append(ranked_vocab.index(actual) + 1)
+
         print()
+
+    print("MRR: ", mean_reciprocal_rank(ranks))
+    print("Lowest rank", max(ranks))
 
 # zip the three streams!
 # do a element-wise multiplication on the probabilities
