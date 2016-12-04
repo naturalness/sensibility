@@ -2,7 +2,7 @@ $(document).ready(function() {
   var $form = $('.form');
   $form.submit(function (evt) {
     evt.preventDefault();
-    if (name) 
+    if (name)
       $form.addClass('highlight');
     }
 

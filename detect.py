@@ -106,6 +106,13 @@ class Model:
         return cls(model, **kwargs)
 
 
+def synthetic_file(text):
+    file_obj = tempfile.TemporaryFile('w+t', encoding='utf-8')
+    file_obj.write(text)
+    file_obj.seek(0)
+    return file_obj
+
+
 def check_syntax(source):
     """
     >>> check_syntax('function name() {}')
@@ -113,21 +120,15 @@ def check_syntax(source):
     >>> check_syntax('function name() }')
     False
     """
-    with tempfile.TemporaryFile('w+t', encoding='utf-8') as source_file:
-        source_file.write(source)
-        source_file.seek(0)
+    with synthetic_file(source) as source_file:
         status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
     return status.returncode == 0
 
 
 def tokenize_file(file_obj):
     """
-    >>> with tempfile.TemporaryFile('w+t', encoding='utf-8') as f:
-    ...     f.write('$("hello");')
-    ...     f.seek(0)
+    >>> with synthetic_file('$("hello");') as f:
     ...     tokens = tokenize_file(f)
-    11
-    0
     >>> len(tokens)
     5
     >>> isinstance(tokens[0], Token)
@@ -195,12 +196,26 @@ class Remove:
         self.token = token
 
     def __str__(self):
+        t = Terminal()
         token = self.token
         text = token.value
         line = token.line
         column = token.column
-        return ("Try removing `{text}`"
+        return ("Try removing {t.underline}{text}{t.normal} "
                 "at line {line}:{column}".format_map(locals()))
+
+class Insert:
+    def __init__(self, token, before_line, before_column):
+        self.token = token
+        self.before = before_line, before_column
+
+    def __str__(self):
+        t = Terminal()
+        token = self.token
+        text = token.value
+        line, column = self.before
+        return ("Try inserting {t.underline}{text}{t.normal} "
+                "before {line}:{column}".format_map(locals()))
 
 
 class Fixes:
@@ -215,8 +230,28 @@ class Fixes:
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Remove(self.tokens[pos]))
 
+    def try_insert(self, index, new_token):
+        assert isinstance(new_token, Token)
+        pos = index + self.offset
+        next_token = self.tokens[pos]
+        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
+        if check_syntax(tokens_to_source_code(suggestion)):
+            self.fixes.append(Insert(new_token, *next_token.loc.start))
+
     def __iter__(self):
         return iter(self.fixes)
+
+
+def id_to_token(token_id):
+    """
+    >>> token = id_to_token(70)
+    >>> token.type
+    'Keyword'
+    >>> token.value
+    'function'
+    """
+    with synthetic_file(vocabulary.to_text(token_id)) as file_obj:
+        return tokenize_file(file_obj)[0]
 
 
 def suggest(**kwargs):
@@ -255,10 +290,15 @@ def suggest(**kwargs):
     # For the top disagreements, synthesize fixes.
     least_agreements.sort()
     for disagreement in least_agreements[:3]:
-        # assume an addition. Let's try removing some tokens.
+        # Assume an addition. Let's try removing some tokens.
         fixes.try_remove(disagreement.index + 1)
         fixes.try_remove(disagreement.index)
         fixes.try_remove(disagreement.index - 1)
+
+        # Assume a deletion. Let's try inserting some tokens.
+        pos = disagreement.index
+        fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
+        fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
 
     for fix in fixes:
         print(fix)
