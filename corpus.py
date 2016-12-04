@@ -37,7 +37,6 @@ import json
 import logging
 
 from collections import namedtuple, OrderedDict
-import functools
 
 from path import Path
 
@@ -45,23 +44,50 @@ logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
 
-@functools.lru_cache(maxsize=256)
-def _make_token(value, type_):
-    """
-    Caches tokens in an LRU cache, completley ignoring the location (location
-    is always set to None).
-    """
-    return Token(value=value, type=type_, loc=None)
+class Position(namedtuple('BasePosition', 'line', 'column')):
+    def __new__(cls, line=None, column=None):
+        assert isinstance(line, int) and line >= 1
+        assert isinstance(column, int) and column >= 0
+        return super().__new__(cls, (line, column))
+
+    @classmethod
+    def from_json(cls, obj):
+        return cls(line=obj['line'], column=obj['column'])
+
+
+class Location(namedtuple('BaseLocation', 'start', 'end')):
+    def __new__(cls, start=None, end=None):
+        assert isinstance(start, Position)
+        assert isinstance(end, Position)
+        return super().__new__(cls, (start, end))
+
+    @classmethod
+    def from_json(cls, obj):
+        return cls(start=Position.from_json(obj['start']),
+                   end=Position.from_json(obj['end']))
 
 
 class Token(namedtuple('BaseToken', 'value type loc')):
     @classmethod
-    def from_json(cls, obj, factory=_make_token):
+    def from_json(cls, obj):
         """
         Converts the Esprima JSON token into a token WITHOUT location
         information! Caches tokens to keep memoy usage down.
         """
-        return factory(obj['value'], obj['type'])
+        return Token(value=obj['value'],
+                     type=obj['type'],
+                     loc=Location.from_json(obj['loc']))
+
+    @property
+    def line(self):
+        return self.loc.start.line
+
+    @property
+    def column(self):
+        return self.loc.start.column
+
+    # TODO: is open class?
+    # TODO: is closed class?
 
 
 class Corpus:
