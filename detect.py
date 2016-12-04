@@ -32,8 +32,12 @@ from vocabulary import vocabulary
 from training_utils import Sentences, one_hot_batch
 
 
+
 THIS_DIRECTORY = Path(__file__).parent
 TOKENIZE_JS_BIN = ('node', str(THIS_DIRECTORY / 'tokenize-js'))
+
+SENTENCE_LENGTH = 20
+PREFIX_LENGTH = SENTENCE_LENGTH - 1
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', nargs='?', type=Path,
@@ -59,9 +63,9 @@ def tokenize_file(file_obj):
     True
     """
     status = subprocess.run(TOKENIZE_JS_BIN,
-                           check=True,
-                           stdin=file_obj,
-                           stdout=subprocess.PIPE)
+                            check=True,
+                            stdin=file_obj,
+                            stdout=subprocess.PIPE)
     return [
         Token.from_json(raw_token)
         for raw_token in json.loads(status.stdout.decode('UTF-8'))
@@ -86,7 +90,8 @@ class Model:
         """
         TODO: Create predict() for entire file as a batch?
         """
-        x, y = one_hot_batch([(vector, 0)], batch_size=1, sentence_length=20)
+        x, y = one_hot_batch([(vector, 0)], batch_size=1,
+                             sentence_length=SENTENCE_LENGTH)
         return self.model.predict(x, batch_size=1)[0]
 
     @classmethod
@@ -102,6 +107,40 @@ def rank(predictions):
     return list(sorted(enumerate(predictions),
                        key=lambda t: t[1], reverse=True))
 
+
+def print_top_5(model, file_vector):
+    t = Terminal()
+    header = "For {t.underline}{sentence_text}{t.normal}, got:"
+    ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
+    actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
+
+    for sentence, actual in Sentences(file_vector, size=SENTENCE_LENGTH):
+        predictions = model.predict(sentence)
+        sentence_text = unvocabularize(sentence)
+        found_it = False
+
+        print(header.format_map(locals()))
+        for token_id, weight in rank(predictions)[:5]:
+            color = t.green if token_id == actual else ''
+            if token_id == actual:
+                found_it = True
+            text = vocabulary.to_text(token_id)
+            prob = weight * 100.0
+            print(ranking_line.format_map(locals()))
+
+        if not found_it:
+            actual_text = vocabulary.to_text(actual)
+            print(actual_line.format_map(locals()))
+        print()
+
+# zip the three streams!
+# do a element-wise multiplication on the probabilities
+# rank based on highest probability.
+# cases is it an addition or deletion or substitution or transposition
+# transfusions are easy:
+#   forwards thinks it's one over;
+#   backwards thinks it's one over.
+
 if __name__ == '__main__':
     globals().update(vars(parser.parse_args()))
 
@@ -115,28 +154,4 @@ if __name__ == '__main__':
     forwards = Model.from_filenames(architecture=str(architecture),
                                     weights=str(weights_forwards))
 
-    t = Terminal()
-
-    for sentence, actual in Sentences(file_vector, size=20):
-        predictions = forwards.predict(sentence)
-        as_text = unvocabularize(sentence)
-        found_it = False
-
-        print("For {t.underline}{as_text}{t.normal}, "
-              "got:".format(t=t, as_text=as_text))
-        for token_id, weight in rank(predictions)[:5]:
-            color = t.green if token_id == actual else ''
-            if token_id == actual:
-                found_it = True
-            text = vocabulary.to_text(token_id)
-            prob = weight * 100.0
-            print("   {prob:5.2f}% → "
-                  "{color}{text}{t.normal}".format(text=text,
-                                                   prob=prob,
-                                                   color=color,
-                                                   t=t))
-
-        if not found_it:
-            print("{t.red}Actual{t.normal}: {t.underline}{actual}{t.normal}"
-                  "".format(t=t, actual=vocabulary.to_text(actual)))
-        print()
+    print_top_5(forwards, file_vector)
