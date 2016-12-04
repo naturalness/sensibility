@@ -43,7 +43,8 @@ SENTENCE_LENGTH = 20
 PREFIX_LENGTH = SENTENCE_LENGTH - 1
 
 
-Context = namedtuple('Context', 'forwards_model backwards_model file_vector')
+Common = namedtuple('Common',
+                    'forwards_model backwards_model file_vector tokens')
 
 class Model:
     """
@@ -114,10 +115,10 @@ def mean_reciprocal_rank(ranks):
     return sum(1.0 / rank for rank in ranks) / len(ranks)
 
 
-def common_context(*, filename=None,
-                   architecture=None,
-                   weights_forwards=None, weights_backwards=None,
-                   **kwargs):
+def common_args(*, filename=None,
+                architecture=None,
+                weights_forwards=None, weights_backwards=None,
+                **kwargs):
     assert architecture.exists()
     assert weights_forwards.exists()
 
@@ -132,13 +133,17 @@ def common_context(*, filename=None,
                                            weights=str(weights_backwards),
                                            backwards=True)
 
-    return Context(forwards_model, backwards_model, file_vector)
+    return Common(forwards_model, backwards_model, file_vector, tokens)
 
 
 def top_5(*, forwards=None, **kwargs):
-    context = common_context(**kwargs)
-    model = context.forwards_model if forwards else context.backwards_model
-    print_top_5(model, context.file_vector)
+    common = common_args(**kwargs)
+    model = common.forwards_model if forwards else common.backwards_model
+    print_top_5(model, common.file_vector)
+
+
+def chop_prefix(sequence, prefix=SENTENCE_LENGTH):
+    return islice(sequence, prefix, len(sequence))
 
 
 def combined(**kwargs):
@@ -148,33 +153,32 @@ def combined(**kwargs):
       forwards thinks it's one over;
       backwards thinks it's one over.
     """
-    context = common_context(**kwargs)
+    common = common_args(**kwargs)
 
     t = Terminal()
     header = "For {t.underline}{sentence_text}{t.normal}, got:"
     ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
     actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
 
-    sent_forwards = Sentences(context.file_vector,
+    sent_forwards = Sentences(common.file_vector,
                               size=SENTENCE_LENGTH,
                               backwards=False)
-    sent_backwards = Sentences(context.file_vector,
+    sent_backwards = Sentences(common.file_vector,
                                size=SENTENCE_LENGTH,
                                backwards=True)
 
     ranks = []
-    contexts = zip(sent_forwards,
-                   islice(sent_backwards, SENTENCE_LENGTH,
-                          len(sent_backwards)))
-    for (prefix, x1), (suffix, x2) in contexts:
+    contexts = zip(chop_prefix(common.tokens, PREFIX_LENGTH),
+                   sent_forwards, chop_prefix(sent_backwards))
+    for token, (prefix, x1), (suffix, x2) in contexts:
         assert x1 == x2
         actual = x1
-        print(unvocabularize(prefix),
-              t.bold_underline(vocabulary.to_text(x1)),
-              unvocabularize(suffix))
+        print(unvocabularize(prefix[-5:]),
+              t.bold_underline(token.value),
+              unvocabularize(suffix[:5]))
 
-        prefix_pred = context.forwards_model.predict(prefix)
-        suffix_pred = context.backwards_model.predict(suffix)
+        prefix_pred = common.forwards_model.predict(prefix)
+        suffix_pred = common.backwards_model.predict(suffix)
 
         # harmonic mean
         mean = 2 * (prefix_pred * suffix_pred) / (prefix_pred + suffix_pred)
@@ -186,8 +190,6 @@ def combined(**kwargs):
 
         for token_id, weight in top_5:
             color = t.green if token_id == actual else ''
-            if token_id == actual:
-                found_it = True
             text = vocabulary.to_text(token_id)
             prob = weight * 100.0
             print(ranking_line.format_map(locals()))
@@ -233,8 +235,6 @@ def print_top_5(model, file_vector):
 
         for token_id, weight in top_5:
             color = t.green if token_id == actual else ''
-            if token_id == actual:
-                found_it = True
             text = vocabulary.to_text(token_id)
             prob = weight * 100.0
             print(ranking_line.format_map(locals()))
