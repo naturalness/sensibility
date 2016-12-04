@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 from itertools import islice
 from collections import namedtuple
+from functools import total_ordering
 
 import numpy as np
 from keras.models import model_from_json
@@ -45,6 +46,26 @@ PREFIX_LENGTH = SENTENCE_LENGTH - 1
 
 Common = namedtuple('Common',
                     'forwards_model backwards_model file_vector tokens')
+
+
+@total_ordering
+class Agreement(namedtuple('BaseAgreement', 'probability index')):
+    def __lt__(self, other):
+        return self.probability < other.probability
+
+    def __eq__(self, other):
+        return self.probability == other.probability
+
+    def __rmatmul__(self, other):
+        return other[self.index]
+
+    def prefix(self, other, k=5):
+        i = self.index
+        return other[i - k:i]
+
+    def suffix(self, other, k=5):
+        i = self.index
+        return other[i + 1:i + 1 +k]
 
 
 class Model:
@@ -171,11 +192,17 @@ def combined(**kwargs):
                                size=SENTENCE_LENGTH,
                                backwards=True)
 
-    highest_weight = []
+    least_agreement = []
+    forwards_predictions = []
+    backwards_predictions = []
     ranks = []
-    contexts = zip(chop_prefix(common.tokens, PREFIX_LENGTH),
-                   sent_forwards, chop_prefix(sent_backwards))
-    for token, (prefix, x1), (suffix, x2) in contexts:
+
+    contexts = enumerate(zip(chop_prefix(common.tokens, PREFIX_LENGTH),
+                             sent_forwards, chop_prefix(sent_backwards)))
+
+    # Note, the index is offset from the true start; i.e., when
+    # index == 0, the true index is SENTENCE_LENGTH
+    for index, (token, (prefix, x1), (suffix, x2)) in contexts:
         assert x1 == x2
         actual = x1
         print(unvocabularize(prefix[-5:]),
@@ -187,6 +214,9 @@ def combined(**kwargs):
 
         # harmonic mean
         mean = 2 * (prefix_pred * suffix_pred) / (prefix_pred + suffix_pred)
+
+        forwards_predictions.append(index_of_max(prefix_pred))
+        backwards_predictions.append(index_of_max(suffix_pred))
 
         paired_rankings = rank(mean)
         ranked_vocab = list(tuple(zip(*paired_rankings))[0])
@@ -201,11 +231,7 @@ def combined(**kwargs):
 
         ranks.append(ranked_vocab.index(actual) + 1)
         min_token_id, min_prob = paired_rankings[0]
-        highest_weight.append(
-            (min_prob, (prefix, token, suffix),
-             index_of_max(prefix_pred),
-             index_of_max(suffix_pred))
-        )
+        least_agreement.append(Agreement(min_prob, index))
 
         if actual not in top_5_words:
             actual_text = vocabulary.to_text(actual)
@@ -221,24 +247,23 @@ def combined(**kwargs):
     print("Lowest rank:", max(ranks))
     print("Time at #1: {:.2f}%".format(
           100 * sum(1 for rank in ranks if rank == 1) / len(ranks)))
+    print()
 
-    highest_weight.sort(key=lambda t: t[0])
-    for weight, (prefix, token, suffix), prefix_pred, suffix_pred in highest_weight[:5]:
-        print(weight)
-        print("   ",
-              unvocabularize(prefix[-5:]),
-              t.yellow(vocabulary.to_text(prefix_pred)),
-              unvocabularize(suffix[:5]))
+    forwards_text = [vocabulary.to_text(num) for num in forwards_predictions]
+    backwards_text = [vocabulary.to_text(num) for num in backwards_predictions]
 
-        print("   ",
-              unvocabularize(prefix[-5:]),
-              t.bold_underline(token.value),
-              unvocabularize(suffix[:5]))
+    least_agreement.sort()
+    # Compensate for offset indices
+    file_vector = common.file_vector[SENTENCE_LENGTH:]
+    tokens_text = [tok.value for tok in common.tokens[PREFIX_LENGTH:]]
+    for disagreement in least_agreement[:5]:
+        print(disagreement.probability)
+        prefix = ' '.join(disagreement.prefix(tokens_text))
+        suffix = ' '.join(disagreement.suffix(tokens_text))
 
-        print("   ",
-              unvocabularize(prefix[-5:]),
-              t.blue(vocabulary.to_text(suffix_pred)),
-              unvocabularize(suffix[:5]))
+        print("   ", prefix, t.yellow(forwards_text @ disagreement), suffix)
+        print("   ", prefix, t.underline(tokens_text @ disagreement), suffix)
+        print("   ", prefix, t.blue(backwards_text @ disagreement), suffix)
         print()
 
 

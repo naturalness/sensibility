@@ -44,22 +44,22 @@ logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
 
-class Position(namedtuple('BasePosition', 'line', 'column')):
+class Position(namedtuple('BasePosition', 'line column')):
     def __new__(cls, line=None, column=None):
         assert isinstance(line, int) and line >= 1
         assert isinstance(column, int) and column >= 0
-        return super().__new__(cls, (line, column))
+        return super().__new__(cls, line, column)
 
     @classmethod
     def from_json(cls, obj):
         return cls(line=obj['line'], column=obj['column'])
 
 
-class Location(namedtuple('BaseLocation', 'start', 'end')):
+class Location(namedtuple('BaseLocation', 'start end')):
     def __new__(cls, start=None, end=None):
         assert isinstance(start, Position)
         assert isinstance(end, Position)
-        return super().__new__(cls, (start, end))
+        return super().__new__(cls, start, end)
 
     @classmethod
     def from_json(cls, obj):
