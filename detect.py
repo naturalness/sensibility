@@ -143,16 +143,72 @@ def top_5(*, forwards=None, **kwargs):
 
 def combined(**kwargs):
     """
-    zip the three streams!
-    do a element-wise multiplication on the probabilities
-    rank based on highest probability.
-    cases is it an addition or deletion or substitution or transposition
+    cases: an addition or deletion or substitution or transposition
     transpositions are easy:
       forwards thinks it's one over;
       backwards thinks it's one over.
     """
     context = common_context(**kwargs)
-    raise NotImplementedError
+
+    t = Terminal()
+    header = "For {t.underline}{sentence_text}{t.normal}, got:"
+    ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
+    actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
+
+    sent_forwards = Sentences(context.file_vector,
+                              size=SENTENCE_LENGTH,
+                              backwards=False)
+    sent_backwards = Sentences(context.file_vector,
+                               size=SENTENCE_LENGTH,
+                               backwards=True)
+
+    ranks = []
+    contexts = zip(sent_forwards,
+                   islice(sent_backwards, SENTENCE_LENGTH,
+                          len(sent_backwards)))
+    for (prefix, x1), (suffix, x2) in contexts:
+        assert x1 == x2
+        actual = x1
+        print(unvocabularize(prefix),
+              t.bold_underline(vocabulary.to_text(x1)),
+              unvocabularize(suffix))
+
+        prefix_pred = context.forwards_model.predict(prefix)
+        suffix_pred = context.backwards_model.predict(suffix)
+
+        # harmonic mean
+        mean = 2 * (prefix_pred * suffix_pred) / (prefix_pred + suffix_pred)
+
+        paired_rankings = rank(mean)
+        ranked_vocab = list(tuple(zip(*paired_rankings))[0])
+        top_5 = paired_rankings[:5]
+        top_5_words = ranked_vocab[:5]
+
+        for token_id, weight in top_5:
+            color = t.green if token_id == actual else ''
+            if token_id == actual:
+                found_it = True
+            text = vocabulary.to_text(token_id)
+            prob = weight * 100.0
+            print(ranking_line.format_map(locals()))
+
+        ranks.append(ranked_vocab.index(actual) + 1)
+
+        if actual not in top_5_words:
+            actual_text = vocabulary.to_text(actual)
+            print(actual_line.format_map(locals()))
+
+        print()
+
+        if not ranks:
+            print(t.red("Could not analyze file!"), file=sys.stderr)
+            return
+
+    print("MRR: ", mean_reciprocal_rank(ranks))
+    print("Lowest rank:", max(ranks))
+    print("Time at #1: {:.2f}%".format(
+          100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
+    ))
 
 
 def print_top_5(model, file_vector):
@@ -174,7 +230,6 @@ def print_top_5(model, file_vector):
 
         sentence_text = unvocabularize(sentence)
         print(header.format_map(locals()))
-
 
         for token_id, weight in top_5:
             color = t.green if token_id == actual else ''
