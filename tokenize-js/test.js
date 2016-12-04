@@ -16,7 +16,7 @@
 
 import test from 'ava';
 
-import {tokenize} from './';
+import {tokenize, checkSyntax} from './';
 
 test('it tokenizes a trivial script', t => {
   const tokens = tokenize('$');
@@ -60,4 +60,9 @@ test.skip('it can deal with illegal tokens', t => {
   });
 
   t.is(10, tokens.length);
+});
+
+test('it can syntax check', t => {
+  t.true(checkSyntax('function fun() { }'));
+  t.false(checkSyntax('function fun() };'));
 });

@@ -21,16 +21,23 @@ const fs = require('fs');
 const esprima = require('esprima');
 
 module.exports.tokenize = tokenize;
+module.exports.checkSyntax = checkSyntax;
+
 
 if (require.main === module) {
   const source = fs.readFileSync('/dev/stdin', 'utf8');
-  console.log(JSON.stringify(tokenize(source)));
+  const shouldCheckSyntax =
+    process.argv.slice(2).indexOf('--check-syntax') >= 0;
+  if (shouldCheckSyntax) {
+    process.exit(checkSyntax(source) ? 0 : 1);
+  } else {
+    console.log(JSON.stringify(tokenize(source)));
+  }
 }
 
 
 function tokenize(source) {
-  // Remove the shebang line, if there is one.
-  source = source.replace(/^#![^\r\n]+/, '');
+  source = removeShebangLine(source);
 
   /* TODO: retry on illegal tokens. */
 
@@ -43,6 +50,26 @@ function tokenize(source) {
 
   return tokens;
 }
+
+function checkSyntax(source) {
+  source = removeShebangLine(source);
+  const sourceType = deduceSourceType(source);
+
+  try {
+    esprima.parse(source, { sourceType });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Remove the shebang line, if there is one.
+ */
+function removeShebangLine(source) {
+  return source.replace(/^#![^\r\n]+/, '');
+}
+
 
 /*
   Adapted from: http://esprima.org/demo/parse.js
