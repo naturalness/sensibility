@@ -147,7 +147,9 @@ def print_top_5(model, file_vector):
         print()
 
     print("MRR: ", mean_reciprocal_rank(ranks))
-    print("Lowest rank", max(ranks))
+    print("Lowest rank:", max(ranks))
+    print("Time at #1:",
+          100 * sum(1 for rank in ranks if rank == 1) / len(ranks))
 
 # zip the three streams!
 # do a element-wise multiplication on the probabilities
