@@ -146,6 +146,10 @@ def chop_prefix(sequence, prefix=SENTENCE_LENGTH):
     return islice(sequence, prefix, len(sequence))
 
 
+def index_of_max(seq):
+    return max(enumerate(seq), key=lambda t: t[1])[0]
+
+
 def combined(**kwargs):
     """
     cases: an addition or deletion or substitution or transposition
@@ -195,9 +199,12 @@ def combined(**kwargs):
             print(ranking_line.format_map(locals()))
 
         ranks.append(ranked_vocab.index(actual) + 1)
+        min_token_id, min_prob = paired_rankings[0]
         highest_weight.append(
-            (paired_rankings[0], (prefix, token, suffix))
-        )
+            (min_prob, (prefix, token, suffix),
+             index_of_max(prefix_pred),
+             index_of_max(suffix_pred)
+        ))
 
         if actual not in top_5_words:
             actual_text = vocabulary.to_text(actual)
@@ -215,12 +222,24 @@ def combined(**kwargs):
           100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
     ))
 
-    highest_weight.sort(key=lambda t: t[0][1])
-    for (pred, weight), (prefix, token, suffix) in highest_weight:
-        print(weight,
+    highest_weight.sort(key=lambda t: t[0])
+    for weight, (prefix, token, suffix), prefix_pred, suffix_pred in highest_weight[:5]:
+        print(weight)
+        print("   ",
+              unvocabularize(prefix[-5:]),
+              t.yellow(vocabulary.to_text(prefix_pred)),
+              unvocabularize(suffix[:5]))
+
+        print("   ",
               unvocabularize(prefix[-5:]),
               t.bold_underline(token.value),
-              unvocabularize(suffix[:5])),
+              unvocabularize(suffix[:5]))
+
+        print("   ",
+              unvocabularize(prefix[-5:]),
+              t.blue(vocabulary.to_text(suffix_pred)),
+              unvocabularize(suffix[:5]))
+        print()
 
 
 def print_top_5(model, file_vector):
