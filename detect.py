@@ -46,6 +46,7 @@ PREFIX_LENGTH = SENTENCE_LENGTH - 1
 Common = namedtuple('Common',
                     'forwards_model backwards_model file_vector tokens')
 
+
 class Model:
     """
     >>> model = Model.from_filenames(architecture='model-architecture.json',
@@ -203,8 +204,8 @@ def combined(**kwargs):
         highest_weight.append(
             (min_prob, (prefix, token, suffix),
              index_of_max(prefix_pred),
-             index_of_max(suffix_pred)
-        ))
+             index_of_max(suffix_pred))
+        )
 
         if actual not in top_5_words:
             actual_text = vocabulary.to_text(actual)
@@ -219,8 +220,7 @@ def combined(**kwargs):
     print("MRR: ", mean_reciprocal_rank(ranks))
     print("Lowest rank:", max(ranks))
     print("Time at #1: {:.2f}%".format(
-          100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
-    ))
+          100 * sum(1 for rank in ranks if rank == 1) / len(ranks)))
 
     highest_weight.sort(key=lambda t: t[0])
     for weight, (prefix, token, suffix), prefix_pred, suffix_pred in highest_weight[:5]:
@@ -283,7 +283,7 @@ def print_top_5(model, file_vector):
     print("MRR: ", mean_reciprocal_rank(ranks))
     print("Lowest rank:", max(ranks))
     print("Time at #1: {:.2f}%".format(
-          100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
+        100 * sum(1 for rank in ranks if rank == 1) / len(ranks)
     ))
 
 
@@ -295,7 +295,8 @@ def add_common_args(parser):
     parser.add_argument('--weights-forwards', type=Path,
                         default=THIS_DIRECTORY / 'javascript-tiny.5.h5')
     parser.add_argument('--weights-backwards', type=Path,
-                        default=THIS_DIRECTORY / 'javascript-tiny.backwards.5.h5')
+                        default=THIS_DIRECTORY /
+                        'javascript-tiny.backwards.5.h5')
 
 
 parser = argparse.ArgumentParser()
