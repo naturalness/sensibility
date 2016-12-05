@@ -179,7 +179,7 @@ def common_args(*, filename=None,
 def top_5(*, forwards=None, **kwargs):
     common = common_args(**kwargs)
     model = common.forwards_model if forwards else common.backwards_model
-    print_top_5(model, common.file_vector)
+    print_top_5(model, common.file_vector, common.tokens)
 
 
 def chop_prefix(sequence, prefix=SENTENCE_LENGTH):
@@ -506,9 +506,9 @@ def dump(**kwargs):
         print()
 
 
-def print_top_5(model, file_vector):
+def print_top_5(model, file_vector, tokens):
     t = Terminal()
-    header = "For {t.underline}{sentence_text}{t.normal}, got:"
+    header = "{t.underline}{sentence_text}{t.normal}  〽️  {t.italic}{token}{t.normal}"
     ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
     actual_line = "{t.red}Actual{t.normal}: {t.bold}{actual_text}{t.normal}"
 
@@ -516,14 +516,17 @@ def print_top_5(model, file_vector):
     sentences = Sentences(file_vector, size=SENTENCE_LENGTH,
                           backwards=model.backwards)
 
-    for sentence, actual in sentences:
+    start = PREFIX_LENGTH if model.forwards else -1
+
+    for i, (sentence, actual) in enumerate(sentences, start=start):
+        token = tokens[i] if 0 <= i < len(tokens) else '/*boundary*/'
         predictions = model.predict(sentence)
         paired_rankings = rank(predictions)
         ranked_vocab = list(tuple(zip(*paired_rankings))[0])
         top_5 = paired_rankings[:5]
         top_5_words = ranked_vocab[:5]
 
-        sentence_text = unvocabularize(sentence)
+        sentence_text = unvocabularize(sentence[:10])
         print(header.format_map(locals()))
 
         for token_id, weight in top_5:

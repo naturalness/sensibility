@@ -89,6 +89,9 @@ class Token(namedtuple('BaseToken', 'value type loc')):
     # TODO: is open class?
     # TODO: is closed class?
 
+    def __str__(self):
+        return self.value
+
 
 class Corpus:
     def __init__(self, connection):
