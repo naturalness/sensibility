@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
 # Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
@@ -259,16 +259,29 @@ class Remove:
 class Insert:
     def __init__(self, token, pos, tokens):
         self.token = token
-        self.pos = pos
+        assert 1 < pos < len(tokens)
         self.tokens = tokens
+
+        # Determine if it should be an insert after or an insert before.
+        # This depends on whether the token straddles a line.
+        if tokens[pos - 1].line < tokens[pos].line:
+            self.insert_after = True
+            self.pos = pos - 1
+        else:
+            self.insert_after = False
+            self.pos = pos
 
     @property
     def line(self):
-        return self.token.line
+        return self.tokens[self.pos].line
 
     @property
     def column(self):
-        return self.token.column
+        return self.tokens[self.pos].column
+
+    @property
+    def insert_before(self):
+        return not self.insert_after
 
     def __str__(self):
         t = Terminal()
@@ -284,7 +297,9 @@ class Insert:
         line_tokens = get_token_line(self.pos, self.tokens)
         line = format_line(line_tokens)
 
-        padding = ' ' * (1 + self.token.column)
+        # TODO: add some spacing around the insertion point 
+
+        padding = ' ' * (1 + self.column)
         arrow = padding + t.bold_green('^')
         suggestion = padding + t.green(text)
 
