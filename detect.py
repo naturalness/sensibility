@@ -393,13 +393,14 @@ def suggest(**kwargs):
     # For the top disagreements, synthesize fixes.
     least_agreements.sort()
     for disagreement in least_agreements[:3]:
+        pos = disagreement.index
+
         # Assume an addition. Let's try removing some tokens.
-        fixes.try_remove(disagreement.index + 1)
-        fixes.try_remove(disagreement.index)
-        fixes.try_remove(disagreement.index - 1)
+        fixes.try_remove(pos + 1)
+        fixes.try_remove(pos)
+        fixes.try_remove(pos - 1)
 
         # Assume a deletion. Let's try inserting some tokens.
-        pos = disagreement.index
         fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
         fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
 
@@ -416,7 +417,7 @@ def suggest(**kwargs):
         print(header, fix)
 
 
-def combined(**kwargs):
+def dump(**kwargs):
     common = common_args(**kwargs)
 
     t = Terminal()
@@ -573,9 +574,9 @@ group.add_argument('--backwards', dest='forwards', action='store_false')
 add_common_args(top_5_parser)
 top_5_parser.set_defaults(func=top_5)
 
-combined_parser = subparsers.add_parser('combined')
-add_common_args(combined_parser)
-combined_parser.set_defaults(func=combined)
+dump_parser = subparsers.add_parser('dump')
+add_common_args(dump_parser)
+dump_parser.set_defaults(func=dump)
 
 suggest_parser = subparsers.add_parser('suggest')
 add_common_args(suggest_parser)
