@@ -215,10 +215,14 @@ def get_token_line(pos, tokens):
     return tokens[left_extent:right_extent]
 
 
-def format_line(tokens):
+def format_line(tokens, insert_space_before=None):
     result = ''
+    extra_padding = 0
     for token in tokens:
-        padding = ' '  * (token.column + 1 - len(result))
+        if token is insert_space_before:
+            extra_padding = 2
+
+        padding = ' '  * (extra_padding + token.column + 1 - len(result))
         result += padding
         result += token.value
     return result
@@ -295,11 +299,17 @@ class Insert:
                 "".format_map(locals()))
 
         line_tokens = get_token_line(self.pos, self.tokens)
-        line = format_line(line_tokens)
 
-        # TODO: add some spacing around the insertion point 
+        if self.insert_after:
+            line = format_line(line_tokens)
+            # Add an extra space BEFORE the insertion point:
+            padding = ' ' * (2 + 1 + self.column)
+        else:
+            # Add an extra space AFTER insertion point;
+            line = format_line(line_tokens,
+                               insert_space_before=self.tokens[self.pos])
+            padding = ' ' * (1 + self.column)
 
-        padding = ' ' * (1 + self.column)
         arrow = padding + t.bold_green('^')
         suggestion = padding + t.green(text)
 
