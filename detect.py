@@ -201,17 +201,18 @@ def get_token_line(pos, tokens):
 
     left_extent = pos
     while left_extent > 0:
-        if tokens[left_extent - 1].line != line:
+        if tokens[left_extent - 1].line != line_no:
             break
         left_extent -= 1
 
     right_extent = pos + 1
     while right_extent < len(tokens):
-        if tokens[right_extent].line != line:
+        if tokens[right_extent].line != line_no:
             break
-        left_extent += 1
+        right_extent += 1
 
     return tokens[left_extent:right_extent]
+
 
 def format_line(tokens):
     result = ''
@@ -223,8 +224,13 @@ def format_line(tokens):
 
 
 class Remove:
-    def __init__(self, token):
-        self.token = token
+    def __init__(self, pos, tokens):
+        self.pos = pos
+        self.tokens = tokens
+
+    @property
+    def token(self):
+        return self.tokens[self.pos]
 
     @property
     def line(self):
@@ -235,12 +241,18 @@ class Remove:
         return self.token.column
 
     def __str__(self):
-        #line_tokens = get_token_line(self.pos, self.tokens)
-
         t = Terminal()
         text = self.token.value
-        return ("try removing '{t.bold}{text}{t.normal}' "
+
+        msg = ("try removing '{t.bold}{text}{t.normal}' "
                 "".format_map(locals()))
+        line_tokens = get_token_line(self.pos, self.tokens)
+        line = format_line(line_tokens)
+        padding = ' ' * (1 + self.token.column)
+        arrow = padding + t.bold_red('^')
+        suggestion = padding + t.red(text)
+
+        return '\n'.join([msg, line, arrow, suggestion])
 
 
 class Insert:
@@ -256,7 +268,7 @@ class Insert:
     def column(self):
         return self.token.column
 
-    def __str__(self, filename):
+    def __str__(self):
         t = Terminal()
         token = self.token
         text = token.value
@@ -275,7 +287,7 @@ class Fixes:
         pos = index + self.offset
         suggestion = self.tokens[:pos] + self.tokens[pos + 1:]
         if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Remove(self.tokens[pos]))
+            self.fixes.append(Remove(pos, self.tokens))
 
     def try_insert(self, index, new_token):
         assert isinstance(new_token, Token)
@@ -361,7 +373,7 @@ def suggest(**kwargs):
     t = Terminal()
     for fix in fixes:
         header = t.bold("{filename}:{line}:{column}:".format(
-            filename=common.filename, line=fix.line, column=fix.column
+            filename=common.filename, line=fix.line, column=1 + fix.column
         ))
         print(header, fix)
 
