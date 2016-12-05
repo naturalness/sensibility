@@ -47,7 +47,8 @@ PREFIX_LENGTH = SENTENCE_LENGTH - 1
 
 
 Common = namedtuple('Common',
-                    'forwards_model backwards_model file_vector tokens')
+                    'forwards_model backwards_model file_vector tokens '
+                    'filename')
 
 
 @total_ordering
@@ -171,7 +172,8 @@ def common_args(*, filename=None,
                                            weights=str(weights_backwards),
                                            backwards=True)
 
-    return Common(forwards_model, backwards_model, file_vector, tokens)
+    return Common(forwards_model, backwards_model, file_vector,
+                  tokens, filename)
 
 
 def top_5(*, forwards=None, **kwargs):
@@ -191,31 +193,76 @@ def tokens_to_source_code(tokens):
     return ' '.join(token.value for token in tokens)
 
 
+def on_next_line(a, b):
+    return a.line < b.line
+
+def get_token_line(pos, tokens):
+    line_no = tokens[pos].line
+
+    left_extent = pos
+    while left_extent > 0:
+        if tokens[left_extent - 1].line != line:
+            break
+        left_extent -= 1
+
+    right_extent = pos + 1
+    while right_extent < len(tokens):
+        if tokens[right_extent].line != line:
+            break
+        left_extent += 1
+
+    return tokens[left_extent:right_extent]
+
+def format_line(tokens):
+    result = ''
+    for token in tokens:
+        padding = ' '  * (token.column + 1 - len(result))
+        result += padding
+        result += token.value
+    return result
+
+
 class Remove:
     def __init__(self, token):
         self.token = token
 
+    @property
+    def line(self):
+        return self.token.line
+
+    @property
+    def column(self):
+        return self.token.column
+
     def __str__(self):
+        #line_tokens = get_token_line(self.pos, self.tokens)
+
         t = Terminal()
-        token = self.token
-        text = token.value
-        line = token.line
-        column = token.column
-        return ("Try removing {t.underline}{text}{t.normal} "
-                "at line {line}:{column}".format_map(locals()))
+        text = self.token.value
+        return ("try removing '{t.bold}{text}{t.normal}' "
+                "".format_map(locals()))
+
 
 class Insert:
     def __init__(self, token, before_line, before_column):
         self.token = token
         self.before = before_line, before_column
 
-    def __str__(self):
+    @property
+    def line(self):
+        return self.token.line
+
+    @property
+    def column(self):
+        return self.token.column
+
+    def __str__(self, filename):
         t = Terminal()
         token = self.token
         text = token.value
         line, column = self.before
-        return ("Try inserting {t.underline}{text}{t.normal} "
-                "before {line}:{column}".format_map(locals()))
+        return ("try inserting '{t.bold}{text}{t.normal}' "
+                "".format_map(locals()))
 
 
 class Fixes:
@@ -311,8 +358,12 @@ def suggest(**kwargs):
         print(t.red("I don't know how to fix it :C"))
         return -1
 
+    t = Terminal()
     for fix in fixes:
-        print(fix)
+        header = t.bold("{filename}:{line}:{column}:".format(
+            filename=common.filename, line=fix.line, column=fix.column
+        ))
+        print(header, fix)
 
 
 def combined(**kwargs):
