@@ -196,6 +196,7 @@ def tokens_to_source_code(tokens):
 def on_next_line(a, b):
     return a.line < b.line
 
+
 def get_token_line(pos, tokens):
     line_no = tokens[pos].line
 
@@ -252,13 +253,14 @@ class Remove:
         arrow = padding + t.bold_red('^')
         suggestion = padding + t.red(text)
 
-        return '\n'.join([msg, line, arrow, suggestion])
+        return '\n'.join((msg, line, arrow, suggestion))
 
 
 class Insert:
-    def __init__(self, token, before_line, before_column):
+    def __init__(self, token, pos, tokens):
         self.token = token
-        self.before = before_line, before_column
+        self.pos = pos
+        self.tokens = tokens
 
     @property
     def line(self):
@@ -270,11 +272,23 @@ class Insert:
 
     def __str__(self):
         t = Terminal()
-        token = self.token
-        text = token.value
-        line, column = self.before
-        return ("try inserting '{t.bold}{text}{t.normal}' "
+
+        pos = self.pos
+        text = self.token.value
+
+        # TODO: lack of bounds check...
+        next_token = self.tokens[pos + 1]
+        msg = ("try inserting '{t.bold}{text}{t.normal}' "
                 "".format_map(locals()))
+
+        line_tokens = get_token_line(self.pos, self.tokens)
+        line = format_line(line_tokens)
+
+        padding = ' ' * (1 + self.token.column)
+        arrow = padding + t.bold_green('^')
+        suggestion = padding + t.green(text)
+
+        return '\n'.join((msg, line, arrow, suggestion))
 
 
 class Fixes:
@@ -292,10 +306,9 @@ class Fixes:
     def try_insert(self, index, new_token):
         assert isinstance(new_token, Token)
         pos = index + self.offset
-        next_token = self.tokens[pos]
         suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
         if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Insert(new_token, *next_token.loc.start))
+            self.fixes.append(Insert(new_token, pos, self.tokens))
 
     def __bool__(self):
         return len(self.fixes) > 0
