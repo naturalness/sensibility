@@ -18,6 +18,7 @@
 import argparse
 import io
 import json
+import operator
 import subprocess
 import sys
 import tempfile
@@ -381,7 +382,7 @@ def suggest(**kwargs):
         suffix_pred = common.backwards_model.predict(suffix)
 
         # Get its harmonic mean
-        mean = 2 * (prefix_pred * suffix_pred) / (prefix_pred + suffix_pred)
+        mean = consensus(prefix_pred, suffix_pred)
         forwards_predictions.append(index_of_max(prefix_pred))
         backwards_predictions.append(index_of_max(suffix_pred))
         paired_rankings = rank(mean)
@@ -413,6 +414,13 @@ def suggest(**kwargs):
             filename=common.filename, line=fix.line, column=1 + fix.column
         ))
         print(header, fix)
+
+def harmonic_mean(a, b):
+    return 2 * (a * b) / (a + b)
+
+
+#consensus = operator.mul
+consensus = harmonic_mean
 
 
 def dump(**kwargs):
@@ -450,7 +458,7 @@ def dump(**kwargs):
         suffix_pred = common.backwards_model.predict(suffix)
 
         # harmonic mean
-        mean = 2 * (prefix_pred * suffix_pred) / (prefix_pred + suffix_pred)
+        mean = consensus(suffix_pred, prefix_pred)
 
         forwards_predictions.append(index_of_max(prefix_pred))
         backwards_predictions.append(index_of_max(suffix_pred))
