@@ -396,9 +396,7 @@ def suggest(**kwargs):
         pos = disagreement.index
 
         # Assume an addition. Let's try removing some tokens.
-        fixes.try_remove(pos + 1)
         fixes.try_remove(pos)
-        fixes.try_remove(pos - 1)
 
         # Assume a deletion. Let's try inserting some tokens.
         fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
