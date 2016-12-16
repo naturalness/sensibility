@@ -532,7 +532,13 @@ def print_top_5(model, file_vector, tokens):
         top_5 = paired_rankings[:5]
         top_5_words = ranked_vocab[:5]
 
-        sentence_text = unvocabularize(sentence[:10])
+        if model.forwards:
+            # Show prefix
+            sentence_text = unvocabularize(sentence[-10:])
+        else:
+            # Show suffix
+            sentence_text = unvocabularize(sentence[:10])
+
         print(header.format_map(locals()))
 
         for token_id, weight in top_5:
