@@ -170,6 +170,8 @@ class CondensedCorpus:
                 INSERT INTO fold_assignment(hash, fold) VALUES (?, ?)
              """, (file_hash, fold_no))
 
+    # TODO: add destroy folds method.
+
 
 def unblob(blob):
     assert isinstance(blob, bytes)

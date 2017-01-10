@@ -17,11 +17,54 @@
 
 """
 Places files into folds attempting to equalize the token length.
+
+                            ,                       :::
+                                     ,:::::::        ::::,
+       ,,,,;;;;;;;;;,,                 ,:::::::,     ::::::,
+   ,,,;::::::::::::;,,,                ,::::::::,    :::::,,,
+  ;:::::::::::,,,,,                    ,::::::::,,   :::::,,,        +
+ ,:::::::,,,,                          ::::::::,,,   ::::,,,      ,
+ ,::::;,,,                             :::::::,,,   ~::::,,,
+ ,::::::,                              :::::::,,,   ,::::,,         ,:::,
+  :::::::,                             ::::::,,, :::::::,,,        :::::::,
+  :::::::::,                           ::::::,,::::,::::,,I        :::::::::,
+  ,:::::::::,,                 :,      :::::,,::::,,:::,,,        ,:::::::::,,
+   :::::::::,,,                ::::    :::::,,:::,,,:::,,,        ,::::::::,,,,
+    ::::::::,,,      ::::,,   ::::::, +::::,,:::,,,,:::,,,        :::::::,,,,
+    ::::::::,,,    ,:::::,,  ::::::,:,,::::,,:::,,, ::::,,,:,,    :::::::,,,
+     :::::::,,,   ,::::::,, ,:::::,,::,::::,,::::,,~:::::::,,,    ::::::,,,
+      :::::::,, ::::::::,,, ::::::,,::,:::,,,:::::::,:::::,,,     :::::,,,    +
+      ,::::::,::::::::::,,, :::::,,,::,:::,,,::::::,,,::::,,,     :::::,,,
+       ::::::::::::,::,,,   ::::,,, ::,::::,,::::::,,,I,,,,,      ,:::,,,
+        :::::::::,,,,,      ::::,,  ::,::::::,,,,,,,,::::::I      ~:::,,,
+         ::::::,,,,,       ,:::::, :::,:::::,,,  :,? ,:::::,,,     :::,,
+     I   ,:::::,,,        ,+::::::::::,,:::,,,,      ?:::::::::,,  :::,,
+          :::::::,          :::::::::,,, :::::, ::::::::::,,,,,,,,+::,,,
+           :::::::,          ::::::::,,,  ::::::,:::::::::,,,      ,:,,,
+            ::::::,,         `;::::,,,,  ,:::::,,::::,::::,,        ::,,
+            ,::::::,,        , ,,,,,,,  ::,,,,,,,:::,,::::,,   ::,, ,:,,
+             ::::::,,            ,,~    :::::     ,,,,:::::, ,::,,,, :,,
+              ::::::,,                  :::::::,    ,:,::::::::,,,  , ,,
+              ,:::::,,                  ,::::::,,   ::,:::::::,,,   ,::
+               :::::,,I                  ::::::,,  ,:,,,:::::,,,    :::::::
+               ,::::,,,                  ,::::::,   ,,,  +,,,,,     :::::::,,
+         ,       ,,,,,,                   ::::::::::       ,,      :::::::,,,
+                                          ,:::::::,,,,             :::::,,,,,
+                                           ::::::,,,,               ,,,,,,,
+        I                                  ,::::,,,
+                              ?             ,:,,,,                    +
+                                              ,,,                         ,
+                                                                           +
+
 """
 
-import sys
+import argparse
 import heapq
+import math
+import operator
 import random
+import sys
+
 from pathlib import Path
 from functools import partial
 from itertools import islice
@@ -32,58 +75,97 @@ from condensed_corpus import CondensedCorpus
 
 error = partial(print, file=sys.stderr)
 
-FOLDS = 10
+parser = argparse.ArgumentParser('Divides the corpus into folds.')
+parser.add_argument('corpus', type=Path, dest='filename')
+parser.add_argument('-f', '--folds', type=int, default=10)
+parser.add_argument('-t', '--min-tokens', type=int, default=None)
+parser.add_argument('--overwrite', action='store_true')
 
 
 def main():
-    _, filename, max_iters = sys.argv
-    filename = Path(filename)
+    # Creates variables: folds, min_tokens, filename
+    locals().update(vars(parser.parse_args()))
     assert filename.exists()
-    max_iters = int(max_iters)
+    assert folds >= 1
+
+    if overwrite:
+        raise NotImplementedError
 
     corpus = CondensedCorpus.connect_to(str(filename))
 
-    # We maintain a priority queue of heaps. At the top of the heap is the
-    # one with the fewest tokens.
-    heap = [(0, fold_no) for fold_no in range(FOLDS)]
+    # We maintain a priority queue of folds. At the top of the heap is the
+    # fold with the fewest tokens.
+    heap = [(0, fold_no) for fold_no in range(folds)]
     heapq.heapify(heap)
 
     # This is kinda dumb, but:
-    # Iterate through a shuffled list of rowids...
+    # Iterate through a shuffled list of ALL rowids...
     error('Shuffling...')
     shuffled_ids = list(range(corpus.min_index, corpus.max_index + 1))
     random.shuffle(shuffled_ids)
 
-    if max_iters < 1:
-        print("Using full corpus")
-        max_iters = len(shuffled_ids)
-    iterations = min(max_iters, len(shuffled_ids))
+    if min_tokens is None:
+        min_tokens = math.inf
+        progress = tqdm(generate_files())
+    else:
+        progress = tqdm(generate_files(), total=min_tokens)
+
+    def generate_files():
+        for random_id in shuffled_ids:
+            fewest_tokens, _ = heap[0]
+            if fewest_tokens >= min_tokens and normalish():
+                break
+
+            try:
+                yield corpus[random_id]
+            except TypeError:
+                error('File ID not found:', random_id, 'Skipping...')
+                continue
+
+    def normalish(getter=operator.itemgetter(0)):
+        """
+        Rule of thumb calculation for normality.
+        """
+        sample_mean = statistics.mean(map(getter, heap))
+        stddev = statisitcs.stddev(map(getter, heap))
+
+        progress.set_description("mean: {}, stddev: {}".format(
+            sample_mean, stddev
+        ))
+
+        def t_statisitic(observation):
+            return (observation - sample_mean) / stddev
+
+        # Check if the minimum is too far away (it probably isn't).
+        min_tokens, _ = heap[0]
+        if abs(t_statisitic(min_tokens)) >= 3.0:
+            return False
+
+        # Check if the maximum is too far away (it just might be).
+        max_tokens, _ = max(heap, key=getter)
+        if abs(t_statisitic(max_tokens)) >= 3.0:
+            return False
+
+        return True
 
     def pop():
         return heapq.heappop(heap)
 
     def push(n_tokens, fold_no):
-        assert isinstance(file_hash, str)
         assert isinstance(fold_no, int)
         return heapq.heappush(heap, (n_tokens, fold_no))
 
+    progress.set_description('Assigning until minimum is met...')
+    for file_hash, tokens in progress:
+        n_tokens = len(tokens)
 
-    progress = tqdm(islice(shuffled_ids, iterations), total=iterations)
-    for file_id in progress:
-        try:
-            file_hash, tokens = corpus[file_id]
-        except:
-            error("file not found in corpus:", file_id)
-            continue
-        else:
-            n_tokens = len(tokens)
-
-        # Assign to the min fold
+        # Assign it to the smallest fold
         tokens_in_fold, fold_no = pop()
-
         corpus.add_to_fold(file_hash, fold_no)
-        push(tokens_in_fold + n_tokens, fold_no)
-        progress.set_description(str(file_id))
+        push(tokens_in_fold + len(tokens), fold_no)
+
+        new_smallest, _ = heap[0]
+        progress.update(new_smallest - tokens_in_fold)
 
 
 if __name__ == '__main__':
