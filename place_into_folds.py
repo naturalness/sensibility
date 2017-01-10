@@ -63,6 +63,7 @@ import heapq
 import math
 import operator
 import random
+import statistics
 import sys
 
 from pathlib import Path
@@ -108,7 +109,6 @@ def main():
     shuffled_ids = list(range(corpus.min_index, corpus.max_index + 1))
     random.shuffle(shuffled_ids)
 
-
     # A series of helper functions.
     def generate_files():
         for random_id in shuffled_ids:
@@ -127,7 +127,7 @@ def main():
         Rule of thumb calculation for normality.
         """
         sample_mean = statistics.mean(map(getter, heap))
-        stddev = statisitcs.stddev(map(getter, heap))
+        stddev = statistics.stddev(map(getter, heap))
 
         progress.set_description("mean: {}, stddev: {}".format(
             sample_mean, stddev
