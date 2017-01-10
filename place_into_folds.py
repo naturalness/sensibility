@@ -127,14 +127,14 @@ def main():
         Rule of thumb calculation for normality.
         """
         sample_mean = statistics.mean(map(getter, heap))
-        stddev = statistics.stddev(map(getter, heap))
+        sample_sd= statistics.stdev(map(getter, heap))
 
         progress.set_description("mean: {}, stddev: {}".format(
-            sample_mean, stddev
+            sample_mean, sample_sd
         ))
 
         def t_statisitic(observation):
-            return (observation - sample_mean) / stddev
+            return (observation - sample_mean) / sample_sd
 
         # Check if the minimum is too far away (it probably isn't).
         min_tokens, _ = heap[0]
