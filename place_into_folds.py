@@ -76,22 +76,26 @@ from condensed_corpus import CondensedCorpus
 error = partial(print, file=sys.stderr)
 
 parser = argparse.ArgumentParser('Divides the corpus into folds.')
-parser.add_argument('corpus', type=Path, dest='filename')
-parser.add_argument('-f', '--folds', type=int, default=10)
-parser.add_argument('-t', '--min-tokens', type=int, default=None)
-parser.add_argument('--overwrite', action='store_true')
+parser.add_argument('filename', type=Path, metavar='corpus')
+parser.add_argument('-k', '--folds', type=int, default=10, help='default: 10')
+parser.add_argument('-n', '--min-tokens', type=int, default=None)
+parser.add_argument('-f', '--overwrite', action='store_true')
 
 
 def main():
     # Creates variables: folds, min_tokens, filename
-    locals().update(vars(parser.parse_args()))
+    globals().update(vars(parser.parse_args()))
     assert filename.exists()
     assert folds >= 1
 
-    if overwrite:
-        raise NotImplementedError
-
     corpus = CondensedCorpus.connect_to(str(filename))
+
+    if corpus.has_fold_assignments:
+        if overwrite:
+            corpus.destroy_fold_assignments()
+        else:
+            error('Will not overwrite existing fold assignments!')
+            exit(-1)
 
     # We maintain a priority queue of folds. At the top of the heap is the
     # fold with the fewest tokens.
@@ -104,12 +108,8 @@ def main():
     shuffled_ids = list(range(corpus.min_index, corpus.max_index + 1))
     random.shuffle(shuffled_ids)
 
-    if min_tokens is None:
-        min_tokens = math.inf
-        progress = tqdm(generate_files())
-    else:
-        progress = tqdm(generate_files(), total=min_tokens)
 
+    # A series of helper functions.
     def generate_files():
         for random_id in shuffled_ids:
             fewest_tokens, _ = heap[0]
@@ -155,7 +155,14 @@ def main():
         assert isinstance(fold_no, int)
         return heapq.heappush(heap, (n_tokens, fold_no))
 
-    progress.set_description('Assigning until minimum is met...')
+
+    if min_tokens is None:
+        globals().update(min_tokens=math.inf)
+        progress = tqdm(generate_files())
+    else:
+        progress = tqdm(generate_files(), total=min_tokens)
+
+    progress.set_description('Assigning until minimum met')
     for file_hash, tokens in progress:
         n_tokens = len(tokens)
 

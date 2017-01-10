@@ -170,7 +170,30 @@ class CondensedCorpus:
                 INSERT INTO fold_assignment(hash, fold) VALUES (?, ?)
              """, (file_hash, fold_no))
 
-    # TODO: add destroy folds method.
+    @property
+    def fold_ids(self):
+        """
+        A list of all current fold numbers.
+        """
+        cur = self.conn.execute("""
+            SELECT DISTINCT fold
+              FROM fold_assignment
+        """)
+        return [int(fold_id) for fold_id, in cur.fetchall()]
+
+    @property
+    def has_fold_assignments(self):
+        """
+        Does this corpus have fold assignments?
+        """
+        return len(self.fold_ids) > 0
+
+    def destroy_fold_assignments(self):
+        """
+        Deletes any current fold assignments.
+        """
+        with self.conn:
+            self.conn.execute("DELETE FROM fold_assignment")
 
 
 def unblob(blob):
