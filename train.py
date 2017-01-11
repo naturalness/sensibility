@@ -162,7 +162,7 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
     )
 
     print("Will train on", training_batches.samples_per_epoch, "samples")
-    print("Training for one epoch...")
+    print("Training:", recipe.filename)
     model.fit_generator(iter(training_batches),
                         samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
@@ -190,7 +190,7 @@ def when_continue(vector_filename=None, weights=None, batch_size=None,
     )
 
     print("Will train on", training_batches.samples_per_epoch, "samples")
-    print("Training for one epoch...")
+    print("Training:", recipe.filename)
     model.fit_generator(iter(training_batches),
                         samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
