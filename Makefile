@@ -23,6 +23,12 @@ CORPUS = javascript
 VECTORS = $(CORPUS).sqlite3
 ASSIGNED_VECTORS = $(FAST_DIR)/$(VECTORS)
 
+# Make settings
+# See: https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
+.PHONY: all
+.SECONDARY:
+.DELETE_ON_ERROR:
+
 all: models
 
 # This will include a LOT of rules to make models.
@@ -34,11 +40,6 @@ all-models.mk: all-models.pl
 
 # Assign files to folds. Create a vectorized corpus suitable for training.
 $(ASSIGNED_VECTORS): $(VECTORS)
-	cp $(VECTORS) $(ASSIGNED_VECTORS).tmp
-	chmod u+w $(ASSIGNED_VECTORS).tmp
+	cp $(VECTORS) $(ASSIGNED_VECTORS)
+	chmod u+w $(ASSIGNED_VECTORS)
 	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS).tmp
-	mv -f $(ASSIGNED_VECTORS).tmp $@
-
-.PHONY: all
-# Do not automatically delete ANY prerequisites!
-.SECONDARY:
