@@ -33,8 +33,6 @@ SIGMOID_ACTIVATIONS = 300
 
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 512
-FOLD = 0
-
 
 # {corpus}-{forward/backward}-{sigmoid}-{sentence}.{fold}.{epoch}.h5
 # e.g., javascript-f-300-20.4.3.h5
@@ -120,8 +118,8 @@ class ModelRecipe:
         """
         # Defining the model:
         model = Sequential()
-        model.add(LSTM(SIGMOID_ACTIVATIONS,
-                       input_shape=(SENTENCE_LENGTH, len(vocabulary))))
+        model.add(LSTM(self.sigmoid,
+                       input_shape=(self.sentence, len(vocabulary))))
         model.add(Dense(len(vocabulary)))
         model.add(Activation('softmax'))
 
@@ -166,7 +164,7 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
     model.fit_generator(iter(training_batches),
                         samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
-                        nb_val_samples=eval_batches.samples_per_epoch // BATCH_SIZE,
+                        nb_val_samples=eval_batches.samples_per_epoch // batch_size,
                         verbose=1,
                         pickle_safe=True,
                         nb_epoch=1)
@@ -194,7 +192,7 @@ def when_continue(vector_filename=None, weights=None, batch_size=None,
     model.fit_generator(iter(training_batches),
                         samples_per_epoch=training_batches.samples_per_epoch,
                         validation_data=iter(eval_batches),
-                        nb_val_samples=eval_batches.samples_per_epoch // BATCH_SIZE,
+                        nb_val_samples=eval_batches.samples_per_epoch // batch_size,
                         verbose=1,
                         pickle_safe=True,
                         nb_epoch=1)
