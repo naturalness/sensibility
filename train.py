@@ -146,9 +146,15 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
              sentence_length=None, batch_size=None, fold=None, **kwargs):
     assert Path(vector_filename).exists()
     
-    corpus = Path(vector_filename).stem
-    recipe = ModelRecipe(corpus, backwards, sigmoid_activations,
+    label = Path(vector_filename).stem
+    recipe = ModelRecipe(label, backwards, sigmoid_activations,
                          sentence_length, fold, 1)
+
+    corpus = CondensedCorpus.connect_to(vector_filename)
+    assert fold in corpus.fold_ids, (
+        'Requested fold {} is not in {}'.format(fold, corpus.fold_ids)
+    )
+    corpus.disconnect()
 
     print("Compiling the model...")
     model = recipe.create_model()
@@ -242,5 +248,6 @@ if __name__ == '__main__':
         from keras.optimizers import RMSprop
 
         from training_utils import LoopBatchesEndlessly, Sentences
+        from condensed_corpus import CondensedCorpus
 
     args.action(**vars(args))
