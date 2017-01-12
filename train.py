@@ -69,7 +69,7 @@ class ModelRecipe:
 
         return cls(corpus, backwards, sigmoid, sentence, fold, epoch)
 
-    def __init__(self, corpus, backwards, sigmoid, sentence, fold, epoch):
+    def __init__(self, corpus, backwards, sigmoid, sentence, fold, epoch=1):
         self.corpus = corpus
         self.backwards = backwards
         self.sigmoid = sigmoid
@@ -148,7 +148,7 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
     
     label = Path(vector_filename).stem
     recipe = ModelRecipe(label, backwards, sigmoid_activations,
-                         sentence_length, fold, 1)
+                         sentence_length, fold)
 
     corpus = CondensedCorpus.connect_to(vector_filename)
     assert fold in corpus.fold_ids, (
