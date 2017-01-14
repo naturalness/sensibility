@@ -29,7 +29,7 @@ print "PHONY: models\n";
 print "models:";
 foreach my $fold (0..9) {
     foreach my $dir ('f', 'b') {
-        print " \$(CORPUS)-$dir-$sigmoid.$sentence.$fold.$max_epoch.h5";
+        print " \$(CORPUS)-$dir-$sigmoid-$sentence.$fold.$max_epoch.h5";
     }
 }
 print "\n\n";
@@ -38,7 +38,7 @@ print "\n\n";
 foreach my $direction ('forwards', 'backwards') {
     my $dir = substr $direction, 0, 1;
     foreach my $fold (0..9) {
-        print "\$(CORPUS)-$dir-$sigmoid.$sentence.$fold.1.h5: \$(ASSIGNED_VECTORS)\n";
+        print "\$(CORPUS)-$dir-$sigmoid-$sentence.$fold.1.h5: \$(ASSIGNED_VECTORS)\n";
         print "\t./train.py new --$direction --fold $fold \$<\n";
     }
 }

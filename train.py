@@ -128,9 +128,9 @@ class ModelRecipe:
                       metrics=['categorical_accuracy'])
         return model
 
-    def create_model_and_load_weights(self):
+    def create_model_and_load_weights(self, weights_filename):
         model = self.create_model()
-        model.load_weights(self.filename)
+        model.load_weights(weights_filename)
         return model
 
 
