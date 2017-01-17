@@ -15,6 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Uses the two trained models to pinpoint syntax errors in files and suggest fixes.
+"""
+
 import argparse
 import io
 import json

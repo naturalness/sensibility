@@ -15,7 +15,7 @@
 # A directory on a fast filesystem (e.g., a ramdisk)
 FAST_DIR = /dev/shm
 
-# tokens per fold = total number of tokens * 5% / number of folds 
+# tokens per fold = total number of tokens * 5% / number of folds
 # 1,578,048,815 * 5% / 10 = 7,890,244
 TOKENS_PER_FOLD = 7890244
 

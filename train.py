@@ -37,6 +37,7 @@ BATCH_SIZE = 512
 # {corpus}-{forward/backward}-{sigmoid}-{sentence}.{fold}.{epoch}.h5
 # e.g., javascript-f-300-20.4.3.h5
 
+# TODO: remove this, probably.
 class ModelRecipe:
     """
     All the data of an existing model.
@@ -145,7 +146,7 @@ def when_none_selected(**kwargs):
 def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
              sentence_length=None, batch_size=None, fold=None, **kwargs):
     assert Path(vector_filename).exists()
-    
+
     label = Path(vector_filename).stem
     recipe = ModelRecipe(label, backwards, sigmoid_activations,
                          sentence_length, fold)
