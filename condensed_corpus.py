@@ -131,12 +131,19 @@ class CondensedCorpus:
         """
         Generate all hashes in the given fold number.
         """
-        assert isinstance(fold_no, int)
+        assert fold_no in self.fold_ids
 
         cur = self.conn.execute("""
             SELECT hash FROM fold_assignment WHERE fold = ?
         """, (fold_no,))
         yield from (result for result, in cur.fetchall())
+
+    def files_in_fold(self, fold_no):
+        """
+        Generated all hash, token pairs from the corpus.
+        """
+        for file_hash in self.hashes_in_fold(fold_no):
+            yield self.get_tokens_by_hash(file_hash)
 
     def __getitem__(self, key):
         if isinstance(key, (str, bytes)):

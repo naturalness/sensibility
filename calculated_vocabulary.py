@@ -8,6 +8,7 @@ All observed vocabulary tokens as witnessed by vocabulary.py on the October
 2016 GitHub JavaScript corpus.
 """
 
+# TODO: change the concrete entries to be less dumb looking.
 VOCAB = [
  '/*<start>*/',
  '!',

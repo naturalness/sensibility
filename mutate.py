@@ -1,6 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 Do evaluation.
 
@@ -28,24 +43,38 @@ import sys
 import tempfile
 import random
 
-from vocabulary import vocabulary
+from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 from model_recipe import ModelRecipe
-
+from token_utils import Token
+from condensed_corpus import CondensedCorpus
 
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
 
-def get_random_token_from_vocabulary():
-  """
-  Gets a random token from a uni
-  """
-  
+parser = argparse.ArgumentParser()
+parser.add_argument('corpus', type=CondensedCorpus.connect_to)
+parser.add_argument('model', type=ModelRecipe.from_string)
+parser.add_argument('-k', '--mutations', type=int, default=MAX_MUTATIONS)
+
+
+def random_token_from_vocabulary():
+    """
+    Gets a uniformly random token from the vocabulary as a vocabulary index.
+    """
+    # Generate anything EXCEPT the start and the end token.
+    return random.randint(1, len(vocabulary))
+
 
 class Model:
-  ...
+    ...
+
 
 class Mutation:
-    ...
+    """
+    Base class for all mutations, just for the sake of having a base class,
+    really.
+    """
+
 
 class Addition(Mutation):
     __slots__ = ('index', 'token')
@@ -57,9 +86,19 @@ class Addition(Mutation):
         raise NotImplementedError
 
     @classmethod
-    def create_random_mutation(cls, program):
+    def create_random_mutation(cls, program, randint=random.randint,
+                               random_token=random_token_from_vocabulary):
+        """
+        Campbell et al. 2014:
+
+            A location in the source file was chosen at random and a random
+            token found in the same file was inserted there.
+
+        random_token() is a function that returns a random token AS A STRING!
+        """
         insertion_point = ...
-        token = ... # needs to create a new token
+        token = random_token()
+        raise NotImplementedError
 
 
 class Deletion(Mutation):
@@ -73,7 +112,7 @@ class Deletion(Mutation):
         Applies the mutation to the source code and writes it to a file.
         """
         delete_index = self.index
-        for index, token in program:
+        for index, token in enumerate(program):
             if index == delete_index:
                 continue
             file.write(str(token))
@@ -83,35 +122,47 @@ class Deletion(Mutation):
         """
         Campbell et al. 2014:
 
-        A token (lexeme) was chosen at random from the input source file and
-        deleted. The file was then run through the querying and ranking
-        process to determine where the first result with adjacent code
-        appeared in the suggestions.
-
-        Random in same file? Or random in corpus?
-
+            A token (lexeme) was chosen at random from the input source file
+            and deleted. The file was then run through the querying and
+            ranking process to determine where the first result with adjacent
+            code appeared in the suggestions.
         """
-        # TODO: random token function.
-        victim_index = randint(0, len(program))
+        victim_index = randint(0, len(program) - 1)
         return cls(victim_index)
 
 
 class Substitution(Mutation):
     __slots__ = ('index', 'token')
+    def __init__(self, index, token):
+        self.index = index
+        self.token = token
+
     def format(self, program, file=sys.stdout):
         """
         Applies the mutation to the source code and writes it to a file.
         """
-        raise NotImplementedError
+        sub_index = self.index
+        for index, token in enumerate(program):
+            if index == sub_index:
+                token = self.token
+            file.write(vocabulary.to_text(token))
+            file.write('\n')
 
     @classmethod
-    def create_random_mutation(cls, program, get_random_token=):
+    def create_random_mutation(cls, program, randint=random.randint,
+                               random_token=random_token_from_vocabulary):
         """
-        A token was chosen at random and replaced with a random token found in
-        the same file.
+        Campbell et al. 2014:
+
+            A token was chosen at random and replaced with a random token
+            found in the same file.
+
+        random_token() is a function that returns a random token AS A
+        VOCABULARY INDEX!
         """
-        victim_index = ...
-        token = ... # needs to create a new token from the vocabulary
+        victim_index = randint(0, len(program) - 1)
+        token = random_token()
+        return cls(victim_index, token)
 
 
 class SourceCode(Mutation):
@@ -119,32 +170,46 @@ class SourceCode(Mutation):
     A source code file.
     """
     def __init__(self, file_hash, tokens):
-        self._file = file_hash
-        self._tokens = tuple(tokens)
+        self.hash = file_hash
+        start = vocabulary.to_index(START_TOKEN)
+        end = vocabulary.to_index(END_TOKEN)
+        self.tokens = tuple(tok for tok in tokens if tok not in (start, end))
 
     def __iter__(self):
-        return iter(self._tokens)
+        return iter(self.tokens)
 
     def __len__(self):
-        return len(self._tokens)
-
-parser = argparse.ArgumentParser()
-parser.add_argument('corpus', CondensedCorpus.connect_to)
-parser.add_argument('model', 'a model')
+        return len(self.tokens)
 
 
+def test():
+    program = SourceCode('DEADBEEF', [0, 86, 5, 31, 99])
+    mutation = Substitution.create_random_mutation(program)
+    mutation.format(program)
 
 def main():
-    # Requires: corpus, model data forwards, backwards.
-    # Open the corpus.
+    # Requires: corpus, model data (backwards and forwards)
     model = ...
-    # Josh style!
+    persist = ...
     for file_hash, tokens in corpus.files_in_fold(fold_no):
         program = SourceCode(file_hash, tokens)
         for mutation_kind in Addition, Deletion, Substitution:
-            for _ in range(MAX_MUTATIONS):
+            n_incorrect_files = 0
+            while n_incorrect_files < MAX_MUTATIONS:
                 mutation = mutation_kind.create_random_mutation(program)
-                with open(...) as tempfile:
-                    mutation.format(mutation, tempfile)
+                with tempfile.NamedTemporaryFile(encoding='UTF-8') as mutated_file:
+                    # Apply the mutatation and flush it to disk.
+                    mutation.format(mutation, mutated_file)
+                    mutated_file.flush()
+
+                    # TODO: Try the file, reject if it compiles.
+                    if model.is_okay(tempfile.name):
+                        persist.created_correct_file += 1
+                        continue
+
                     results = model.detect(tempfile.name)
                     persist(program, mutation, results)
+                    n_incorrect_files += 1
+
+if __name__ == '__main__':
+    test()

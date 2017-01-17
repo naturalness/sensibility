@@ -44,6 +44,7 @@ logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
 
+# TODO: Delete me in favor of token_utils.Token
 class Position(namedtuple('BasePosition', 'line column')):
     def __new__(cls, line=None, column=None):
         assert isinstance(line, int) and line >= 1
@@ -55,6 +56,7 @@ class Position(namedtuple('BasePosition', 'line column')):
         return cls(line=obj['line'], column=obj['column'])
 
 
+# TODO: Delete me in favor of token_utils.Location
 class Location(namedtuple('BaseLocation', 'start end')):
     def __new__(cls, start=None, end=None):
         assert isinstance(start, Position)
@@ -67,6 +69,7 @@ class Location(namedtuple('BaseLocation', 'start end')):
                    end=Position.from_json(obj['end']))
 
 
+# TODO: Delete me in favor of token_utils.Token
 class Token(namedtuple('BaseToken', 'value type loc')):
     @classmethod
     def from_json(cls, obj):
