@@ -56,6 +56,27 @@ class Vocabulary:
     def __len__(self):
         return len(self._index2text)
 
+    start_token_index = 0
+
+    @property
+    def end_token_index(self):
+        return len(self) - 1
+
+    @property
+    def start_token(self):
+        """
+        Text of the start token.
+        """
+        return self.to_text(self.start_token_index)
+
+    @property
+    def end_token(self):
+        """
+        Text of the end token.
+        """
+        return self.to_text(self.end_token_index)
+
+
 try:
     from calculated_vocabulary import VOCAB
 except ImportError:

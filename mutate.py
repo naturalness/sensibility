@@ -36,6 +36,11 @@ Reread UnnaturalCode, and my paper.
 HOW DO I PERSIST THIS DATA?
 The same way I persist any data.
 TRY TO TAKE OVER T--sqlite3.
+
+This evaluation:
+ - not representative of actual errors
+ - demonstrates theoretical efficacy
+ - intended to test algorithm given a number of different scenarios
 """
 
 import argparse
@@ -77,16 +82,27 @@ class Mutation:
 
 
 class Addition(Mutation):
-    __slots__ = ('index', 'token')
+    __slots__ = ('insertion_point', 'token')
+
+    def __init__(self, insertion_point, token):
+        self.insertion_point = insertion_point
+        self.token = token
 
     def format(self, program, file=sys.stdout):
         """
         Applies the mutation to the source code and writes it to a file.
         """
-        raise NotImplementedError
+        insertion_point = self.insertion_point
+        for index, token in enumerate(program):
+            if index == insertion_point:
+                file.write(vocabulary.to_text(self.token))
+                file.write(' ')
+            file.write(vocabulary.to_text(token))
+            file.write(' ')
+        file.write('\n')
 
     @classmethod
-    def create_random_mutation(cls, program, randint=random.randint,
+    def create_random_mutation(cls, program,
                                random_token=random_token_from_vocabulary):
         """
         Campbell et al. 2014:
@@ -94,11 +110,13 @@ class Addition(Mutation):
             A location in the source file was chosen at random and a random
             token found in the same file was inserted there.
 
-        random_token() is a function that returns a random token AS A STRING!
+        random_token() is a function that returns a random token AS A
+        VOCABULARY INDEX!
         """
-        insertion_point = ...
+
+        insertion_point = program.random_insertion_point()
         token = random_token()
-        raise NotImplementedError
+        return cls(insertion_point, token)
 
 
 class Deletion(Mutation):
@@ -115,10 +133,12 @@ class Deletion(Mutation):
         for index, token in enumerate(program):
             if index == delete_index:
                 continue
-            file.write(str(token))
+            file.write(vocabulary.to_text(token))
+            file.write(' ')
+        file.write('\n')
 
     @classmethod
-    def create_random_mutation(cls, program, randint=random.randint):
+    def create_random_mutation(cls, program):
         """
         Campbell et al. 2014:
 
@@ -127,7 +147,7 @@ class Deletion(Mutation):
             ranking process to determine where the first result with adjacent
             code appeared in the suggestions.
         """
-        victim_index = randint(0, len(program) - 1)
+        victim_index = program.random_index()
         return cls(victim_index)
 
 
@@ -146,10 +166,11 @@ class Substitution(Mutation):
             if index == sub_index:
                 token = self.token
             file.write(vocabulary.to_text(token))
-            file.write('\n')
+            file.write(' ')
+        file.write('\n')
 
     @classmethod
-    def create_random_mutation(cls, program, randint=random.randint,
+    def create_random_mutation(cls, program,
                                random_token=random_token_from_vocabulary):
         """
         Campbell et al. 2014:
@@ -160,7 +181,7 @@ class Substitution(Mutation):
         random_token() is a function that returns a random token AS A
         VOCABULARY INDEX!
         """
-        victim_index = randint(0, len(program) - 1)
+        victim_index = program.random_index()
         token = random_token()
         return cls(victim_index, token)
 
@@ -171,9 +192,12 @@ class SourceCode(Mutation):
     """
     def __init__(self, file_hash, tokens):
         self.hash = file_hash
-        start = vocabulary.to_index(START_TOKEN)
-        end = vocabulary.to_index(END_TOKEN)
-        self.tokens = tuple(tok for tok in tokens if tok not in (start, end))
+        self.tokens = tokens
+        self.first_index = 1 if tokens[0] == vocabulary.start_token_index else 0
+        last_index = len(tokens) - 1
+        self.last_index = (
+            last_index - 1 if tokens[-1] == vocabulary.end_token_index else last_index
+        )
 
     def __iter__(self):
         return iter(self.tokens)
@@ -181,11 +205,27 @@ class SourceCode(Mutation):
     def __len__(self):
         return len(self.tokens)
 
+    def random_insertion_point(self, randint=random.randint):
+        """
+        Produces a random insertion point in the program. Does not include start and end
+        tokens.
+        """
+        assert self.tokens[-1] == vocabulary.end_token_index
+        return randint(self.first_index, self.last_index + 1)
+
+    def random_index(self, randint=random.randint):
+        """
+        Produces a random insertion point in the program. Does not include start and end
+        tokens.
+        """
+        return randint(self.first_index, self.last_index)
+
 
 def test():
     program = SourceCode('DEADBEEF', [0, 86, 5, 31, 99])
-    mutation = Substitution.create_random_mutation(program)
+    mutation = Addition.create_random_mutation(program)
     mutation.format(program)
+
 
 def main():
     # Requires: corpus, model data (backwards and forwards)
@@ -206,6 +246,13 @@ def main():
                     if model.is_okay(tempfile.name):
                         persist.created_correct_file += 1
                         continue
+
+                    # TODO: Count rank of correct token location
+                    # TODO: Count how many times the suggestion compiles
+                    # TODO: In paper, discuss how the file can still be
+                    # correct, even with a different operation (give example).
+                    # TODO: Count how many times the suggestion IS the true
+                    # result.
 
                     results = model.detect(tempfile.name)
                     persist(program, mutation, results)
