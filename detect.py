@@ -33,7 +33,6 @@ from collections import namedtuple
 from functools import total_ordering
 
 import numpy as np
-from keras.models import model_from_json
 from blessings import Terminal
 
 from unvocabularize import unvocabularize
@@ -105,6 +104,7 @@ class Model:
 
     @classmethod
     def from_filenames(cls, *, architecture=None, weights=None, **kwargs):
+        from keras.models import model_from_json
         with open(architecture) as archfile:
             model = model_from_json(archfile.read())
         model.load_weights(weights)
@@ -233,7 +233,13 @@ def format_line(tokens, insert_space_before=None):
     return result
 
 
-class Remove:
+class Fix:
+    """
+    Base class for any kind of fix.
+    """
+
+
+class Remove(Fix):
     def __init__(self, pos, tokens):
         self.pos = pos
         self.tokens = tokens
@@ -265,7 +271,7 @@ class Remove:
         return '\n'.join((msg, line, arrow, suggestion))
 
 
-class Insert:
+class Insert(Fix):
     def __init__(self, token, pos, tokens):
         self.token = token
         assert 1 < pos < len(tokens)
@@ -418,6 +424,7 @@ def suggest(**kwargs):
             filename=common.filename, line=fix.line, column=1 + fix.column
         ))
         print(header, fix)
+
 
 def harmonic_mean(a, b):
     return 2 * (a * b) / (a + b)

@@ -75,6 +75,10 @@ class ModelRecipe:
         return 'ModelRecipe.from_string({!r})'.format(self.filename)
 
     @property
+    def forwards(self):
+        return not self.backwards
+
+    @property
     def d(self):
         return 'b' if self.backwards else 'f'
 

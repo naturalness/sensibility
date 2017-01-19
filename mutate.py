@@ -17,30 +17,32 @@
 
 
 """
-Do evaluation.
-
-Requirements:
-
- 5. Evaluate location of change => MRR
- 6. Can it fix this change?
+Perform the evaluation for one fold.
  7. If it is an open-class, consider it UNFIXABLE!
 
 This evaluation:
  - not representative of actual errors
  - demonstrates theoretical efficacy
  - intended to test algorithm given a number of different scenarios
+
+In paper, discuss how the file can still be correct, even with a different
+operation (give example).
 """
 
 import argparse
+import csv
 import sys
 import tempfile
 import random
-from collections import namedtuple
+import time
 
-from vocabulary import vocabulary, START_TOKEN, END_TOKEN
+from tqdm import tqdm
+
+from condensed_corpus import CondensedCorpus
 from model_recipe import ModelRecipe
 from token_utils import Token
-from condensed_corpus import CondensedCorpus
+from vocabulary import vocabulary, START_TOKEN, END_TOKEN
+from detect import Fix
 
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
@@ -61,10 +63,48 @@ def random_token_from_vocabulary():
                           vocabulary.end_token_index - 1)
 
 
+def to_r(condition):
+    return 'TRUE' if condition else 'FALSE'
+
+
 class Sensibility:
     """
     A dual-intuition syntax error locator and fixer.
     """
+
+    def __init__(self, forwards_file, backwards_file):
+        # TODO: load up the model.
+        ...
+
+    @classmethod
+    def from_model_recipe(cls, model_recipe):
+        forwards = model_recipe
+        backwards = model_recipe.flipped()
+        if backwards.forwards:
+            forwards, backwards = backwards, forwards
+        return cls(forwards.filename, backwards.filename)
+
+    def detect(self, filename):
+        raise NotImplementedError
+        result = argparse.Namespace()
+        result.rank = random.randint(1, 100)
+        result.syntax_error = True
+        result.fix = None
+        return result
+
+    @staticmethod
+    def is_okay(file):
+        # TODO: check syntax
+        raise NotImplementedError
+        return False
+
+
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+    def __get__(self, obj, owner):
+        return self.f(owner)
+
 
 class Mutation:
     """
@@ -82,6 +122,8 @@ class Mutation:
         )
 
     def __hash__(self):
+        if 'i' in self.__slots__:
+            import pdb; pdb.set_trace()
         return hash(tuple(getattr(self, attr) for attr in self.__slots__))
 
     def __repr__(self):
@@ -89,9 +131,9 @@ class Mutation:
         args = ', '.join(repr(getattr(self, attr)) for attr in self.__slots__)
         return '{}({})'.format(cls, args)
 
-    @property
-    def name(self):
-        return type(self).__name__
+    @classproperty
+    def name(cls):
+        return cls.__name__
 
 
 class Addition(Mutation):
@@ -137,7 +179,7 @@ class Addition(Mutation):
 
 
 class Deletion(Mutation):
-    __slots__ = ('index')
+    __slots__ = ('index',)
 
     # Only one deletion.
     token = None
@@ -169,6 +211,10 @@ class Deletion(Mutation):
         """
         victim_index = program.random_index()
         return cls(victim_index)
+
+    @property
+    def location(self):
+        return self.index
 
 
 class Substitution(Mutation):
@@ -223,11 +269,19 @@ class SourceCode(Mutation):
             last_index - 1 if tokens[-1] == vocabulary.end_token_index else last_index
         )
 
+        # XXX: hardcoded sentence lengths.
+        self.usable_range = (self.first_index + 20, self.last_index - 20)
+
     def __iter__(self):
         return iter(self.tokens)
 
     def __len__(self):
         return len(self.tokens)
+
+    @property
+    def usable_length(self):
+        lower, upper = self.usable_range
+        return max(0, upper - lower)
 
     @property
     def inner_length(self):
@@ -241,12 +295,36 @@ class SourceCode(Mutation):
         assert self.tokens[-1] == vocabulary.end_token_index
         return randint(self.first_index, self.last_index + 1)
 
+
     def random_index(self, randint=random.randint):
         """
         Produces a random insertion point in the program. Does not include start and end
         tokens.
         """
-        return randint(self.first_index, self.last_index)
+        lower, upper = self.usable_range
+        return randint(lower, upper)
+
+
+class RecordElapsedTime:
+    def __init__(self):
+        self.end = None
+        self.start = None
+
+    @property
+    def value(self):
+        if self.end is None:
+            raise RuntimeError('Timing not yet finished')
+        return self.end - self.start
+
+    def __float__(self):
+        return self.value
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.time()
 
 
 def test():
@@ -300,36 +378,53 @@ class Persistence:
         assert isinstance(new_program, SourceCode)
         self._program_hash = new_program.hash
         self._trial = 1
-        self._n_tokens = len(program)
+        self._n_tokens = len(new_program)
 
-    def add(self, *, mutation=None, fix=None, elapsed_time=None,
+    def add(self, *, mutation=None, elapsed_time=None, fix=None,
             rank=None, syntax_ok=None, actual_fix=None):
         assert isinstance(mutation, Mutation)
-        assert isinstance(fix, ...)
-        assert isinstance(elapsed_time, float)
+        assert isinstance(elapsed_time, RecordElapsedTime)
         assert isinstance(rank, int)
+        assert fix is None or isinstance(fix, Fix)
         assert isinstance(syntax_ok, bool)
         assert isinstance(actual_fix, bool)
 
-        self._file.writerow((
+        if fix is None:
+            fix_name = None
+            fix_location = None
+            fix_token = None
+        else:
+            fix_name = fix.name
+            fix_location = fix.location
+            fix_token = fix.token
+
+        self._writer.writerow((
             self.fold_no, self.epoch,
             self.program, self._n_tokens,
-            self._trial, elapsed_time,
+            self._trial, float(elapsed_time),
             mutation.name, mutation.location, mutation.token,
-            fix.name, fix.location, fix.token,
-            rank, syntax_ok, actual_fix
+            fix_name, fix_location, fix_token,
+            rank, to_r(syntax_ok), to_r(actual_fix)
         ))
         self._trial += 1
 
+    def add_correct_file(self, mutation):
+        """
+        Records that a mutation created a correct file.
+        """
+        raise NotImplementedError
+
     def __enter__(self):
         assert self._file is None
-        csv_file = open(self.filename, encoding='UTF-8')
-        self._file = csv.writer(csv_file)
-        return self._file
+        self._file = csv_file = open(self.filename, 'w+t', encoding='UTF-8')
+        self._writer = csv.writer(csv_file)
+        # TODO: open a file for correct files?
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.close()
-        self._file = None
+        self._writer = None
+
 
 
 def main():
@@ -339,51 +434,71 @@ def main():
         print(Persistence.headers)
         exit()
 
-    model = args.model
-    print(model)
-    exit(-1)
-    sensibility = Sensibility(args.model)
+    corpus = args.corpus
+    model_recipe = args.model
+    fold_no = model_recipe.fold
+    sensibility = Sensibility.from_model_recipe(model_recipe)
 
     with Persistence(model_recipe) as persist:
-        for file_hash, tokens in corpus.files_in_fold(fold_no):
+        for file_hash, tokens in tqdm(corpus.files_in_fold(fold_no)):
             program = SourceCode(file_hash, tokens)
+
+            print(program.usable_range)
+            if program.usable_length < 0:
+                # Program is useless for evaluation
+                continue
+
             persist.program = program
 
+            progress = tqdm(total=args.mutations * 3, leave=False)
             for mutation_kind in Addition, Deletion, Substitution:
-                n_incorrect_files = 0
+                progress.set_description(mutation_kind.name)
+                failures = 0
                 mutations_seen = set()
-                # Clamp down the maximum number of mutations.
-                max_mutations = min(MAX_MUTATIONS, program.inner_length)
 
-                while n_incorrect_files < max_mutations:
+                # Clamp down the maximum number of mutations.
+                max_mutations = min(args.mutations, program.usable_length)
+                max_failures = max_mutations
+
+                while failures < max_failures and len(mutations_seen) < max_mutations:
+                    if failures:
+                        progress.set_description('Failures: {}'.format(failures))
                     mutation = mutation_kind.create_random_mutation(program)
 
                     if mutation in mutations_seen:
+                        failures += 1
                         continue
-                    else:
-                        mutations_seen.add(mutation)
-                    # TODO: get elapsed time of fix.
-                    with tempfile.NamedTemporaryFile(encoding='UTF-8') as mutated_file:
+
+                    with tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8') as mutated_file:
                         # Apply the mutatation and flush it to disk.
-                        mutation.format(mutation, mutated_file)
+                        mutation.format(mutated_file)
                         mutated_file.flush()
 
-                        # TODO: Try the file, reject if it compiles.
-                        if model.is_okay(tempfile.name):
-                            persist.created_correct_file += 1
+                        # Try the file, reject if it compiles.
+                        if sensibility.is_okay(mutated_file.name):
+                            persist.add_correct_file(mutation)
+                            failures += 1
                             continue
 
-                        # TODO: save as CSV.
-                        # TODO: Count rank of correct token location
-                        # TODO: Count how many times the suggestion compiles
-                        # TODO: In paper, discuss how the file can still be
-                        # correct, even with a different operation (give example).
-                        # TODO: Count how many times the suggestion IS the true
-                        # result.
+                        # Do it!
+                        with RecordElapsedTime() as elapsed_time:
+                            time.sleep(0.1)
+                            results = sensibility.detect(mutated_file.name)
+                            # TODO: Count rank of correct token location
+                            # TODO: Figure out if it's the actual fix.
+                            # TODO: Figure out if the suggestion actually compiles
+                            # TODO: Count how many times the suggestion IS the true result.
 
-                        results = model.detect(tempfile.name)
-                        persist(program, mutation, results)
-                        n_incorrect_files += 1
+                    persist.add(mutation=mutation,
+                                elapsed_time=elapsed_time,
+                                rank=results.rank,
+                                syntax_ok=results.syntax_error,
+                                actual_fix=False)
+
+                    progress.update(1)
+                    mutations_seen.add(mutation)
+
+            progress.close()
 
 
 if __name__ == '__main__':
