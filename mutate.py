@@ -55,18 +55,30 @@ def random_token_from_vocabulary():
     Gets a uniformly random token from the vocabulary as a vocabulary index.
     """
     # Generate anything EXCEPT the start and the end token.
-    return random.randint(1, len(vocabulary))
+    return random.randint(vocabulary.start_token_index + 1,
+                          vocabulary.end_token_index - 1)
 
 
 class Model:
-    ...
-
+    """
+    Base class of the model.
+    """
 
 class Mutation:
     """
-    Base class for all mutations, just for the sake of having a base class,
-    really.
+    Base class for all mutations.  Provides methods for comparing and hashing
+    mutations.
     """
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self)) and
+            all(getattr(self, attr) == getattr(other, attr) for attr in
+                self.__slots__)
+        )
+
+    def __hash__(self):
+        return hash(tuple(getattr(self, attr) for attr in self.__slots__))
 
 
 class Addition(Mutation):
@@ -211,6 +223,17 @@ class SourceCode(Mutation):
 
 def test():
     program = SourceCode('DEADBEEF', [0, 86, 5, 31, 99])
+    a = Addition.create_random_mutation(program)
+    b = Addition.create_random_mutation(program)
+    c = Addition.create_random_mutation(program)
+
+    d1 = Addition(1, 1)
+    d2 = Addition(1, 1)
+    s = Substitution(1, 1)
+    assert len({a, b, c, c, b, a, c, b}) == 3
+    assert d1 == d2
+    assert s != d1
+
     mutation = Addition.create_random_mutation(program)
     mutation.format(program)
 

@@ -423,6 +423,7 @@ def harmonic_mean(a, b):
     return 2 * (a * b) / (a + b)
 
 
+# CONSENSUS SHOULD BE THE CROSS-ENTROPY OF THE TWO DISTRIBUTIONS
 #consensus = operator.mul
 consensus = harmonic_mean
 
