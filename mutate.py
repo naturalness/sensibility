@@ -21,21 +21,9 @@ Do evaluation.
 
 Requirements:
 
- 1. Aware of fold assignments
- 2. Uses random files from the validation fold
- 3. Does K times mutations of each kind per file:
-    * Addition
-    * Deletion
-    * Substitution
- 4. Constrict the mutation to the inner context (make it fair...)
  5. Evaluate location of change => MRR
  6. Can it fix this change?
-
-Reread UnnaturalCode, and my paper.
-
-HOW DO I PERSIST THIS DATA?
-The same way I persist any data.
-TRY TO TAKE OVER T--sqlite3.
+ 7. If it is an open-class, consider it UNFIXABLE!
 
 This evaluation:
  - not representative of actual errors
@@ -247,6 +235,7 @@ def main():
                         persist.created_correct_file += 1
                         continue
 
+                    # TODO: save as CSV.
                     # TODO: Count rank of correct token location
                     # TODO: Count how many times the suggestion compiles
                     # TODO: In paper, discuss how the file can still be

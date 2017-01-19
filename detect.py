@@ -428,6 +428,10 @@ consensus = harmonic_mean
 
 
 def dump(**kwargs):
+    """
+    Dump what one model thinks of the object.
+    """
+
     common = common_args(**kwargs)
 
     t = Terminal()
@@ -517,6 +521,9 @@ def dump(**kwargs):
 
 
 def print_top_5(model, file_vector, tokens):
+    """
+    Given one model and a file, prints the top-5 predictions.
+    """
     t = Terminal()
     header = "{t.underline}{sentence_text}{t.normal}  〽️  {t.italic}{token}{t.normal}"
     ranking_line = "   {prob:6.2f}% → {color}{text}{t.normal}"
