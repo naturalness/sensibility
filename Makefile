@@ -43,3 +43,9 @@ $(ASSIGNED_VECTORS): $(VECTORS)
 	cp $(VECTORS) $(ASSIGNED_VECTORS)
 	chmod u+w $(ASSIGNED_VECTORS)
 	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS).tmp
+
+
+# TODO: FIX THIS Here: How to convert the several CSV files into one, with headers.
+results.csv: javascript.0.$(EPOCH).csv
+	false
+	./mutate.py --headers javascript.sqlite3 javascript-f-300-20.0.4.h5 | cat - javascript.0.4.csv > results.csv
