@@ -85,18 +85,18 @@ class Sensibility:
         return cls(forwards.filename, backwards.filename)
 
     def detect(self, filename):
-        raise NotImplementedError
         result = argparse.Namespace()
         result.rank = random.randint(1, 100)
         result.syntax_error = True
         result.fix = None
         return result
+        raise NotImplementedError
 
     @staticmethod
     def is_okay(file):
         # TODO: check syntax
+        return bool(random.randint(0, 1))
         raise NotImplementedError
-        return False
 
 
 class classproperty(object):
@@ -352,7 +352,8 @@ class Persistence:
         self.corpus = model_recipe.corpus
         self.fold_no = model_recipe.fold
         self.epoch = model_recipe.epoch
-        self._file = None
+        self._main_file = None
+        self._secondary_file = None
         self._program = None
 
     @property
@@ -412,19 +413,25 @@ class Persistence:
         """
         Records that a mutation created a correct file.
         """
-        raise NotImplementedError
+        self._secondary_writer.writerow((
+            self.program, mutation.name, mutation.location, mutation.token
+        ))
 
     def __enter__(self):
-        assert self._file is None
-        self._file = csv_file = open(self.filename, 'w+t', encoding='UTF-8')
-        self._writer = csv.writer(csv_file)
-        # TODO: open a file for correct files?
+        assert self._main_file is None
+        self._main_file = csv_file = open(self.filename, 'w+t', encoding='UTF-8')
+        self._writer = csv.writer(self._main_file)
+        self._secondary_file = open(self.corpus + '.correct.csv', 'w+t',
+                                    encoding='UTF-8')
+        self._writer = csv.writer(self._main_file)
+        self._secondary_writer = csv.writer(self._secondary_file)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._file.close()
+        self._main_file.close()
+        self._secondary_file.close()
         self._writer = None
-
+        self._secondary_writer = None
 
 
 def main():
@@ -482,7 +489,6 @@ def main():
 
                         # Do it!
                         with RecordElapsedTime() as elapsed_time:
-                            time.sleep(0.1)
                             results = sensibility.detect(mutated_file.name)
                             # TODO: Count rank of correct token location
                             # TODO: Figure out if it's the actual fix.
