@@ -484,9 +484,9 @@ class Persistence:
 
     def __enter__(self):
         assert self._main_file is None
-        self._main_file = csv_file = open(self.filename, 'w+t', encoding='UTF-8')
+        self._main_file = csv_file = open(self.filename, 'a+t', encoding='UTF-8')
         self._writer = csv.writer(self._main_file)
-        self._secondary_file = open(self.corpus + '.correct.csv', 'w+t',
+        self._secondary_file = open(self.corpus + '.correct.csv', 'a+t',
                                     encoding='UTF-8')
         self._writer = csv.writer(self._main_file)
         self._secondary_writer = csv.writer(self._secondary_file)
