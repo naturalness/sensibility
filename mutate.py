@@ -35,6 +35,7 @@ import sys
 import tempfile
 import random
 import time
+from math import inf
 
 from tqdm import tqdm
 
@@ -391,6 +392,16 @@ class RecordElapsedTime:
         self.end = time.time()
 
 
+def find_rank(location, ranks):
+    """
+    Find of rank of the agreement.
+    """
+    for i, agreement in enumerate(ranks, start=1):
+        if agreement.index == location:
+            return i
+    return inf
+
+
 def test():
     program = SourceCode('DEADBEEF', [0, 86, 5, 31, 99])
     a = Addition.create_random_mutation(program)
@@ -452,7 +463,7 @@ class Persistence:
             rank=None, syntax_ok=None):
         assert isinstance(mutation, Mutation)
         assert isinstance(elapsed_time, RecordElapsedTime)
-        assert isinstance(rank, int)
+        assert isinstance(rank, int) or rank == inf
         assert fix is None or isinstance(fix, Fix)
         assert isinstance(syntax_ok, bool)
 
@@ -463,7 +474,11 @@ class Persistence:
         else:
             fix_name = fix.name
             fix_location = fix.location
-            fix_token = fix.token
+            # The token is the token TEXT, not a string.
+            fix_token = vocabulary.to_index(fix.token.value)
+
+        if rank == inf:
+            rank = self._n_tokens + 1
 
         self._writer.writerow((
             self.fold_no, self.epoch,
@@ -582,16 +597,6 @@ def main():
 
             progress.close()
 
-
-def find_rank(location, ranks):
-    """
-    Find of rank of the agreement.
-    """
-    for i, agreement in enumerate(ranks, start=1):
-        if agreement.index == location:
-            return i
-    raise ValueError("Could not find index {} in list {!r}".format(location,
-                                                                   ranks))
 
 if __name__ == '__main__':
     main()
