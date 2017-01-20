@@ -39,10 +39,15 @@ import time
 from tqdm import tqdm
 
 from condensed_corpus import CondensedCorpus
+from detect import (
+    Fix, Fixes, Model, Agreement, check_syntax_file, check_syntax, tokenize_file, chop_prefix,
+    PREFIX_LENGTH, consensus, index_of_max, rank, id_to_token
+)
 from model_recipe import ModelRecipe
 from token_utils import Token
+from training_utils import Sentences, one_hot_batch
+from vectorize_tokens import vectorize_tokens
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
-from detect import Fix
 
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
@@ -72,9 +77,15 @@ class Sensibility:
     A dual-intuition syntax error locator and fixer.
     """
 
-    def __init__(self, forwards_file, backwards_file):
-        # TODO: load up the model.
-        ...
+    def __init__(self, forwards_file, backwards_file, sentence_length):
+        architecture = 'model-architecture.json'
+        self.forwards_model = Model.from_filenames(weights=forwards_file,
+                                                   architecture=architecture,
+                                                   backwards=False)
+        self.backwards_model = Model.from_filenames(weights=backwards_file,
+                                                    architecture=architecture,
+                                                    backwards=True)
+        self.sentence_length = sentence_length
 
     @classmethod
     def from_model_recipe(cls, model_recipe):
@@ -82,21 +93,71 @@ class Sensibility:
         backwards = model_recipe.flipped()
         if backwards.forwards:
             forwards, backwards = backwards, forwards
-        return cls(forwards.filename, backwards.filename)
+        return cls(forwards.filename, backwards.filename,
+                   model_recipe.sentence)
 
-    def detect(self, filename):
-        result = argparse.Namespace()
-        result.rank = random.randint(1, 100)
-        result.syntax_error = True
-        result.fix = None
-        return result
-        raise NotImplementedError
+    def detect_and_suggest(self, filename):
+        """
+        Detects the location of syntax errors, and suggests fixes.
+        """
+
+        # Get file vector for this (incorrect) file.
+        with open(str(filename), 'rt', encoding='UTF-8') as script:
+            tokens = tokenize_file(script)
+        file_vector = vectorize_tokens(tokens)
+
+        least_agreements = []
+        forwards_predictions = []
+        backwards_predictions = []
+
+        sent_forwards = Sentences(file_vector,
+                                  size=self.sentence_length,
+                                  backwards=False)
+        sent_backwards = Sentences(file_vector,
+                                   size=self.sentence_length,
+                                   backwards=True)
+
+        # Predict every context.
+        contexts = enumerate(zip(chop_prefix(tokens, PREFIX_LENGTH),
+                                 sent_forwards, chop_prefix(sent_backwards)))
+
+        # Find disagreements.
+        for index, (token, (prefix, x1), (suffix, x2)) in contexts:
+            prefix_pred = self.forwards_model.predict(prefix)
+            suffix_pred = self.backwards_model.predict(suffix)
+
+            # Get its harmonic mean
+            mean = consensus(prefix_pred, suffix_pred)
+            forwards_predictions.append(index_of_max(prefix_pred))
+            backwards_predictions.append(index_of_max(suffix_pred))
+            paired_rankings = rank(mean)
+            min_token_id, min_prob = paired_rankings[0]
+            least_agreements.append(Agreement(min_prob, index))
+
+        fixes = Fixes(tokens)
+
+        # For the top disagreements, synthesize fixes.
+        least_agreements.sort()
+        for disagreement in least_agreements[:3]:
+            pos = disagreement.index
+
+            # Assume an addition. Let's try removing some tokens.
+            fixes.try_remove(pos)
+
+            # Assume a deletion. Let's try inserting some tokens.
+            fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
+            fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
+
+        results = argparse.Namespace()
+        results.rank = NotImplemented
+        results.syntax_error = NotImplemented
+        results.fix = NotImplemented
+        return results
 
     @staticmethod
-    def is_okay(file):
-        # TODO: check syntax
-        return bool(random.randint(0, 1))
-        raise NotImplementedError
+    def is_okay(filename):
+        with open(filename, 'rb') as source_file:
+            return check_syntax_file(source_file)
 
 
 class classproperty(object):
@@ -147,6 +208,7 @@ class Addition(Mutation):
         """
         Applies the mutation to the source code and writes it to a file.
         """
+        assert isinstance(program, SourceCode)
         insertion_point = self.insertion_point
         for index, token in enumerate(program):
             if index == insertion_point:
@@ -191,6 +253,7 @@ class Deletion(Mutation):
         """
         Applies the mutation to the source code and writes it to a file.
         """
+        assert isinstance(program, SourceCode)
         delete_index = self.index
         for index, token in enumerate(program):
             if index == delete_index:
@@ -227,6 +290,7 @@ class Substitution(Mutation):
         """
         Applies the mutation to the source code and writes it to a file.
         """
+        assert isinstance(program, SourceCode)
         sub_index = self.index
         for index, token in enumerate(program):
             if index == sub_index:
@@ -450,7 +514,6 @@ def main():
         for file_hash, tokens in tqdm(corpus.files_in_fold(fold_no)):
             program = SourceCode(file_hash, tokens)
 
-            print(program.usable_range)
             if program.usable_length < 0:
                 # Program is useless for evaluation
                 continue
@@ -478,7 +541,7 @@ def main():
 
                     with tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8') as mutated_file:
                         # Apply the mutatation and flush it to disk.
-                        mutation.format(mutated_file)
+                        mutation.format(program, mutated_file)
                         mutated_file.flush()
 
                         # Try the file, reject if it compiles.
@@ -489,7 +552,7 @@ def main():
 
                         # Do it!
                         with RecordElapsedTime() as elapsed_time:
-                            results = sensibility.detect(mutated_file.name)
+                            results = sensibility.detect_and_suggest(mutated_file.name)
                             # TODO: Count rank of correct token location
                             # TODO: Figure out if it's the actual fix.
                             # TODO: Figure out if the suggestion actually compiles

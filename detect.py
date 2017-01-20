@@ -127,7 +127,11 @@ def check_syntax(source):
     False
     """
     with synthetic_file(source) as source_file:
-        status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
+        return check_syntax_file(source_file)
+
+
+def check_syntax_file(source_file):
+    status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
     return status.returncode == 0
 
 
