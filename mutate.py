@@ -132,9 +132,9 @@ class Sensibility:
             backwards_predictions.append(index_of_max(suffix_pred))
             paired_rankings = rank(mean)
             min_token_id, min_prob = paired_rankings[0]
-            least_agreements.append(Agreement(min_prob, index))
+            least_agreements.append(Agreement(min_prob, index + PREFIX_LENGTH))
 
-        fixes = Fixes(tokens)
+        fixes = Fixes(tokens, offset=0)
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
@@ -149,9 +149,8 @@ class Sensibility:
             fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
 
         results = argparse.Namespace()
-        results.rank = NotImplemented
-        results.syntax_error = NotImplemented
-        results.fix = NotImplemented
+        results.ranks = least_agreements
+        results.fixes = fixes
         return results
 
     @staticmethod
@@ -356,8 +355,9 @@ class SourceCode(Mutation):
         Produces a random insertion point in the program. Does not include start and end
         tokens.
         """
-        assert self.tokens[-1] == vocabulary.end_token_index
-        return randint(self.first_index, self.last_index + 1)
+        return self.random_index(randint)
+        #assert self.tokens[-1] == vocabulary.end_token_index
+        #return randint(self.first_index, self.last_index + 1)
 
 
     def random_index(self, randint=random.randint):
@@ -430,7 +430,7 @@ class Persistence:
         'trial elapsed.time '
         'mutation mutation.location mutation.token '
         'fix fix.location fix.token '
-        'rank.correct syntax.ok actual.fix'
+        'rank.correct syntax.ok'
     ).replace(' ', ',')
 
     @property
@@ -445,14 +445,16 @@ class Persistence:
         self._trial = 1
         self._n_tokens = len(new_program)
 
+    def increase_trial(self):
+        self._trial += 1
+
     def add(self, *, mutation=None, elapsed_time=None, fix=None,
-            rank=None, syntax_ok=None, actual_fix=None):
+            rank=None, syntax_ok=None):
         assert isinstance(mutation, Mutation)
         assert isinstance(elapsed_time, RecordElapsedTime)
         assert isinstance(rank, int)
         assert fix is None or isinstance(fix, Fix)
         assert isinstance(syntax_ok, bool)
-        assert isinstance(actual_fix, bool)
 
         if fix is None:
             fix_name = None
@@ -469,9 +471,8 @@ class Persistence:
             self._trial, float(elapsed_time),
             mutation.name, mutation.location, mutation.token,
             fix_name, fix_location, fix_token,
-            rank, to_r(syntax_ok), to_r(actual_fix)
+            rank, to_r(syntax_ok)
         ))
-        self._trial += 1
 
     def add_correct_file(self, mutation):
         """
@@ -521,7 +522,8 @@ def main():
             persist.program = program
 
             progress = tqdm(total=args.mutations * 3, leave=False)
-            for mutation_kind in Addition, Deletion, Substitution:
+            #for mutation_kind in Addition, Deletion, Substitution:
+            for mutation_kind in Addition, Deletion:
                 progress.set_description(mutation_kind.name)
                 failures = 0
                 mutations_seen = set()
@@ -553,22 +555,43 @@ def main():
                         # Do it!
                         with RecordElapsedTime() as elapsed_time:
                             results = sensibility.detect_and_suggest(mutated_file.name)
-                            # TODO: Count rank of correct token location
-                            # TODO: Figure out if it's the actual fix.
-                            # TODO: Figure out if the suggestion actually compiles
-                            # TODO: Count how many times the suggestion IS the true result.
 
-                    persist.add(mutation=mutation,
-                                elapsed_time=elapsed_time,
-                                rank=results.rank,
-                                syntax_ok=results.syntax_error,
-                                actual_fix=False)
+                    # TODO: Count how many times the suggestion IS the true result.
+
+                    # Figure out common things.
+                    rank = find_rank(mutation.location, results.ranks)
+
+                    # Will create as many entries as there are fixes, or
+                    # simply create one entry if there are no fixes.
+                    if results.fixes:
+                        for fix in results.fixes:
+                            persist.add(mutation=mutation,
+                                        elapsed_time=elapsed_time,
+                                        syntax_ok=True,
+                                        rank=rank,
+                                        fix=fix)
+                    else:
+                        persist.add(mutation=mutation,
+                                    elapsed_time=elapsed_time,
+                                    syntax_ok=False,
+                                    rank=rank)
+                    persist.increase_trial()
 
                     progress.update(1)
                     mutations_seen.add(mutation)
 
             progress.close()
 
+
+def find_rank(location, ranks):
+    """
+    Find of rank of the agreement.
+    """
+    for i, agreement in enumerate(ranks, start=1):
+        if agreement.index == location:
+            return i
+    raise ValueError("Could not find index {} in list {!r}".format(location,
+                                                                   ranks))
 
 if __name__ == '__main__':
     main()

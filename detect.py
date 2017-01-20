@@ -241,9 +241,13 @@ class Fix:
     """
     Base class for any kind of fix.
     """
+    @property
+    def location(self):
+        return self.pos
 
 
 class Remove(Fix):
+    name = 'Remove'
     def __init__(self, pos, tokens):
         self.pos = pos
         self.tokens = tokens
@@ -276,6 +280,7 @@ class Remove(Fix):
 
 
 class Insert(Fix):
+    name = 'Insert'
     def __init__(self, token, pos, tokens):
         self.token = token
         assert 1 < pos < len(tokens)
