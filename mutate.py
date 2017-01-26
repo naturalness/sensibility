@@ -392,11 +392,11 @@ class RecordElapsedTime:
         return self.value
 
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.monotonic()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.end = time.time()
+        self.end = time.monotonic()
 
 
 def find_rank(location, ranks):
