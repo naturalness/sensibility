@@ -126,11 +126,10 @@ class Sensibility:
         ]
 
         # Predict every context.
-        contexts = enumerate(zip(chop_prefix(tokens, PREFIX_LENGTH),
-                                 sent_forwards, chop_prefix(sent_backwards)))
+        contexts = enumerate(zip(sent_forwards, chop_prefix(sent_backwards)))
 
         # Find disagreements.
-        for index, (token, (prefix, x1), (suffix, x2)) in contexts:
+        for index, ((prefix, token), (suffix, _)) in contexts:
             prefix_pred = self.forwards_model.predict(prefix)
             suffix_pred = self.backwards_model.predict(suffix)
             predictions.append(OrderedDict((
