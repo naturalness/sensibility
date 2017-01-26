@@ -60,8 +60,8 @@ print "\n";
 # Create rules for predictions.
 foreach my $fold (0..9) {
     print "\$(CORPUS).$fold.$max_epoch.csv:";
-    print " \$(CORPUS)-f-$sigmoid-$sentence.$fold.1.h5";
-    print " \$(CORPUS)-b-$sigmoid-$sentence.$fold.1.h5";
+    print " \$(CORPUS)-f-$sigmoid-$sentence.$fold.$max_epoch.h5";
+    print " \$(CORPUS)-b-$sigmoid-$sentence.$fold.$max_epoch.h5";
     print "\n";
     print "\t./mutate.py \$(ASSIGNED_VECTORS) \$<\n";
 }
