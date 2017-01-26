@@ -135,8 +135,8 @@ class Sensibility:
             suffix_pred = self.backwards_model.predict(suffix)
             predictions.append(OrderedDict((
                 ('token', token),
-                ('forwards', tuple(as_base64(x) for x in prefix_pred)),
-                ('backwards', tuple(as_base64(x) for x in suffix_pred))
+                ('forwards', tuple(as_base85(x) for x in prefix_pred)),
+                ('backwards', tuple(as_base85(x) for x in suffix_pred))
             )))
 
         return predictions
@@ -154,25 +154,25 @@ class classproperty(object):
         return self.f(owner)
 
 
-def as_base64(number, b64encode=base64.b64encode, pack=struct.pack):
+def as_base85(number, b85encode=base64.b85encode, pack=struct.pack):
     """
     Encode a numpy float32 into a Base64 string.
 
     >>> import numpy as np
-    >>> as_base64(np.float32('3.14'))
-    'QEj1ww=='
+    >>> as_base85(np.float32('3.14'))
+    'KuGn&'
     """
-    return b64encode(pack('!f', number)).decode('ascii')
+    return b85encode(pack('!f', number)).decode('ascii')
 
 
-def from_base64(string, b64decode=base64.b64decode, unpack=struct.unpack):
+def from_base85(string, b85decode=base64.b85decode, unpack=struct.unpack):
     """
-    Decode a Base64 string to a numpy float32.
+    Decode a Base85 string to a numpy float32.
 
-    >>> from_base64('QoAAAA==')
-    64.0
+    >>> from_base85('J%9iJ')
+    0.0625
     """
-    return unpack('!f', b64decode(string))[0]
+    return unpack('!f', b85decode(string))[0]
 
 
 class Mutation:
