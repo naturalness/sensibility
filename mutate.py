@@ -530,8 +530,7 @@ def main():
             persist.program = program
 
             progress = tqdm(total=args.mutations * 3, leave=False)
-            #for mutation_kind in Addition, Deletion, Substitution:
-            for mutation_kind in Addition, Deletion:
+            for mutation_kind in Addition, Deletion, Substitution:
                 progress.set_description(mutation_kind.name)
                 failures = 0
                 mutations_seen = set()
