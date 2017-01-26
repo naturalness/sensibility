@@ -30,18 +30,24 @@ operation (give example).
 """
 
 import argparse
+import base64
 import csv
+import json
+import random
+import struct
 import sys
 import tempfile
-import random
 import time
+
 from math import inf
+from collections import OrderedDict
+from itertools import islice
 
 from tqdm import tqdm
 
 from condensed_corpus import CondensedCorpus
 from detect import (
-    Fix, Fixes, Model, Agreement, check_syntax_file, check_syntax, tokenize_file, chop_prefix,
+    Model, Agreement, check_syntax_file, check_syntax, tokenize_file, chop_prefix,
     PREFIX_LENGTH, consensus, index_of_max, rank, id_to_token
 )
 from model_recipe import ModelRecipe
@@ -107,16 +113,17 @@ class Sensibility:
             tokens = tokenize_file(script)
         file_vector = vectorize_tokens(tokens)
 
-        least_agreements = []
-        forwards_predictions = []
-        backwards_predictions = []
-
         sent_forwards = Sentences(file_vector,
                                   size=self.sentence_length,
                                   backwards=False)
         sent_backwards = Sentences(file_vector,
                                    size=self.sentence_length,
                                    backwards=True)
+
+        predictions = [
+            OrderedDict((('token', token), ('forwards', ()), ('backwards', ())))
+            for token in islice(file_vector, self.sentence_length - 1)
+        ]
 
         # Predict every context.
         contexts = enumerate(zip(chop_prefix(tokens, PREFIX_LENGTH),
@@ -126,33 +133,13 @@ class Sensibility:
         for index, (token, (prefix, x1), (suffix, x2)) in contexts:
             prefix_pred = self.forwards_model.predict(prefix)
             suffix_pred = self.backwards_model.predict(suffix)
+            predictions.append(OrderedDict((
+                ('token', token),
+                ('forwards', tuple(as_base64(x) for x in prefix_pred)),
+                ('backwards', tuple(as_base64(x) for x in suffix_pred))
+            )))
 
-            # Get its harmonic mean
-            mean = consensus(prefix_pred, suffix_pred)
-            forwards_predictions.append(index_of_max(prefix_pred))
-            backwards_predictions.append(index_of_max(suffix_pred))
-            paired_rankings = rank(mean)
-            min_token_id, min_prob = paired_rankings[0]
-            least_agreements.append(Agreement(min_prob, index + PREFIX_LENGTH))
-
-        fixes = Fixes(tokens, offset=0)
-
-        # For the top disagreements, synthesize fixes.
-        least_agreements.sort()
-        for disagreement in least_agreements[:3]:
-            pos = disagreement.index
-
-            # Assume an addition. Let's try removing some tokens.
-            fixes.try_remove(pos)
-
-            # Assume a deletion. Let's try inserting some tokens.
-            fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
-            fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
-
-        results = argparse.Namespace()
-        results.ranks = least_agreements
-        results.fixes = fixes
-        return results
+        return predictions
 
     @staticmethod
     def is_okay(filename):
@@ -165,6 +152,27 @@ class classproperty(object):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
+
+
+def as_base64(number, b64encode=base64.b64encode, pack=struct.pack):
+    """
+    Encode a numpy float32 into a Base64 string.
+
+    >>> import numpy as np
+    >>> as_base64(np.float32('3.14'))
+    'QEj1ww=='
+    """
+    return b64encode(pack('!f', number)).decode('ascii')
+
+
+def from_base64(string, b64decode=base64.b64decode, unpack=struct.unpack):
+    """
+    Decode a Base64 string to a numpy float32.
+
+    >>> from_base64('QoAAAA==')
+    64.0
+    """
+    return unpack('!f', b64decode(string))[0]
 
 
 class Mutation:
@@ -440,8 +448,7 @@ class Persistence:
         'file.hash n.tokens '
         'trial elapsed.time '
         'mutation mutation.location mutation.token '
-        'fix fix.location fix.token '
-        'rank.correct syntax.ok'
+        'predictions'
     ).replace(' ', ',')
 
     @property
@@ -459,23 +466,11 @@ class Persistence:
     def increase_trial(self):
         self._trial += 1
 
-    def add(self, *, mutation=None, elapsed_time=None, fix=None,
-            rank=None, syntax_ok=None):
+    def add(self, *, mutation=None, elapsed_time=None,
+            rank=None, syntax_ok=None, predictions=None):
         assert isinstance(mutation, Mutation)
         assert isinstance(elapsed_time, RecordElapsedTime)
-        assert isinstance(rank, int) or rank == inf
-        assert fix is None or isinstance(fix, Fix)
-        assert isinstance(syntax_ok, bool)
-
-        if fix is None:
-            fix_name = None
-            fix_location = None
-            fix_token = None
-        else:
-            fix_name = fix.name
-            fix_location = fix.location
-            # The token is the token TEXT, not a string.
-            fix_token = vocabulary.to_index(fix.token.value)
+        assert isinstance(predictions, list)
 
         if rank == inf:
             rank = self._n_tokens + 1
@@ -485,8 +480,7 @@ class Persistence:
             self.program, self._n_tokens,
             self._trial, float(elapsed_time),
             mutation.name, mutation.location, mutation.token,
-            fix_name, fix_location, fix_token,
-            rank, to_r(syntax_ok)
+            json.dumps(predictions)
         ))
 
     def add_correct_file(self, mutation):
@@ -569,27 +563,11 @@ def main():
 
                         # Do it!
                         with RecordElapsedTime() as elapsed_time:
-                            results = sensibility.detect_and_suggest(mutated_file.name)
+                            predictions = sensibility.detect_and_suggest(mutated_file.name)
 
-                    # TODO: Count how many times the suggestion IS the true result.
-
-                    # Figure out common things.
-                    rank = find_rank(mutation.location, results.ranks)
-
-                    # Will create as many entries as there are fixes, or
-                    # simply create one entry if there are no fixes.
-                    if results.fixes:
-                        for fix in results.fixes:
-                            persist.add(mutation=mutation,
-                                        elapsed_time=elapsed_time,
-                                        syntax_ok=True,
-                                        rank=rank,
-                                        fix=fix)
-                    else:
-                        persist.add(mutation=mutation,
-                                    elapsed_time=elapsed_time,
-                                    syntax_ok=False,
-                                    rank=rank)
+                    persist.add(mutation=mutation,
+                                elapsed_time=elapsed_time,
+                                predictions=predictions)
                     persist.increase_trial()
 
                     progress.update(1)
