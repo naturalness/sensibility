@@ -19,6 +19,8 @@
 Trains an LSTM from sentences in the vectorized corpus.
 """
 
+# TODO: MAKE IT SAVE THE MODEL WITH ARCHITECTURE!
+
 import argparse
 from pathlib import Path
 
