@@ -200,6 +200,30 @@ class Corpus:
 
         cur.close()
 
+    @property
+    def projects(self):
+        """
+        An iterator of projects with each of their file hashes.
+        """
+        cur = self.conn.cursor()
+        cur.execute('''
+            SELECT owner, repo FROM repository
+        ''')
+        yield from cur
+
+    def filenames_from_project(self, project):
+        """
+        Yields (hash, filename) tuples that belong to the given project.
+        """
+        owner, repo = project
+        cur = self.conn.cursor()
+        cur.execute('''
+            SELECT hash, path
+              FROM source_file
+             WHERE owner = :owner AND repo = :repo
+        ''', dict(owner=owner, repo=repo))
+        yield from cur
+
     def __len__(self):
         cur = self.conn.cursor()
         cur.execute('SELECT COUNT(*) FROM parsed_source')

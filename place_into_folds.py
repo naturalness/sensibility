@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+# Copyright 2016, 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,12 +69,14 @@ import sys
 from pathlib import Path
 from functools import partial
 from itertools import islice
+from fnmatch import fnmatch
 
 from tqdm import tqdm
 
+from corpus import Corpus
 from condensed_corpus import CondensedCorpus
 
-error = partial(print, file=sys.stderr)
+stderr = partial(print, file=sys.stderr)
 
 parser = argparse.ArgumentParser('Divides the corpus into folds.')
 parser.add_argument('filename', type=Path, metavar='corpus')
@@ -82,20 +84,22 @@ parser.add_argument('-k', '--folds', type=int, default=10, help='default: 10')
 parser.add_argument('-n', '--min-tokens', type=int, default=None)
 parser.add_argument('-f', '--overwrite', action='store_true')
 
+MAIN_CORPUS = Path('javascript-sources.sqlite3')
 
 def main():
-    # Creates variables: folds, min_tokens, filename
+    # Creates variables: folds, min_tokens, filename, overwrite
     globals().update(vars(parser.parse_args()))
     assert filename.exists()
     assert folds >= 1
 
-    corpus = CondensedCorpus.connect_to(str(filename))
+    vectors = CondensedCorpus.connect_to(str(filename))
+    corpus = Corpus.connect_to(str(MAIN_CORPUS))
 
-    if corpus.has_fold_assignments:
+    if vectors.has_fold_assignments:
         if overwrite:
-            corpus.destroy_fold_assignments()
+            vectors.destroy_fold_assignments()
         else:
-            error('Will not overwrite existing fold assignments!')
+            stderr('Will not overwrite existing fold assignments!')
             exit(-1)
 
     # We maintain a priority queue of folds. At the top of the heap is the
@@ -104,23 +108,34 @@ def main():
     heapq.heapify(heap)
 
     # This is kinda dumb, but:
-    # Iterate through a shuffled list of ALL rowids...
-    error('Shuffling...')
-    shuffled_ids = list(range(corpus.min_index, corpus.max_index + 1))
-    random.shuffle(shuffled_ids)
+    # Shuffle a list of ALL project...
+    stderr('Shuffling projects...')
+    shuffled_projects = list(corpus.projects)
+    random.shuffle(shuffled_projects)
+
+    hashes_seen = set()
 
     # A series of helper functions.
-    def generate_files():
-        for random_id in shuffled_ids:
-            fewest_tokens, _ = heap[0]
-            if fewest_tokens >= min_tokens and normalish():
-                break
-
-            try:
-                yield corpus[random_id]
-            except TypeError:
-                error('File ID not found:', random_id, 'Skipping...')
+    def appropriate_files(project):
+        """
+        Yields a random project from the main corpus.
+        """
+        for file_hash, path in corpus.filenames_from_project(project):
+            # Heuristic: ignore minified file.
+            if fnmatch(path, '*.min.js'):
+                stderr('Ignoring minified file:', path)
                 continue
+
+            if file_hash in hashes_seen:
+                stderr('Ignoring duplicate file:', path, file_hash)
+                continue
+
+            hashes_seen.add(file_hash)
+            yield vectors[file_hash]
+
+    def tokens_in_smallest_fold():
+        fewest_tokens, _ = heap[0]
+        return fewest_tokens
 
     def normalish(getter=operator.itemgetter(0)):
         """
@@ -155,24 +170,33 @@ def main():
         assert isinstance(fold_no, int)
         return heapq.heappush(heap, (n_tokens, fold_no))
 
-
     if min_tokens is None:
+        # Use globals().update() to avoid an UnboundLocal error:
         globals().update(min_tokens=math.inf)
-        progress = tqdm(generate_files())
-    else:
-        progress = tqdm(generate_files(), total=min_tokens)
 
-    progress.set_description('Assigning until minimum met')
-    for file_hash, tokens in progress:
-        n_tokens = len(tokens)
-
-        # Assign it to the smallest fold
+    # Assign a project to each fold...
+    for project in tqdm(shuffled_projects):
+        # Assign this project to the smallest fold
         tokens_in_fold, fold_no = pop()
-        corpus.add_to_fold(file_hash, fold_no)
-        push(tokens_in_fold + len(tokens), fold_no)
+        n_tokens = 0
 
-        new_smallest, _ = heap[0]
-        progress.update(new_smallest - tokens_in_fold)
+        # Add every file in the project...
+        for file_hash, tokens in appropriate_files(project):
+            n_tokens += len(tokens)
+            vectors.add_to_fold(file_hash, fold_no)
+
+        # Push the fold back.
+        push(tokens_in_fold + n_tokens, fold_no)
+
+        if tokens_in_smallest_fold() >= min_tokens:
+            break
+
+    # Ensure we have enough tokens!
+    if min_tokens is not math.inf:
+        assert all(n_tokens > min_tokens for n_tokens, _ in heap), (
+            '{}-folds did not acheive minimum token length: '
+            '{}'.format(folds, min_tokens)
+        )
 
 
 if __name__ == '__main__':
