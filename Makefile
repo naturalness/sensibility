@@ -41,4 +41,4 @@ all-models.mk: all-models.pl
 $(ASSIGNED_VECTORS): $(VECTORS)
 	cp $(VECTORS) $(ASSIGNED_VECTORS)
 	chmod u+w $(ASSIGNED_VECTORS)
-	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS).tmp
+	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS)

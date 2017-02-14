@@ -131,7 +131,11 @@ def main():
                 continue
 
             hashes_seen.add(file_hash)
-            yield vectors[file_hash]
+            try:
+                yield vectors[file_hash]
+            except TypeError:
+                stderr('Could not find', file_hash)
+                continue
 
     def tokens_in_smallest_fold():
         fewest_tokens, _ = heap[0]
