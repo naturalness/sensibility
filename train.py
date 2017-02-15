@@ -26,6 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
+from condensed_corpus import CondensedCorpus
 from model_recipe import ModelRecipe
 from vocabulary import vocabulary
 
@@ -80,16 +81,18 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
                         nb_epoch=1)
 
     print("Saving model to", recipe.filename)
-    model.save_weights(recipe.filename)
+    model.save(recipe.filename)
 
 
-def when_continue(vector_filename=None, weights=None, batch_size=None,
+def when_continue(vector_filename=None, previous_model=None, batch_size=None,
                   **kwargs):
     assert Path(weights.filename).is_file()
-    recipe = weights.next_epoch()
+    from condensed_corpus import CondensedCorpus
 
-    print("Compiling the model and loading weights...")
-    model = recipe.create_model_and_load_weights(weights.filename)
+    recipe = previous_model.next_epoch()
+
+    print("Loading existing model...")
+    model = previous_model.load_model()
     print("Done!")
 
     print("Creating batches with size:", batch_size)
@@ -108,7 +111,7 @@ def when_continue(vector_filename=None, weights=None, batch_size=None,
                         nb_epoch=1)
 
     print("Saving model.")
-    model.save_weights(recipe.filename)
+    model.save(recipe.filename)
 
 
 # Create the argument parser.

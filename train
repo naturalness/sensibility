@@ -21,7 +21,6 @@
 GPU=
 
 if [ "$1" = "new" ]; then
-    echo "new file"
     case "$2" in
         --forwards)
             GPU=0

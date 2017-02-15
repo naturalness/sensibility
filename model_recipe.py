@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from vocabulary import vocabulary
+
 
 class ModelRecipe:
     """
@@ -98,6 +100,7 @@ class ModelRecipe:
         from keras.layers import LSTM
         from keras.optimizers import RMSprop
 
+
         # Defining the model:
         model = Sequential()
         model.add(LSTM(self.sigmoid,
@@ -110,10 +113,9 @@ class ModelRecipe:
                       metrics=['categorical_accuracy'])
         return model
 
-    def create_model_and_load_weights(self, weights_filename):
-        model = self.create_model()
-        model.load_weights(weights_filename)
-        return model
+    def load_model(self):
+        from keras.models import load_model
+        return load_model(self.filename)
 
     def flipped(self):
         """
