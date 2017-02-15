@@ -17,31 +17,29 @@
 
 
 """
-Perform the evaluation for one fold.
- 7. If it is an open-class, consider it UNFIXABLE!
+Mutate and predict on one fold.
+
+Does not **evaluate**, simply mutates files and performs predictions.
 
 This evaluation:
- - not representative of actual errors
+ - is intended to test the algorithm given a number of different scenarios
  - demonstrates theoretical efficacy
- - intended to test algorithm given a number of different scenarios
+ - is not representative of "real-life" errors
 
-In paper, discuss how the file can still be correct, even with a different
-operation (give example).
 """
 
 import argparse
-import base64
-import csv
 import json
 import random
+import sqlite3
 import struct
 import sys
 import tempfile
-import time
 
 from math import inf
 from collections import OrderedDict
 from itertools import islice
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -59,24 +57,50 @@ from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
 
+# Set up the argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('corpus', type=CondensedCorpus.connect_to)
 parser.add_argument('model', type=ModelRecipe.from_string)
 parser.add_argument('-k', '--mutations', type=int, default=MAX_MUTATIONS)
-parser.add_argument('--headers', action='store_true')
 
+# Prefer /dev/shm, unless it does not exist. Use /dev/shm, because it is
+# usually mounted as tmpfs ⇒ fast.
+DATABASE_LOCATION = Path('/dev/shm') if Path('/dev/shm').exists() else Path('/tmp')
+DATABASE_FILENAME = DATABASE_LOCATION / 'mutations.sqlite3'
 
-def random_token_from_vocabulary():
-    """
-    Gets a uniformly random token from the vocabulary as a vocabulary index.
-    """
-    # Generate anything EXCEPT the start and the end token.
-    return random.randint(vocabulary.start_token_index + 1,
-                          vocabulary.end_token_index - 1)
+# Schema for the results database.
+SCHEMA = r"""
+PRAGMA encoding = "UTF-8";
+PRAGMA journal_mode = WAL;
 
+CREATE TABLE mutant (
+    hash        TEXT NOT NULL,  -- file hash
+    type        TEXT NOT NULL,  -- 'addition', 'deletion', or 'substitution'
+    location    TEXT NOT NUL,   -- location in the file (0-indexed)
+    token       INTEGER,        -- changed token (not always applicable)
 
-def to_r(condition):
-    return 'TRUE' if condition else 'FALSE'
+    PRIMARY KEY (hash, type, location, token)
+);
+
+CREATE TABLE prediction (
+    model   TEXT NOT NULL,      -- model that created the prediction
+    context BLOB NOT NULL,      -- input of the prediction
+
+    data    BLOB NOT NULL,      -- prediction data, as a numpy array
+
+    PRIMARY KEY (model, context)
+);
+
+-- same as `mutant`, but contains syntacitcally correct mutants.
+CREATE TABLE correct_mutant (
+    hash        TEXT NOT NULL,
+    type        TEXT NOT NULL,
+    location    TEXT NOT NUL,
+    token       INTEGER,
+
+    PRIMARY KEY (hash, type, location, token)
+);
+"""
 
 
 class Sensibility:
@@ -84,28 +108,23 @@ class Sensibility:
     A dual-intuition syntax error locator and fixer.
     """
 
-    def __init__(self, forwards_file, backwards_file, sentence_length):
-        architecture = 'model-architecture.json'
-        self.forwards_model = Model.from_filenames(weights=forwards_file,
-                                                   architecture=architecture,
-                                                   backwards=False)
-        self.backwards_model = Model.from_filenames(weights=backwards_file,
-                                                    architecture=architecture,
-                                                    backwards=True)
-        self.sentence_length = sentence_length
-
-    @classmethod
-    def from_model_recipe(cls, model_recipe):
-        forwards = model_recipe
-        backwards = model_recipe.flipped()
+    def __init__(self, recipe):
+        forwards = recipe
+        backwards = recipe.flipped()
         if backwards.forwards:
             forwards, backwards = backwards, forwards
-        return cls(forwards.filename, backwards.filename,
-                   model_recipe.sentence)
 
-    def detect_and_suggest(self, filename):
+        self.forwards_model = forwards
+        self.backwards_model = backwards
+        self.sentence_length = recipe.sentence
+        # TODO: caches!
+        # TODO: persistence!
+
+    def predict(self, filename):
         """
-        Detects the location of syntax errors, and suggests fixes.
+        Predicts at each position in the file.
+
+        As a side-effect, writes predictions to persistence.
         """
 
         # Get file vector for this (incorrect) file.
@@ -113,65 +132,37 @@ class Sensibility:
             tokens = tokenize_file(script)
         file_vector = vectorize_tokens(tokens)
 
+        # Prepare every context.
         sent_forwards = Sentences(file_vector,
                                   size=self.sentence_length,
                                   backwards=False)
         sent_backwards = Sentences(file_vector,
                                    size=self.sentence_length,
                                    backwards=True)
+        contexts = zip(sent_forwards, chop_prefix(sent_backwards))
 
-        predictions = [
-            OrderedDict((('token', token), ('forwards', ()), ('backwards', ())))
-            for token in islice(file_vector, self.sentence_length - 1)
-        ]
-
-        # Predict every context.
-        contexts = enumerate(zip(sent_forwards, chop_prefix(sent_backwards)))
-
-        # Find disagreements.
-        for index, ((prefix, token), (suffix, _)) in contexts:
-            prefix_pred = self.forwards_model.predict(prefix)
-            suffix_pred = self.backwards_model.predict(suffix)
-            predictions.append(OrderedDict((
-                ('token', token),
-                ('forwards', tuple(as_base85(x) for x in prefix_pred)),
-                ('backwards', tuple(as_base85(x) for x in suffix_pred))
-            )))
-
-        return predictions
+        # Create predictions.
+        for ((prefix, token), (suffix, _)) in contexts:
+            self.forwards_model.predict(prefix)
+            self.backwards_model.predict(suffix)
 
     @staticmethod
     def is_okay(filename):
+        """
+        Check if the syntax is okay.
+        """
         with open(filename, 'rb') as source_file:
             return check_syntax_file(source_file)
 
 
 class classproperty(object):
+    """
+    Like @property, but for classes!
+    """
     def __init__(self, f):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
-
-
-def as_base85(number, b85encode=base64.b85encode, pack=struct.pack):
-    """
-    Encode a numpy float32 into a Base64 string.
-
-    >>> import numpy as np
-    >>> as_base85(np.float32('3.14'))
-    'KuGn&'
-    """
-    return b85encode(pack('!f', number)).decode('ascii')
-
-
-def from_base85(string, b85decode=base64.b85decode, unpack=struct.unpack):
-    """
-    Decode a Base85 string to a numpy float32.
-
-    >>> from_base85('J%9iJ')
-    0.0625
-    """
-    return unpack('!f', b85decode(string))[0]
 
 
 class Mutation:
@@ -202,6 +193,15 @@ class Mutation:
     @classproperty
     def name(cls):
         return cls.__name__
+
+
+def random_token_from_vocabulary():
+    """
+    Gets a uniformly random token from the vocabulary as a vocabulary index.
+    """
+    # Generate anything EXCEPT the start and the end token.
+    return random.randint(vocabulary.start_token_index + 1,
+                          vocabulary.end_token_index - 1)
 
 
 class Addition(Mutation):
@@ -351,6 +351,9 @@ class SourceCode(Mutation):
 
     @property
     def usable_length(self):
+        """
+        How many tokens can we mutate in this file?
+        """
         lower, upper = self.usable_range
         return max(0, upper - lower)
 
@@ -377,39 +380,11 @@ class SourceCode(Mutation):
         return randint(lower, upper)
 
 
-class RecordElapsedTime:
-    def __init__(self):
-        self.end = None
-        self.start = None
-
-    @property
-    def value(self):
-        if self.end is None:
-            raise RuntimeError('Timing not yet finished')
-        return self.end - self.start
-
-    def __float__(self):
-        return self.value
-
-    def __enter__(self):
-        self.start = time.monotonic()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.end = time.monotonic()
-
-
-def find_rank(location, ranks):
-    """
-    Find of rank of the agreement.
-    """
-    for i, agreement in enumerate(ranks, start=1):
-        if agreement.index == location:
-            return i
-    return inf
-
-
 def test():
+    """
+    Test source code mutations.
+    """
+    # The token stream INCLUDES start and stop tokens.
     program = SourceCode('DEADBEEF', [0, 86, 5, 31, 99])
     a = Addition.create_random_mutation(program)
     b = Addition.create_random_mutation(program)
@@ -428,99 +403,70 @@ def test():
 
 class Persistence:
     """
-    Saves A LOT of data to the a CSV file.
+    Persist every mutation, and enough data to reconstruct every single
+    prediction.
     """
-    def __init__(self, model_recipe):
-        self.corpus = model_recipe.corpus
-        self.fold_no = model_recipe.fold
-        self.epoch = model_recipe.epoch
-        self._main_file = None
-        self._secondary_file = None
+
+    def __init__(self):
         self._program = None
 
     @property
-    def filename(self):
-        return '{corpus}.{fold_no}.{epoch}.csv'.format_map(vars(self))
-
-    headers = (
-        'fold epoch '
-        'file.hash n.tokens '
-        'trial elapsed.time '
-        'mutation mutation.location mutation.token '
-        'predictions'
-    ).replace(' ', ',')
+    def program(self):
+        return self._program
 
     @property
-    def program(self):
-        assert self._program_hash
-        return self._program_hash
+    def current_source_hash(self):
+        return self._program.hash
 
     @program.setter
     def program(self, new_program):
         assert isinstance(new_program, SourceCode)
-        self._program_hash = new_program.hash
-        self._trial = 1
-        self._n_tokens = len(new_program)
 
-    def increase_trial(self):
-        self._trial += 1
-
-    def add(self, *, mutation=None, elapsed_time=None,
-            rank=None, syntax_ok=None, predictions=None):
+    def add_mutant(self, mutation):
         assert isinstance(mutation, Mutation)
-        assert isinstance(elapsed_time, RecordElapsedTime)
-        assert isinstance(predictions, list)
-
-        if rank == inf:
-            rank = self._n_tokens + 1
-
-        self._writer.writerow((
-            self.fold_no, self.epoch,
-            self.program, self._n_tokens,
-            self._trial, float(elapsed_time),
-            mutation.name, mutation.location, mutation.token,
-            json.dumps(predictions)
-        ))
+        raise
 
     def add_correct_file(self, mutation):
         """
         Records that a mutation created a correct file.
         """
-        self._secondary_writer.writerow((
-            self.program, mutation.name, mutation.location, mutation.token
-        ))
+        assert isinstance(mutation, Mutation)
+        raise
+
+    def add_prediction(self, *, model_recipe=None, context=None,
+                       prediction=None):
+        # TODO: add prediction to database.
+        raise
+
+    def get_prediction(self, *, model_recipe=None, context=None):
+        # TODO: fetch prediction from the database
+        raise
 
     def __enter__(self):
-        assert self._main_file is None
-        self._main_file = csv_file = open(self.filename, 'a+t', encoding='UTF-8')
-        self._writer = csv.writer(self._main_file)
-        self._secondary_file = open(self.corpus + '.correct.csv', 'a+t',
-                                    encoding='UTF-8')
-        self._writer = csv.writer(self._main_file)
-        self._secondary_writer = csv.writer(self._secondary_file)
+        # TODO: Open da database.
+        raise
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._main_file.close()
-        self._secondary_file.close()
-        self._writer = None
-        self._secondary_writer = None
+        # TODO: Close da database.
+        raise
 
 
 def main():
     # Requires: corpus, model data (backwards and forwards)
     args = parser.parse_args()
-    if args.headers:
-        print(Persistence.headers)
-        exit()
 
     corpus = args.corpus
     model_recipe = args.model
     fold_no = model_recipe.fold
+
+    # Loads the parallel models.
     sensibility = Sensibility.from_model_recipe(model_recipe)
 
-    with Persistence(model_recipe) as persist:
-        for file_hash, tokens in tqdm(corpus.files_in_fold(fold_no)):
+    # TODO: Corpus needs to return UN-ASSIGNED hashes!
+
+    with Persistence() as persist:
+        for file_hash, tokens in tqdm(()):
             program = SourceCode(file_hash, tokens)
 
             if program.usable_length < 0:
@@ -529,7 +475,9 @@ def main():
 
             persist.program = program
 
+            # TODO: Initialize the cache here!
             progress = tqdm(total=args.mutations * 3, leave=False)
+
             for mutation_kind in Addition, Deletion, Substitution:
                 progress.set_description(mutation_kind.name)
                 failures = 0
@@ -542,14 +490,15 @@ def main():
                 while failures < max_failures and len(mutations_seen) < max_mutations:
                     if failures:
                         progress.set_description('Failures: {}'.format(failures))
-                    mutation = mutation_kind.create_random_mutation(program)
 
+                    mutation = mutation_kind.create_random_mutation(program)
                     if mutation in mutations_seen:
                         failures += 1
                         continue
 
+                    # Write out the mutated file.
                     with tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8') as mutated_file:
-                        # Apply the mutatation and flush it to disk.
+                        # Apply the mutatation and write it to disk.
                         mutation.format(program, mutated_file)
                         mutated_file.flush()
 
@@ -560,14 +509,9 @@ def main():
                             continue
 
                         # Do it!
-                        with RecordElapsedTime() as elapsed_time:
-                            predictions = sensibility.detect_and_suggest(mutated_file.name)
+                        predictions = sensibility.predict(mutated_file.name)
 
-                    persist.add(mutation=mutation,
-                                elapsed_time=elapsed_time,
-                                predictions=predictions)
-                    persist.increase_trial()
-
+                    persist.add_mutant(mutation)
                     progress.update(1)
                     mutations_seen.add(mutation)
 
