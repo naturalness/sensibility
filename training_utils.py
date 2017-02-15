@@ -208,27 +208,31 @@ class LoopBatchesEndlessly:
         # XXX: hardcode a lot of stuff
         # Assume there are 10 folds.
         assert 0 <= fold <= 9
-        return cls(corpus_filename, testing_folds(fold), **kwargs)
+        return cls(corpus_filename, evaluation_folds(fold), **kwargs)
 
 
 def training_folds(fold, k=10):
     """
-    Return a tuple of all the training folds.
+    Return a tuple of all folds applicable for training.
+
     >>> training_folds(7)
-    (0, 1, 2, 3, 4, 5, 6, 8, 9)
-    """
-    assert fold < k
-    return tuple(num for num in range(10) if num != fold)
-
-
-def testing_folds(fold, k=10):
-    """
-    Return a tuple of all the training folds.
-    >>> testing_folds(4)
-    (4,)
+    (7,)
     """
     assert fold < k
     return (fold,)
+
+
+def evaluation_folds(fold, k=10):
+    """
+    Return a tuple of all the training folds.
+
+    >>> evaluation_folds(0)
+    (5,)
+    >>> evaluation_folds(4)
+    (9,)
+    """
+    assert fold < k // 2
+    return (k // 2 + fold,)
 
 
 def count_samples_slow(filename, folds, sentence_length):
