@@ -86,8 +86,8 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
 
 def when_continue(vector_filename=None, previous_model=None, batch_size=None,
                   **kwargs):
-    assert Path(weights.filename).is_file()
     from condensed_corpus import CondensedCorpus
+    assert Path(previous_model.filename).is_file()
 
     recipe = previous_model.next_epoch()
 
@@ -108,6 +108,7 @@ def when_continue(vector_filename=None, previous_model=None, batch_size=None,
                         nb_val_samples=eval_batches.samples_per_epoch // batch_size,
                         verbose=1,
                         pickle_safe=True,
+                        initial_epoch=previous_model.epoch,
                         nb_epoch=1)
 
     print("Saving model.")
@@ -141,7 +142,7 @@ for subparser in new, extend:
     subparser.add_argument('vector_filename', metavar='vectors',
                            help='corpus of vectors, with assigned folds')
 
-extend.add_argument('weights', type=ModelRecipe.from_string,
+extend.add_argument('previous_model', type=ModelRecipe.from_string,
                     help='Loads weights and biases from a previous run')
 
 if __name__ == '__main__':
