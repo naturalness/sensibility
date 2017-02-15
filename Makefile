@@ -15,9 +15,10 @@
 # A directory on a fast filesystem (e.g., a ramdisk)
 FAST_DIR = /dev/shm
 
-# 10 million, which is a semi-arbitrarily chosen number (it's a bit more then
-# the less arbitrarily-chosen number I used last time).
-TOKENS_PER_FOLD = 10000000
+# 75 million, which is a semi-arbitrarily chosen number.
+# My last training phase used 9 folds of around 7.5 million tokens each; hencem
+# this value is 10 times that (so the same amount of tokens, plus a few more).
+TOKENS_PER_FOLD = 75000000
 
 CORPUS = javascript
 VECTORS = $(CORPUS).sqlite3
