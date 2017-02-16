@@ -224,6 +224,15 @@ class Corpus:
         ''', dict(owner=owner, repo=repo))
         yield from cur
 
+    def file_info(self, file_hash):
+        results = self.conn.execute('''
+            SELECT repo, owner, path
+              FROM source_file
+             WHERE hash = :hash
+        ''', dict(hash=file_hash))
+        ((repo, owner, path),) = results
+        return repo, owner, path
+
     def __len__(self):
         cur = self.conn.cursor()
         cur.execute('SELECT COUNT(*) FROM parsed_source')

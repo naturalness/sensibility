@@ -145,6 +145,20 @@ class CondensedCorpus:
         for file_hash in self.hashes_in_fold(fold_no):
             yield self.get_tokens_by_hash(file_hash)
 
+    @property
+    def unassigned_files(self):
+        """
+        Returns a list of all files that are not assigned to existing folds.
+        """
+        yield from (file_hash for (file_hash,) in self.conn.execute("""
+            SELECT hash
+            FROM vectorized_source
+            WHERE hash NOT IN (
+                SELECT hash
+                FROM fold_assignment
+            );
+        """))
+
     def __getitem__(self, key):
         if isinstance(key, (str, bytes)):
             return self.get_tokens_by_hash(key)
