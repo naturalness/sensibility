@@ -2,6 +2,6 @@ numpy >= 1.11.0
 tqdm
 path.py
 blessings
-Keras==1.1.1
+Keras==1.2.2
 more-itertools==2.3
 h5py==2.6.0
