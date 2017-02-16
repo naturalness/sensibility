@@ -569,6 +569,16 @@ class Persistence:
         self._conn = self._program = None
 
 
+def write_cookie(filename, file_hash):
+    """
+    Write an indicator file whose existence signfies that this script actually
+    did something. For use with the Makefile
+    """
+    with open(filename, 'wt') as cookie:
+        cookie.write(file_hash)
+        cookie.write('\n')
+
+
 def main():
     # Requires: corpus, model data (backwards and forwards)
     args = parser.parse_args()
@@ -578,6 +588,10 @@ def main():
     fold_no = model_recipe.fold
     test_set_filename = model.test_set
 
+    cookie_filename = (
+        '{m.corpus}.{m.fold}.{m.epoch}.cookie'.format(m=model_recipe)
+    )
+
     # Loads the parallel models.
     sensibility = Sensibility(model_recipe)
 
@@ -586,6 +600,7 @@ def main():
         test_set = tuple(line.strip() for line in test_set_file
                          if line.strip())
     print("Considering", len(test_set), "test files to mutate...")
+    exit(-1)
 
     with Persistence() as persist:
         sensibility.persistence = persist
@@ -658,6 +673,7 @@ def main():
             progress.close()
             # Clear the LRU cache for the new file.
             sensibility.clear_cache()
+            write_cookie(cookie_filename, file_hash)
 
 
 if __name__ == '__main__':

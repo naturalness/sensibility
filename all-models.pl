@@ -62,13 +62,13 @@ print "\n";
 # Create a phony rule for mutations.
 print "mutations:";
 foreach my $fold (0 .. $max_fold) {
-    print " \$(CORPUS).$fold.$max_epoch.csv";
+    print " \$(CORPUS).$fold.$max_epoch.cookie";
 }
 print "\n";
 
 # Create rules for mutations.
 foreach my $fold (0 .. $max_fold) {
-    print "\$(CORPUS).$fold.$max_epoch.csv:";
+    print "\$(CORPUS).$fold.$max_epoch.cookie:";
     print " \$(CORPUS)-f-$sigmoid-$sentence.$fold.$max_epoch.h5";
     print " \$(CORPUS)-b-$sigmoid-$sentence.$fold.$max_epoch.h5";
     print " \$(TEST_SET).$fold";
