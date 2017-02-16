@@ -29,21 +29,18 @@ This evaluation:
 """
 
 import argparse
-import json
 import random
 import sqlite3
-import struct
 import sys
 import tempfile
+import io
 
-from math import inf
-from collections import OrderedDict
-from itertools import islice
 from pathlib import Path
 
+import numpy as np
 from tqdm import tqdm
 
-from condensed_corpus import CondensedCorpus
+from condensed_corpus import CondensedCorpus, unblob
 from detect import (
     Model, Agreement, check_syntax_file, check_syntax, tokenize_file, chop_prefix,
     PREFIX_LENGTH, consensus, index_of_max, rank, id_to_token
@@ -53,6 +50,7 @@ from token_utils import Token
 from training_utils import Sentences, one_hot_batch
 from vectorize_tokens import vectorize_tokens
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
+
 
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
@@ -74,16 +72,18 @@ SCHEMA = r"""
 PRAGMA encoding = "UTF-8";
 PRAGMA journal_mode = WAL;
 
-CREATE TABLE mutant (
+CREATE TABLE IF NOT EXISTS mutant (
     hash        TEXT NOT NULL,  -- file hash
     type        TEXT NOT NULL,  -- 'addition', 'deletion', or 'substitution'
-    location    TEXT NOT NUL,   -- location in the file (0-indexed)
-    token       INTEGER,        -- changed token (not always applicable)
+    location    TEXT NOT NULL,  -- location in the file (0-indexed)
+    token       INTEGER,        -- addition: the token inserted
+                                -- deletion: the token deleted
+                                -- substitution: the token that has replaced the old token
 
     PRIMARY KEY (hash, type, location, token)
 );
 
-CREATE TABLE prediction (
+CREATE TABLE IF NOT EXISTS prediction (
     model   TEXT NOT NULL,      -- model that created the prediction
     context BLOB NOT NULL,      -- input of the prediction
 
@@ -92,11 +92,11 @@ CREATE TABLE prediction (
     PRIMARY KEY (model, context)
 );
 
--- same as `mutant`, but contains syntacitcally correct mutants.
-CREATE TABLE correct_mutant (
+-- same as `mutant`, but contains syntactically-correct mutants.
+CREATE TABLE IF NOT EXISTS correct_mutant (
     hash        TEXT NOT NULL,
     type        TEXT NOT NULL,
-    location    TEXT NOT NUL,
+    location    TEXT NOT NULL,
     token       INTEGER,
 
     PRIMARY KEY (hash, type, location, token)
@@ -283,6 +283,7 @@ class Deletion(Mutation):
         victim_index = program.random_index()
         return cls(victim_index)
 
+
     @property
     def location(self):
         return self.index
@@ -328,7 +329,7 @@ class Substitution(Mutation):
         return self.index
 
 
-class SourceCode(Mutation):
+class SourceCode:
     """
     A source code file.
     """
@@ -402,6 +403,12 @@ def test():
     mutation.format(program)
 
 
+def to_blob(np_array):
+    filelike = io.BytesIO()
+    np.save(filelike, np_array)
+    return filelike.getbuffer()
+
+
 class Persistence:
     """
     Persist every mutation, and enough data to reconstruct every single
@@ -410,47 +417,113 @@ class Persistence:
 
     def __init__(self):
         self._program = None
+        self._conn = None
 
     @property
     def program(self):
+        """
+        SourceCode object that is currently being mutated.
+        """
         return self._program
-
-    @property
-    def current_source_hash(self):
-        return self._program.hash
 
     @program.setter
     def program(self, new_program):
         assert isinstance(new_program, SourceCode)
+        self._program = new_program
+
+    @property
+    def current_source_hash(self):
+        """
+        hash of the current source file being mutated.
+        """
+        return self._program.hash
 
     def add_mutant(self, mutation):
-        assert isinstance(mutation, Mutation)
-        raise
+        """
+        Register a new complete mutation.
+        """
+        return self._add_mutant(mutation, usable_mutation=True)
 
     def add_correct_file(self, mutation):
         """
-        Records that a mutation created a correct file.
+        Records that a mutation created a syntactically-correct file.
         """
+        return self._add_mutant(mutation, usable_mutation=False)
+
+    def _add_mutant(self, mutation, *, usable_mutation=None):
+        assert self._conn
         assert isinstance(mutation, Mutation)
-        raise
+
+        if usable_mutation:
+            sql = r'''
+                INSERT INTO mutant(hash, type, location, token)
+                     VALUES (:hash, :type, :location)
+            '''
+        else:
+            sql = r'''
+                INSERT INTO correct_mutant(hash, type, location, token)
+                     VALUES (:hash, :type, :location)
+            '''
+
+        with self._conn:
+            self._conn.execute(sql, dict(model=self.current_source_hash,
+                                         type=mutation.name,
+                                         location=mutation.location,
+                                         token=mutation.token))
 
     def add_prediction(self, *, model_recipe=None, context=None,
                        prediction=None):
-        # TODO: add prediction to database.
-        raise
+        """
+        Add the prediction (model, context) -> prediction
+        """
+        assert self._conn
+        assert isinstance(model_recipe, ModelRecipe)
+        assert isinstance(context, np.array)
+        assert isinstance(prediction, np.array)
+
+        with self._conn:
+            self._conn.execute(r'''
+                INSERT INTO prediction(model, context, data)
+                VALUES (:model, :context, :data)
+            ''', dict(model=model_recipe.filename,
+                      context=to_blob(context),
+                      data=to_blob(prediction)
+                ))
 
     def get_prediction(self, *, model_recipe=None, context=None):
-        # TODO: fetch prediction from the database
-        raise
+        """
+        Try to fetch the prediction from the database.
+
+        Returns None if the entry is not found.
+        """
+        assert self._conn
+        assert isinstance(model_recipe, ModelRecipe)
+        assert isinstance(context, np.array)
+        cur = self._conn.execute(r'''
+            SELECT data
+            FROM prediction
+            WHERE model = :model AND context = :context
+        ''', dict(model=model_recipe.filename, to_blob(context)))
+        result = cur.fetchall()
+
+        if not result:
+            # Prediction not found!
+            return None
+        else:
+            # Return the precomputed prediction.
+            return unblob(results[0][0])
 
     def __enter__(self):
-        # TODO: Open da database.
-        raise
+        # Connect to the database
+        conn = self._conn = sqlite3.connect(DATABASE_FILENAME)
+        # Initialize the database.
+        with conn:
+            conn.executescript(SCHEMA)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # TODO: Close da database.
-        raise
+        self._conn.disconnect()
+        self._conn = self._program = None
 
 
 def main():
@@ -463,7 +536,7 @@ def main():
     test_set_filename = model.test_set
 
     # Loads the parallel models.
-    sensibility = Sensibility.from_model_recipe(model_recipe)
+    sensibility = Sensibility(model_recipe)
 
     # Load the test set.
     with open(test_set_filename) as test_set_file:
