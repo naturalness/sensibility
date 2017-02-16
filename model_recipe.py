@@ -132,7 +132,7 @@ class ModelRecipe:
 
     def next_epoch(self):
         """
-        Return the model recipe for the next epoch. 
+        Return the model recipe for the next epoch.
         """
         return type(self)(self.corpus, self.backwards, self.sigmoid,
                           self.sentence, self.fold, self.epoch + 1)

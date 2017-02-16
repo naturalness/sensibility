@@ -61,6 +61,7 @@ MAX_MUTATIONS = 120
 parser = argparse.ArgumentParser()
 parser.add_argument('corpus', type=CondensedCorpus.connect_to)
 parser.add_argument('model', type=ModelRecipe.from_string)
+parser.add_argument('test_set', type=ModelRecipe.from_string)
 parser.add_argument('-k', '--mutations', type=int, default=MAX_MUTATIONS)
 
 # Prefer /dev/shm, unless it does not exist. Use /dev/shm, because it is
@@ -459,11 +460,16 @@ def main():
     corpus = args.corpus
     model_recipe = args.model
     fold_no = model_recipe.fold
+    test_set_filename = model.test_set
 
     # Loads the parallel models.
     sensibility = Sensibility.from_model_recipe(model_recipe)
 
-    # TODO: Corpus needs to return UN-ASSIGNED hashes!
+    # Load the test set.
+    with open(test_set_filename) as test_set_file:
+        test_set = tuple(line.strip() for line in test_set_file
+                         if line.strip())
+    print("Considering", len(test_set), "test files to mutate...")
 
     with Persistence() as persist:
         for file_hash, tokens in tqdm(()):

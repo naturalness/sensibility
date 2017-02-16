@@ -29,7 +29,7 @@ VECTORS = $(CORPUS).sqlite3
 ASSIGNED_VECTORS = $(FAST_DIR)/$(VECTORS)
 TEST_SET = test_set_hashes
 
-# shuf(1) isn't installed as shuf on all systems
+# shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
 SHUF = $(shell which shuf || which gshuf)
 
 # Make settings
