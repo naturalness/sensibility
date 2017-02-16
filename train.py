@@ -108,8 +108,11 @@ def when_continue(vector_filename=None, previous_model=None, batch_size=None,
                         nb_val_samples=eval_batches.samples_per_epoch // batch_size,
                         verbose=1,
                         pickle_safe=True,
-                        initial_epoch=previous_model.epoch,
-                        nb_epoch=1)
+                        # initial_epoch is 0-indexed
+                        initial_epoch=previous_model.epoch - 1,
+                        # nb_epoch is TOTAL number of epochs, ever,
+                        # so this must be GREATER than initial_epoch
+                        nb_epoch=previous_model.epoch)
 
     print("Saving model.")
     model.save(recipe.filename)
