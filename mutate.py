@@ -34,6 +34,7 @@ import sqlite3
 import sys
 import tempfile
 import io
+import functools
 
 from pathlib import Path
 
@@ -103,7 +104,6 @@ CREATE TABLE IF NOT EXISTS correct_mutant (
 );
 """
 
-
 class Sensibility:
     """
     A dual-intuition syntax error locator and fixer.
@@ -118,14 +118,46 @@ class Sensibility:
         self.forwards_model = forwards
         self.backwards_model = backwards
         self.sentence_length = recipe.sentence
-        # TODO: caches!
-        # TODO: persistence!
+        self.persistence = None
+
+        @functools.lru_cache(maxsize=2**12)
+        def predict_forwards(prefix):
+            stashed_prediction = self.persistence.get_prediction(
+                    model_recipe=forwards,
+                    context=prefix
+            )
+            if stashed_prediction is None:
+                prediction = self.forwards_model.predict(prefix)
+                self.persistence.add_prediction(
+                        model_recipe=forwards,
+                        context=prefix,
+                        prediction=prediction)
+                return prediction
+            return stashed_prediction
+
+        @functools.lru_cache(maxsize=2**12)
+        def predict_backwards(suffix):
+            stashed_prediction = self.persistence.get_prediction(
+                    model_recipe=backwards,
+                    context=suffix
+            )
+            if stashed_prediction is None:
+                prediction = self.backwards_model.predict(suffix)
+                self.persistence.add_prediction(
+                        model_recipe=backwards,
+                        context=suffix,
+                        prediction=prediction)
+                return prediction
+            return stashed_prediction
+
+        self.predict_forwards = predict_forwards
+        self.predict_backwards = predict_backwards
 
     def predict(self, filename):
         """
         Predicts at each position in the file.
 
-        As a side-effect, writes predictions to persistence.
+        Side-effect: writes predictions to persistence.
         """
 
         # Get file vector for this (incorrect) file.
@@ -133,19 +165,29 @@ class Sensibility:
             tokens = tokenize_file(script)
         file_vector = vectorize_tokens(tokens)
 
-        # Prepare every context.
+        # Create predictions.
+        for (prefix, _), (suffix, _) in self.contexts(file_vector):
+            self.predict_forwards(tuple(prefix))
+            self.predict_backwards(tuple(suffix))
+
+    def clear_cache(self):
+        self.predict_forwards.cache_clear()
+        self.predict_backwards.cache_clear()
+
+    def cache_info(self):
+        return self.predict_forwards.cache_info(), self.predict_backwards.cache_info()
+
+    def contexts(self, file_vector):
+        """
+        Yield every context (prefix, suffix) in the given file vector.
+        """
         sent_forwards = Sentences(file_vector,
                                   size=self.sentence_length,
                                   backwards=False)
         sent_backwards = Sentences(file_vector,
                                    size=self.sentence_length,
                                    backwards=True)
-        contexts = zip(sent_forwards, chop_prefix(sent_backwards))
-
-        # Create predictions.
-        for ((prefix, token), (suffix, _)) in contexts:
-            self.forwards_model.predict(prefix)
-            self.backwards_model.predict(suffix)
+        return zip(sent_forwards, chop_prefix(sent_backwards))
 
     @staticmethod
     def is_okay(filename):
@@ -539,14 +581,22 @@ def main():
     # Loads the parallel models.
     sensibility = Sensibility(model_recipe)
 
-    # Load the test set. Assuming they are already in random order.
+    # Load the test set. Assume the file hashes are already in random order.
     with open(test_set_filename) as test_set_file:
         test_set = tuple(line.strip() for line in test_set_file
                          if line.strip())
     print("Considering", len(test_set), "test files to mutate...")
 
     with Persistence() as persist:
-        for file_hash, tokens in tqdm(()):
+        sensibility.persistence = persist
+
+        # Mutate each file in the test set.
+        for file_hash in tqdm(test_set):
+            # Get the file
+            try:
+                _, tokens = corpus[file_hash]
+            except:
+                continue
             program = SourceCode(file_hash, tokens)
 
             if program.usable_length < 0:
@@ -554,12 +604,9 @@ def main():
                 continue
 
             persist.program = program
-
-            # TODO: Initialize the cache here!
             progress = tqdm(total=args.mutations * 3, leave=False)
 
             for mutation_kind in Addition, Deletion, Substitution:
-                progress.set_description(mutation_kind.name)
                 failures = 0
                 mutations_seen = set()
 
@@ -568,13 +615,11 @@ def main():
                 max_failures = max_mutations
 
                 while failures < max_failures and len(mutations_seen) < max_mutations:
-                    if failures:
-                        progress.set_description('Failures: {}'.format(failures))
-
                     mutation = mutation_kind.create_random_mutation(program)
                     if mutation in mutations_seen:
                         failures += 1
                         continue
+                    mutations_seen.add(mutation)
 
                     # Write out the mutated file.
                     with tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8') as mutated_file:
@@ -589,13 +634,30 @@ def main():
                             continue
 
                         # Do it!
-                        predictions = sensibility.predict(mutated_file.name)
+                        sensibility.predict(mutated_file.name)
 
                     persist.add_mutant(mutation)
                     progress.update(1)
-                    mutations_seen.add(mutation)
 
+                    # Update the description.
+                    symbol = (
+                        '+' if mutation_kind is Addition else
+                        '-' if mutation_kind is Deletion else
+                        '𐇼'
+                    )
+                    progress.set_description((
+                        '{symbol}[h/{f.hits} m/{f.misses}][h/{b.hits} m/{b.misses}]'
+                        ' {trial:d} ({failures})'
+                        ).format(f=persistence.predict_forwards.cache_info(),
+                                 b=persistence.predict_backwards.cache_info(),
+                                 trial=len(mutations_seen),
+                                 **vars())
+                    )
+
+            # Close the tqdm progress bar.
             progress.close()
+            # Clear the LRU cache for the new file.
+            sensibility.clear_cache()
 
 
 if __name__ == '__main__':
