@@ -15,6 +15,9 @@
 # A directory on a fast filesystem (e.g., a ramdisk)
 FAST_DIR = /dev/shm
 
+# How many training folds?
+FOLDS = 5
+
 # 75 million, which is a semi-arbitrarily chosen number.
 # My last training phase used 9 folds of around 7.5 million tokens each; hencem
 # this value is 10 times that (so the same amount of tokens, plus a few more).
@@ -25,6 +28,9 @@ SOURCES = $(CORPUS)-sources.sqlite3
 VECTORS = $(CORPUS).sqlite3
 ASSIGNED_VECTORS = $(FAST_DIR)/$(VECTORS)
 TEST_SET = test_set_hashes
+
+# shuf(1) isn't installed as shuf on all systems
+SHUF = $(shell which shuf || which gshuf)
 
 # Make settings
 # See: https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
@@ -46,4 +52,10 @@ $(ASSIGNED_VECTORS): $(VECTORS)
 	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS)
 
 $(TEST_SET): $(ASSIGNED_VECTORS) $(SOURCES)
-	./print_test_set.py $(ASSIGNED_VECTORS) $(SOURCES) > $@
+	./print_test_set.py $(ASSIGNED_VECTORS) $(SOURCES) | $(SHUF) > $@
+
+# The pattern rule is a hack that allows one recipe to make several targets,
+# but does not run the recipe several times.
+# From: http://stackoverflow.com/a/3077254/6626414
+$(TEST_SET)%0 $(TEST_SET)%1 $(TEST_SET)%2 $(TEST_SET)%3 $(TEST_SET)%4: $(TEST_SET)
+	split --number=l/$(FOLDS) -d --suffix-length=1 $(TEST_SET) $(TEST_SET).
