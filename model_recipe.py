@@ -75,8 +75,6 @@ class ModelRecipe:
         """
         from training_utils import LoopBatchesEndlessly, Sentences
 
-        # TODO: CHANGE THIS! THERE ARE NOT 9 TRAINING FOLDS!
-
         # Get the tokens from the 9 training folds.
         training_batches = LoopBatchesEndlessly\
             .for_training(corpus, self.fold,
