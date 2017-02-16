@@ -21,19 +21,20 @@ FAST_DIR = /dev/shm
 TOKENS_PER_FOLD = 75000000
 
 CORPUS = javascript
+SOURCES = $(CORPUS)-sources.sqlite3
 VECTORS = $(CORPUS).sqlite3
 ASSIGNED_VECTORS = $(FAST_DIR)/$(VECTORS)
+TEST_SET = test_set_hashes
 
 # Make settings
 # See: https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
 .PHONY: all
 .SECONDARY:
 
-all: predictions
+all: mutations
 
 # This will include a LOT of rules to make models.
 include all-models.mk
-
 # So many in fact, I've written a script to generate all the rules.
 all-models.mk: all-models.pl
 	perl $< > $@
@@ -43,3 +44,6 @@ $(ASSIGNED_VECTORS): $(VECTORS)
 	cp $(VECTORS) $(ASSIGNED_VECTORS)
 	chmod u+w $(ASSIGNED_VECTORS)
 	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS)
+
+$(TEST_SET): $(ASSIGNED_VECTORS) $(SOURCES)
+	./print_test_set.py $(ASSIGNED_VECTORS) $(SOURCES) > $@
