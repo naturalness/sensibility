@@ -485,7 +485,7 @@ class Persistence:
             self._conn.execute(r'''
                 INSERT INTO prediction(model, context, data)
                 VALUES (:model, :context, :data)
-            ''', dict(model=model_recipe.filename,
+            ''', dict(model=model_recipe.identifier,
                       context=to_blob(context),
                       data=to_blob(prediction)
                 ))
@@ -503,7 +503,8 @@ class Persistence:
             SELECT data
             FROM prediction
             WHERE model = :model AND context = :context
-        ''', dict(model=model_recipe.filename, to_blob(context)))
+        ''', dict(model=model_recipe.filename,
+                  context=to_blob(context)))
         result = cur.fetchall()
 
         if not result:
@@ -538,7 +539,7 @@ def main():
     # Loads the parallel models.
     sensibility = Sensibility(model_recipe)
 
-    # Load the test set.
+    # Load the test set. Assuming they are already in random order.
     with open(test_set_filename) as test_set_file:
         test_set = tuple(line.strip() for line in test_set_file
                          if line.strip())

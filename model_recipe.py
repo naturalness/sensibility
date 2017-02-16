@@ -57,8 +57,12 @@ class ModelRecipe:
 
     @property
     def filename(self):
+        return '{s.identifier}.h5'.format(s=self)
+
+    @property
+    def identifier(self):
         return (
-            '{s.corpus}-{s.d}-{s.sigmoid}-{s.sentence}.{s.fold}.{s.epoch}.h5'
+            '{s.corpus}-{s.d}-{s.sigmoid}-{s.sentence}.{s.fold}.{s.epoch}'
         ).format(s=self)
 
     @property
