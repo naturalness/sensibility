@@ -42,10 +42,7 @@ import numpy as np
 from tqdm import tqdm
 
 from condensed_corpus import CondensedCorpus, unblob
-from detect import (
-    Model, Agreement, check_syntax_file, check_syntax, tokenize_file, chop_prefix,
-    PREFIX_LENGTH, consensus, index_of_max, rank, id_to_token
-)
+from detect import Model, check_syntax_file, tokenize_file, chop_prefix
 from model_recipe import ModelRecipe
 from token_utils import Token
 from training_utils import Sentences, one_hot_batch
@@ -60,7 +57,7 @@ MAX_MUTATIONS = 120
 parser = argparse.ArgumentParser()
 parser.add_argument('corpus', type=CondensedCorpus.connect_to)
 parser.add_argument('model', type=ModelRecipe.from_string)
-parser.add_argument('test_set', type=ModelRecipe.from_string)
+parser.add_argument('test_set', type=Path)
 parser.add_argument('-k', '--mutations', type=int, default=MAX_MUTATIONS)
 
 # Prefer /dev/shm, unless it does not exist. Use /dev/shm, because it is
@@ -115,40 +112,39 @@ class Sensibility:
         if backwards.forwards:
             forwards, backwards = backwards, forwards
 
-        self.forwards_model = forwards
-        self.backwards_model = backwards
+        self.forwards_model = Model(forwards.load_model())
+        self.backwards_model = Model(backwards.load_model(), backwards=True)
         self.sentence_length = recipe.sentence
         self.persistence = None
 
-        @functools.lru_cache(maxsize=2**12)
-        def predict_forwards(prefix):
+        def _predict(model_recipe, model, tuple_context):
+            """
+            Does prediction, consulting the database first before consulting
+            the model.
+            """
+            context = np.array(tuple_context, np.uint8)
             stashed_prediction = self.persistence.get_prediction(
-                    model_recipe=forwards,
-                    context=prefix
+                    model_recipe=model_recipe,
+                    context=context
             )
             if stashed_prediction is None:
-                prediction = self.forwards_model.predict(prefix)
+
+                prediction = model.predict(context)
                 self.persistence.add_prediction(
-                        model_recipe=forwards,
-                        context=prefix,
+                        model_recipe=model_recipe,
+                        context=context,
                         prediction=prediction)
                 return prediction
             return stashed_prediction
 
+        # Create cached prediction functions.
+        @functools.lru_cache(maxsize=2**12)
+        def predict_forwards(prefix):
+            return _predict(forwards, self.forwards_model, prefix)
+
         @functools.lru_cache(maxsize=2**12)
         def predict_backwards(suffix):
-            stashed_prediction = self.persistence.get_prediction(
-                    model_recipe=backwards,
-                    context=suffix
-            )
-            if stashed_prediction is None:
-                prediction = self.backwards_model.predict(suffix)
-                self.persistence.add_prediction(
-                        model_recipe=backwards,
-                        context=suffix,
-                        prediction=prediction)
-                return prediction
-            return stashed_prediction
+            return _predict(backwards, self.backwards_model, suffix)
 
         self.predict_forwards = predict_forwards
         self.predict_backwards = predict_backwards
@@ -499,16 +495,16 @@ class Persistence:
         if usable_mutation:
             sql = r'''
                 INSERT INTO mutant(hash, type, location, token)
-                     VALUES (:hash, :type, :location)
+                     VALUES (:hash, :type, :location, :token)
             '''
         else:
             sql = r'''
                 INSERT INTO correct_mutant(hash, type, location, token)
-                     VALUES (:hash, :type, :location)
+                     VALUES (:hash, :type, :location, :token)
             '''
 
         with self._conn:
-            self._conn.execute(sql, dict(model=self.current_source_hash,
+            self._conn.execute(sql, dict(hash=self.current_source_hash,
                                          type=mutation.name,
                                          location=mutation.location,
                                          token=mutation.token))
@@ -520,15 +516,14 @@ class Persistence:
         """
         assert self._conn
         assert isinstance(model_recipe, ModelRecipe)
-        assert isinstance(context, np.array)
-        assert isinstance(prediction, np.array)
+        assert isinstance(prediction, np.ndarray)
 
         with self._conn:
             self._conn.execute(r'''
                 INSERT INTO prediction(model, context, data)
                 VALUES (:model, :context, :data)
             ''', dict(model=model_recipe.identifier,
-                      context=to_blob(context),
+                      context=serialize_context(context),
                       data=to_blob(prediction)
                 ))
 
@@ -540,13 +535,12 @@ class Persistence:
         """
         assert self._conn
         assert isinstance(model_recipe, ModelRecipe)
-        assert isinstance(context, np.array)
         cur = self._conn.execute(r'''
             SELECT data
             FROM prediction
             WHERE model = :model AND context = :context
         ''', dict(model=model_recipe.filename,
-                  context=to_blob(context)))
+                  context=serialize_context(context)))
         result = cur.fetchall()
 
         if not result:
@@ -558,14 +552,14 @@ class Persistence:
 
     def __enter__(self):
         # Connect to the database
-        conn = self._conn = sqlite3.connect(DATABASE_FILENAME)
+        conn = self._conn = sqlite3.connect(str(DATABASE_FILENAME))
         # Initialize the database.
         with conn:
             conn.executescript(SCHEMA)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._conn.disconnect()
+        self._conn.close()
         self._conn = self._program = None
 
 
@@ -579,6 +573,10 @@ def write_cookie(filename, file_hash):
         cookie.write('\n')
 
 
+def serialize_context(context):
+    return to_blob(np.array(context, np.uint8))
+
+
 def main():
     # Requires: corpus, model data (backwards and forwards)
     args = parser.parse_args()
@@ -586,7 +584,7 @@ def main():
     corpus = args.corpus
     model_recipe = args.model
     fold_no = model_recipe.fold
-    test_set_filename = model.test_set
+    test_set_filename = args.test_set
 
     cookie_filename = (
         '{m.corpus}.{m.fold}.{m.epoch}.cookie'.format(m=model_recipe)
@@ -596,11 +594,10 @@ def main():
     sensibility = Sensibility(model_recipe)
 
     # Load the test set. Assume the file hashes are already in random order.
-    with open(test_set_filename) as test_set_file:
+    with open(str(test_set_filename)) as test_set_file:
         test_set = tuple(line.strip() for line in test_set_file
                          if line.strip())
     print("Considering", len(test_set), "test files to mutate...")
-    exit(-1)
 
     with Persistence() as persist:
         sensibility.persistence = persist
@@ -662,9 +659,9 @@ def main():
                     )
                     progress.set_description((
                         '{symbol}[h/{f.hits} m/{f.misses}][h/{b.hits} m/{b.misses}]'
-                        ' {trial:d} ({failures})'
-                        ).format(f=persistence.predict_forwards.cache_info(),
-                                 b=persistence.predict_backwards.cache_info(),
+                        ' {trial:d}({failures})'
+                        ).format(f=sensibility.predict_forwards.cache_info(),
+                                 b=sensibility.predict_backwards.cache_info(),
                                  trial=len(mutations_seen),
                                  **vars())
                     )

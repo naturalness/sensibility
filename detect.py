@@ -43,7 +43,7 @@ from training_utils import Sentences, one_hot_batch
 
 
 THIS_DIRECTORY = Path(__file__).parent
-TOKENIZE_JS_BIN = ('node', str(THIS_DIRECTORY / 'tokenize-js'))
+TOKENIZE_JS_BIN = (str(THIS_DIRECTORY / 'tokenize-js' / 'wrapper.sh'),)
 CHECK_SYNTAX_BIN = (*TOKENIZE_JS_BIN, '--check-syntax')
 
 SENTENCE_LENGTH = 20

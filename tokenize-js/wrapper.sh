@@ -13,4 +13,4 @@ if [ node_modules -ot package.json ]; then
 fi
 cd "$original_dir" || exit -1
     
-exec node index.js
+exec node "$script_dir/index.js" "$@"

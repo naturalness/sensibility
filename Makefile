@@ -29,8 +29,10 @@ VECTORS = $(CORPUS).sqlite3
 ASSIGNED_VECTORS = $(FAST_DIR)/$(VECTORS)
 TEST_SET = test_set_hashes
 
+# Always use the GNU versions of shuf(1) and split(1)
 # shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
 SHUF = $(shell which shuf || which gshuf)
+SPLIT = $(shell which gsplit || which split)
 
 # Make settings
 # See: https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
@@ -58,4 +60,4 @@ $(TEST_SET): $(ASSIGNED_VECTORS) $(SOURCES)
 # but does not run the recipe several times.
 # From: http://stackoverflow.com/a/3077254/6626414
 $(TEST_SET)%0 $(TEST_SET)%1 $(TEST_SET)%2 $(TEST_SET)%3 $(TEST_SET)%4: $(TEST_SET)
-	split --number=l/$(FOLDS) -d --suffix-length=1 $(TEST_SET) $(TEST_SET).
+	$(SPLIT) --number=l/$(FOLDS) -d --suffix-length=1 $(TEST_SET) $(TEST_SET).
