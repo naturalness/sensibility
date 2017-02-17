@@ -49,6 +49,7 @@ from training_utils import Sentences, one_hot_batch
 from vectorize_tokens import vectorize_tokens
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 
+FAST_FILESYSTEM = False
 
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
@@ -60,9 +61,14 @@ parser.add_argument('model', type=ModelRecipe.from_string)
 parser.add_argument('test_set', type=Path)
 parser.add_argument('-k', '--mutations', type=int, default=MAX_MUTATIONS)
 
-# Prefer /dev/shm, unless it does not exist. Use /dev/shm, because it is
-# usually mounted as tmpfs ⇒ fast.
-DATABASE_LOCATION = Path('/dev/shm') if Path('/dev/shm').exists() else Path('/tmp')
+if FAST_FILESYSTEM:
+    # Prefer /dev/shm, unless it does not exist. Use /dev/shm, because it is
+    # usually mounted as tmpfs ⇒ fast.
+    DATABASE_LOCATION = Path('/dev/shm') if Path('/dev/shm').exists() else Path('/tmp')
+else:
+    # Just choose the current working directory (it's probably a big HD/SSD)
+    DATABASE_LOCATION = Path('.')
+
 DATABASE_FILENAME = DATABASE_LOCATION / 'mutations.sqlite3'
 
 # Schema for the results database.
