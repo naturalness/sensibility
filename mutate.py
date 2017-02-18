@@ -60,6 +60,8 @@ parser.add_argument('corpus', type=CondensedCorpus.connect_to)
 parser.add_argument('model', type=ModelRecipe.from_string)
 parser.add_argument('test_set', type=Path)
 parser.add_argument('-k', '--mutations', type=int, default=MAX_MUTATIONS)
+parser.add_argument('-n', '--limit', type=int, default=None)
+parser.add_argument('-o', '--offset', type=int, default=0)
 
 if FAST_FILESYSTEM:
     # Prefer /dev/shm, unless it does not exist. Use /dev/shm, because it is
@@ -591,6 +593,8 @@ def main():
     model_recipe = args.model
     fold_no = model_recipe.fold
     test_set_filename = args.test_set
+    limit = args.limit
+    offset = args.offset
 
     cookie_filename = (
         '{m.corpus}.{m.fold}.{m.epoch}.cookie'.format(m=model_recipe)
@@ -599,10 +603,16 @@ def main():
     # Loads the parallel models.
     sensibility = Sensibility(model_recipe)
 
+
     # Load the test set. Assume the file hashes are already in random order.
     with open(str(test_set_filename)) as test_set_file:
         test_set = tuple(line.strip() for line in test_set_file
                          if line.strip())
+
+    # Resize the test set
+    upper_bound = offset + limit if limit is not None else len(test_set)
+    test_set = test_set[offset:upper_bound]
+
     print("Considering", len(test_set), "test files to mutate...")
 
     with Persistence() as persist:
