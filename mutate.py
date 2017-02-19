@@ -497,7 +497,7 @@ class Persistence:
     prediction.
     """
 
-    def __init__(self, database=DATABASE_LOCATION):
+    def __init__(self, database=DATABASE_FILENAME):
         self._program = None
         self._dbname = database
         self._conn = None
