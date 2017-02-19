@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS correct_mutant (
 );
 """
 
+
 class Sensibility:
     """
     A dual-intuition syntax error locator and fixer.
@@ -208,6 +209,7 @@ class classproperty(object):
     """
     def __init__(self, f):
         self.f = f
+
     def __get__(self, obj, owner):
         return self.f(owner)
 
@@ -228,8 +230,6 @@ class Mutation:
         )
 
     def __hash__(self):
-        if 'i' in self.__slots__:
-            import pdb; pdb.set_trace()
         return hash(tuple(getattr(self, attr) for attr in self.__slots__))
 
     def __repr__(self):
@@ -337,6 +337,7 @@ class Deletion(Mutation):
 
 class Substitution(Mutation):
     __slots__ = ('index', 'token')
+
     def __init__(self, index, token):
         self.index = index
         self.token = token
@@ -415,9 +416,6 @@ class SourceCode:
         tokens.
         """
         return self.random_index(randint)
-        #assert self.tokens[-1] == vocabulary.end_token_index
-        #return randint(self.first_index, self.last_index + 1)
-
 
     def random_index(self, randint=random.randint):
         """
@@ -571,8 +569,7 @@ class Persistence:
                 VALUES (:model, :context, :data)
             ''', dict(model=model_recipe.identifier,
                       context=serialize_context(context),
-                      data=to_blob(prediction)
-                ))
+                      data=to_blob(prediction)))
 
     def get_prediction(self, *, model_recipe=None, context=None):
         """
@@ -620,8 +617,6 @@ def write_cookie(filename, file_hash):
         cookie.write('\n')
 
 
-
-
 def main():
     # Requires: corpus, model data (backwards and forwards)
     args = parser.parse_args()
@@ -639,7 +634,6 @@ def main():
 
     # Loads the parallel models.
     sensibility = Sensibility(model_recipe)
-
 
     # Load the test set. Assume the file hashes are already in random order.
     with open(str(test_set_filename)) as test_set_file:
