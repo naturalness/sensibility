@@ -47,6 +47,9 @@ def when_none_selected(**kwargs):
     exit(-1)
 
 
+# TODO: Replace when_train with fit_generator that uses
+# keras.callbacks.ModelCheckpoint.
+# Another thing: at the end of the epoch, make a symlink to the current model.
 def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
              sentence_length=None, batch_size=None, fold=None, **kwargs):
     assert Path(vector_filename).exists()
