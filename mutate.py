@@ -76,7 +76,6 @@ DATABASE_FILENAME = DATABASE_LOCATION / 'mutations.sqlite3'
 # Schema for the results database.
 SCHEMA = r"""
 PRAGMA encoding = "UTF-8";
-PRAGMA journal_mode = WAL;
 
 CREATE TABLE IF NOT EXISTS mutant (
     hash        TEXT NOT NULL,  -- file hash
@@ -147,11 +146,11 @@ class Sensibility:
             return stashed_prediction
 
         # Create cached prediction functions.
-        @functools.lru_cache(maxsize=2**12)
+        @functools.lru_cache(maxsize=2**16)
         def predict_forwards(prefix):
             return _predict(forwards, self.forwards_model, prefix)
 
-        @functools.lru_cache(maxsize=2**12)
+        @functools.lru_cache(maxsize=2**16)
         def predict_backwards(suffix):
             return _predict(backwards, self.backwards_model, suffix)
 
@@ -564,6 +563,7 @@ class Persistence:
         assert isinstance(prediction, np.ndarray)
 
         with self._conn:
+            self._conn.execute('BEGIN')
             self._conn.execute(r'''
                 INSERT INTO prediction(model, context, data)
                 VALUES (:model, :context, :data)
@@ -600,6 +600,12 @@ class Persistence:
         # Initialize the database.
         with conn:
             conn.executescript(SCHEMA)
+            # Some speed optimizations:
+            # http://codificar.com.br/blog/sqlite-optimization-faq/
+            conn.executescript(r'''
+                PRAGMA journal_mode = WAL;
+                PRAGMA synchronous = normal;
+            ''')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
