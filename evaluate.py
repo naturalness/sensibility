@@ -19,7 +19,7 @@ from training_utils import Sentences, one_hot_batch
 from detect import (
     check_syntax_file, tokenize_file, chop_prefix,
     harmonic_mean, index_of_max, rank,
-    Fixes, Agreement
+    Fixes, Agreement, id_to_token
 )
 from vectorize_tokens import vectorize_tokens
 from model_recipe import ModelRecipe
@@ -74,7 +74,7 @@ class SensibilityForEvaluation:
             min_token_id, min_prob = paired_rankings[0]
             least_agreements.append(Agreement(min_prob, index))
 
-        fixes = Fixes(common.tokens)
+        fixes = Fixes(tokens)
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
@@ -91,7 +91,8 @@ class SensibilityForEvaluation:
 
         fix = None if not fixes else tuple(fixes)[0]
 
-        return [], fix
+        # TODO: I might need "fix position" as well as fix.
+        return least_agreements, fix
 
     def contexts(self, file_vector):
         """
@@ -127,6 +128,7 @@ class Results:
         self._file = open('results.csv', 'w')
         self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
         self._writer.writeheader()
+        return self
 
     def __exit__(self, *exc_info):
         self._file.close()
@@ -160,8 +162,10 @@ def rank_and_fix(fold_no, mutated_file):
     return sensibility.rank_and_fix(mutated_file.name)
 
 
-def first_with_line_no(ranked_locations, correct_line, tokens):
-    raise NotImplementedError
+def first_with_line_no(disagreements, correct_line, tokens):
+    for rank, disagreement in enumerate(disagreements, start=1):
+        if tokens[disagreement.index].line == correct_line:
+            return rank
 
 
 if __name__ == '__main__':
@@ -206,8 +210,8 @@ if __name__ == '__main__':
                 correct_line=correct_line,
                 rank_correct_line=rank_correct_line,
                 fixed=bool(fix),
-                fkind=fix.kind,
-                fpos=fix.location,
-                ftoken=fix.token,
-                same_fix=...
+                fkind=fix.kind if fix else None,
+                fpos=fix.location if fix else None,
+                ftoken=fix.token if fix else None,
+                same_fix=None
             )
