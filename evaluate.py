@@ -43,7 +43,7 @@ def populate_folds():
     for fold in 0, 1, 2, 3, 4:
         with open('test_set_hashes.' + str(fold)) as hash_file:
             for file_hash in hash_file:
-                FOLDS[file_hash] = fold
+                FOLDS[file_hash.strip()] = fold
 
 
 def apply_mutation(mutation, tokens):
@@ -64,9 +64,10 @@ if __name__ == '__main__':
     populate_folds()
 
     with Mutations() as mutations, Results() as results:
-        for mutation, file_hash in tqdm(mutations, total=120 * 3 * 128 * 5):
+        for file_hash, mutation in tqdm(mutations):
+            print(mutation)
             # Figure out what fold it is.
-            fold_no = FOLD[file_hash]
+            fold_no = FOLDS[file_hash]
             tokens = corpus.get_tokens(file_hash)
             # Apply the mutation and figure out the line of the mutation in the original file.
             mutated_file, correct_line = apply_mutation(mutation, tokens)

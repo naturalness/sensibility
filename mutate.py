@@ -80,7 +80,7 @@ PRAGMA encoding = "UTF-8";
 CREATE TABLE IF NOT EXISTS mutant (
     hash        TEXT NOT NULL,  -- file hash
     type        TEXT NOT NULL,  -- 'addition', 'deletion', or 'substitution'
-    location    TEXT NOT NULL,  -- location in the file (0-indexed)
+    location    INTEGER,        -- location in the file (0-indexed)
     token       INTEGER,        -- addition: the token inserted
                                 -- deletion: the token deleted
                                 -- substitution: the token that has replaced the old token
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS prediction (
 CREATE TABLE IF NOT EXISTS correct_mutant (
     hash        TEXT NOT NULL,
     type        TEXT NOT NULL,
-    location    TEXT NOT NULL,
+    location    INTEGER,
     token       INTEGER,
 
     PRIMARY KEY (hash, type, location, token)
@@ -500,6 +500,26 @@ class Persistence:
         self._program = None
         self._dbname = database
         self._conn = None
+
+    def __len__(self):
+        assert self._conn
+        return self._conn.execute(r'''
+            SELECT COUNT(*) FROM mutant
+        ''').fetchall()[0][0]
+
+    def __iter__(self):
+        assert self._conn
+        constructor = {
+                'Addition': lambda loc, token: Addition(loc, token),
+                'Deletion': lambda loc, token: Deletion(loc),
+                'Substitution': lambda loc, token: Substitution(loc, token)
+        }
+        cur = self._conn.execute(r'''
+            SELECT hash, type, location, token FROM mutant
+        ''')
+        for file_hash, _type, location, token in cur:
+            mutation = constructor[_type](int(location), int(token) if token else token)
+            yield file_hash, mutation
 
     @property
     def program(self):

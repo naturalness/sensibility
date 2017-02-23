@@ -234,7 +234,15 @@ class Corpus:
         return repo, owner, path
 
     def get_tokens(self, file_hash):
-        raise NotImplementedError
+        blob, = self.conn.execute('''
+            SELECT tokens
+              FROM parsed_source
+             WHERE hash = :hash
+        ''', {'hash': file_hash}).fetchone()
+
+        raw_tokens = json.loads(blob)
+        return tuple(Token.from_json(raw_token)
+                     for raw_token in raw_tokens)
 
     def __len__(self):
         cur = self.conn.cursor()
