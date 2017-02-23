@@ -233,6 +233,9 @@ class Corpus:
         ((repo, owner, path),) = results
         return repo, owner, path
 
+    def get_tokens(self, file_hash):
+        raise NotImplementedError
+
     def __len__(self):
         cur = self.conn.cursor()
         cur.execute('SELECT COUNT(*) FROM parsed_source')
