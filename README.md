@@ -6,7 +6,7 @@ Detects and fixes syntax errors. Currently works with JavaScript.
 Install
 -------
 
-Requires Python 3.5.
+Requires Python 3.5 and Node.JS.
 
 Activate a virtualenv, if that's your thing. Then,
 
