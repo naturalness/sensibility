@@ -7,6 +7,8 @@ Evaluates the performance of the fixer thing.
 
 import csv
 import tempfile
+import math
+import sys
 
 from tqdm import tqdm
 
@@ -23,6 +25,15 @@ from detect import (
 )
 from vectorize_tokens import vectorize_tokens
 from model_recipe import ModelRecipe
+
+
+def fix_zeros(preds, epsilon=sys.float_info.epsilon):
+    """
+    Replace zeros with really small values..
+    """
+    for i, pred in enumerate(preds):
+        if math.isclose(pred, 0.0):
+            preds[i] = epsilon
 
 
 class SensibilityForEvaluation:
@@ -63,6 +74,12 @@ class SensibilityForEvaluation:
             prefix_pred = self.forwards_predict(prefix)
             suffix_pred = self.backwards_predict(suffix)
 
+            fix_zeros(prefix_pred)
+            fix_zeros(suffix_pred)
+
+            assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)
+            assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)
+
             # Get its harmonic mean
             mean = harmonic_mean(prefix_pred, suffix_pred)
 
@@ -73,7 +90,7 @@ class SensibilityForEvaluation:
             paired_rankings = rank(mean)
             min_token_id, min_prob = paired_rankings[0]
             least_agreements.append(Agreement(min_prob, index))
-
+        
         fixes = Fixes(tokens)
 
         # For the top disagreements, synthesize fixes.
@@ -119,8 +136,7 @@ class Results:
     FIELDS = '''
         fold file
         mkind mpos mtoken
-        correct_line
-        rank_correct_line
+        correct_line line_of_top_rank rank_correct_line
         fixed fkind fpos ftoken same_fix
     '''.split()
 
@@ -135,6 +151,7 @@ class Results:
 
     def write(self, **kwargs):
         self._writer.writerow(kwargs)
+        self._file.flush()
 
 
 FOLDS = {}
@@ -199,15 +216,18 @@ if __name__ == '__main__':
                 ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
 
             # Figure out the rank of the actual mutation.
+            line_of_top_location = tokens[ranked_locations[0].index].line
             rank_correct_line = first_with_line_no(ranked_locations,
                                                    correct_line, tokens)
 
             results.write(
                 fold=fold_no,
+                file=file_hash,
                 mkind=mutation.name,
                 mtoken=mutation.token,
                 mpos=mutation.location,
                 correct_line=correct_line,
+                line_of_top_rank=line_of_top_location,
                 rank_correct_line=rank_correct_line,
                 fixed=bool(fix),
                 fkind=fix.kind if fix else None,
