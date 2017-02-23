@@ -6,11 +6,112 @@ Evaluates the performance of the fixer thing.
 """
 
 import csv
+import tempfile
 
 from tqdm import tqdm
 
+from vocabulary import vocabulary
 from mutate import Persistence as Mutations
+from mutate import SourceCode
 from corpus import Corpus
+from condensed_corpus import CondensedCorpus
+from training_utils import Sentences, one_hot_batch
+from detect import (
+    check_syntax_file, tokenize_file, chop_prefix,
+    harmonic_mean, index_of_max, rank,
+    Fixes, Agreement
+)
+from vectorize_tokens import vectorize_tokens
+from model_recipe import ModelRecipe
+
+
+class SensibilityForEvaluation:
+    sentence_length = 20
+
+    def __init__(self, fold_no):
+        name = 'javascript-{dir}-300-20.{fold}.5.h5'
+        forwards = ModelRecipe.from_string(name.format(dir='f', fold=fold_no))
+        backwards = ModelRecipe.from_string(name.format(dir='b', fold=fold_no))
+        db = mutations
+        self.forwards_predict = lambda prefix: db.get_prediction(model_recipe=forwards, context=prefix)
+        self.backwards_predict = lambda suffix: db.get_prediction(model_recipe=backwards, context=suffix)
+
+    def rank_and_fix(self, filename):
+        """
+        Rank the syntax error location (in token number) and returns a possible
+        fix for the given filename.
+        """
+
+        # Get file vector for the incorrect file.
+        with open(str(filename), 'rt', encoding='UTF-8') as script:
+            tokens = tokenize_file(script)
+        file_vector = vectorize_tokens(tokens)
+
+        padding = self.sentence_length
+
+        # Holds the lowest agreement at each point in the file.
+        least_agreements = []
+
+        # These will hold the TOP predictions at a given point.
+        forwards_predictions = [None] * padding
+        backwards_predictions = [None] * padding
+        contexts = enumerate(self.contexts(file_vector), start=padding)
+
+        for index, ((prefix, token), (suffix, _)) in contexts:
+            assert token == file_vector[index], str(token) + ' ' + str(file_vector[index])
+            # Fetch predictions.
+            prefix_pred = self.forwards_predict(prefix)
+            suffix_pred = self.backwards_predict(suffix)
+
+            # Get its harmonic mean
+            mean = harmonic_mean(prefix_pred, suffix_pred)
+
+            # Store the TOP prediction from both models.
+            forwards_predictions.append(index_of_max(prefix_pred))
+            backwards_predictions.append(index_of_max(suffix_pred))
+
+            paired_rankings = rank(mean)
+            min_token_id, min_prob = paired_rankings[0]
+            least_agreements.append(Agreement(min_prob, index))
+
+        fixes = Fixes(common.tokens)
+
+        # For the top disagreements, synthesize fixes.
+        least_agreements.sort()
+        for disagreement in least_agreements[:3]:
+            pos = disagreement.index
+
+            # Assume an addition. Let's try removing some tokens.
+            fixes.try_remove(pos)
+
+            # Assume a deletion. Let's try inserting some tokens.
+            fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
+            fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
+            # TODO: make substitution rule
+
+        fix = None if not fixes else tuple(fixes)[0]
+
+        return [], fix
+
+    def contexts(self, file_vector):
+        """
+        Yield every context (prefix, suffix) in the given file vector.
+        """
+        sent_forwards = Sentences(file_vector,
+                                  size=self.sentence_length,
+                                  backwards=False)
+        sent_backwards = Sentences(file_vector,
+                                   size=self.sentence_length,
+                                   backwards=True)
+        return zip(sent_forwards, chop_prefix(sent_backwards))
+
+    @staticmethod
+    def is_okay(filename):
+        """
+        Check if the syntax is okay.
+        """
+        with open(filename, 'rb') as source_file:
+            return check_syntax_file(source_file)
 
 
 class Results:
@@ -46,13 +147,17 @@ def populate_folds():
                 FOLDS[file_hash.strip()] = fold
 
 
-def apply_mutation(mutation, tokens):
-    raise NotImplementedError
+def apply_mutation(mutation, program):
+    mutated_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
+    # Apply the mutatation and write it to disk.
+    mutation.format(program, mutated_file)
+    mutated_file.flush()
+    return mutated_file
 
 
-def rank_and_fix(mutation):
-    raise NotImplementedError
-    return [], None
+def rank_and_fix(fold_no, mutated_file):
+    sensibility = SensibilityForEvaluation(fold_no)
+    return sensibility.rank_and_fix(mutated_file.name)
 
 
 def first_with_line_no(ranked_locations, correct_line, tokens):
@@ -61,20 +166,38 @@ def first_with_line_no(ranked_locations, correct_line, tokens):
 
 if __name__ == '__main__':
     corpus = Corpus.connect_to('javascript-sources.sqlite3')
+    vectors = CondensedCorpus.connect_to('/dev/shm/javascript.sqlite3')
     populate_folds()
 
     with Mutations() as mutations, Results() as results:
         for file_hash, mutation in tqdm(mutations):
-            print(mutation)
-            # Figure out what fold it is.
+            # Figure out what fold it's in.
             fold_no = FOLDS[file_hash]
+
+            # Get the original vector to get the mutated file.
+            _, vector = vectors[file_hash]
+            assert vector[0] == 0, 'not start token'
+            assert vector[-1] == 99, 'not end token'
+            program = SourceCode(file_hash, vector)
+
+            # Get the actual file's tokens, including line numbers!
             tokens = corpus.get_tokens(file_hash)
-            # Apply the mutation and figure out the line of the mutation in the original file.
-            mutated_file, correct_line = apply_mutation(mutation, tokens)
-            # Do the (canned) prediction...
-            ranked_locations, fix = rank_and_fix(mutated_file)
+            # Ensure that both files use the same indices!
+            tokens = ('start',) + tokens + ('end',)
+            assert len(tokens) == len(tokens)
+
+            # Figure out the line of the mutation in the original file.
+            correct_line = tokens[mutation.location].line
+
+            # Apply the original mutation.
+            with apply_mutation(mutation, program) as mutated_file:
+                # Do the (canned) prediction...
+                ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
+
+            # Figure out the rank of the actual mutation.
             rank_correct_line = first_with_line_no(ranked_locations,
                                                    correct_line, tokens)
+
             results.write(
                 fold=fold_no,
                 mkind=mutation.name,
