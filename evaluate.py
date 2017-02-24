@@ -289,6 +289,54 @@ class fraction:
         return self._len + self._remainder
 
 
+def evaluate_mutant(file_hash, mutation):
+    # Figure out what fold it's in.
+    fold_no = FOLDS[file_hash]
+
+    # Get the original vector to get the mutated file.
+    _, vector = vectors[file_hash]
+    assert vector[0] == 0, 'not start token'
+    assert vector[-1] == 99, 'not end token'
+    program = SourceCode(file_hash, vector)
+
+    # Get the actual file's tokens, including line numbers!
+    tokens = corpus.get_tokens(file_hash)
+    # Ensure that both files use the same indices!
+    tokens = ('/*start*/',) + tokens + ('/*end*/',)
+    assert len(program) == len(tokens)
+
+    # Figure out the line of the mutation in the original file.
+    correct_line = tokens[mutation.location].line
+
+    # Apply the original mutation.
+    with apply_mutation(mutation, program) as mutated_file:
+        # Do the (canned) prediction...
+        ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
+
+    # Figure out the rank of the actual mutation.
+    top_error_index = ranked_locations[0].index
+    assert top_error_index < len(tokens)
+    line_of_top_location = tokens[top_error_index].line
+    rank_correct_line = first_with_line_no(ranked_locations,
+                                           correct_line, tokens)
+
+    results.write(
+        fold=fold_no,
+        file=file_hash,
+        mkind=mutation.name,
+        mtoken=mutation.token,
+        mpos=mutation.location,
+        correct_line=correct_line,
+        line_of_top_rank=line_of_top_location,
+        rank_correct_line=rank_correct_line,
+        fixed=bool(fix),
+        fkind=fix.name if fix else None,
+        fpos=fix.location if fix else None,
+        ftoken=fix.token if fix else None,
+        same_fix=None
+    )
+
+
 if __name__ == '__main__':
     corpus = Corpus.connect_to('javascript-sources.sqlite3')
     vectors = CondensedCorpus.connect_to(location_of_vectors())
@@ -298,51 +346,6 @@ if __name__ == '__main__':
     part = int(part)
     TOTAL_PARTS = 8
 
-    # TODO: subset with islice()
     with Mutations() as mutations, Results(part) as results:
         for file_hash, mutation in tqdm(fraction(mutations, part, TOTAL_PARTS)):
-            # Figure out what fold it's in.
-            fold_no = FOLDS[file_hash]
-
-            # Get the original vector to get the mutated file.
-            _, vector = vectors[file_hash]
-            assert vector[0] == 0, 'not start token'
-            assert vector[-1] == 99, 'not end token'
-            program = SourceCode(file_hash, vector)
-
-            # Get the actual file's tokens, including line numbers!
-            tokens = corpus.get_tokens(file_hash)
-            # Ensure that both files use the same indices!
-            tokens = ('/*start*/',) + tokens + ('/*end*/',)
-            assert len(program) == len(tokens)
-
-            # Figure out the line of the mutation in the original file.
-            correct_line = tokens[mutation.location].line
-
-            # Apply the original mutation.
-            with apply_mutation(mutation, program) as mutated_file:
-                # Do the (canned) prediction...
-                ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
-
-            # Figure out the rank of the actual mutation.
-            top_error_index = ranked_locations[0].index
-            assert top_error_index < len(tokens)
-            line_of_top_location = tokens[top_error_index].line
-            rank_correct_line = first_with_line_no(ranked_locations,
-                                                   correct_line, tokens)
-
-            results.write(
-                fold=fold_no,
-                file=file_hash,
-                mkind=mutation.name,
-                mtoken=mutation.token,
-                mpos=mutation.location,
-                correct_line=correct_line,
-                line_of_top_rank=line_of_top_location,
-                rank_correct_line=rank_correct_line,
-                fixed=bool(fix),
-                fkind=fix.name if fix else None,
-                fpos=fix.location if fix else None,
-                ftoken=fix.token if fix else None,
-                same_fix=None
-            )
+            evaluate_mutant(file_hash, mutation)
