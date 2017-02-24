@@ -39,7 +39,15 @@ SPLIT = $(shell which gsplit || which split)
 .PHONY: all
 .SECONDARY:
 
-all: mutations
+all: results
+
+.PHONY: results rm-results
+results: results.1.csv results.2.csv results.3.csv results.4.csv results.5.csv results.6.csv results.7.csv results.8.csv
+results.%.csv:
+	./evaluate.py $*
+
+rm-results:
+	$(RM) $(wildcard results.*.csv)
 
 # This will include a LOT of rules to make models.
 include all-models.mk

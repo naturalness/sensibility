@@ -9,6 +9,7 @@ import csv
 import tempfile
 import math
 import sys
+from itertools import islice
 from pathlib import Path
 
 from tqdm import tqdm
@@ -123,6 +124,7 @@ class SensibilityForEvaluation:
             )
             least_agreements.append(agreement)
 
+        assert len(least_agreements)
         fixes = Fixes(tokens, offset=-1)
 
         # For the top disagreements, synthesize fixes.
@@ -176,8 +178,11 @@ class Results:
         fixed fkind fpos ftoken same_fix
     '''.split()
 
+    def __init__(self, part):
+        self._filename = 'results.%d.csv' % part
+
     def __enter__(self):
-        self._file = open('results.csv', 'w')
+        self._file = open(self._filename, 'w')
         self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
         self._writer.writeheader()
         return self
@@ -247,13 +252,55 @@ def print_tokens(tokens, marker='{token} \033[38;5;236m{index}\033[m'):
     print()
 
 
+class fraction:
+    """
+    Yield a fraction of the items from the given sequence.
+
+    >>> list(fraction([1, 2, 3, 4], 4, 4))
+    [4]
+    >>> list(fraction(list(range(1, 11)), 4, 4))
+    [7, 8, 9, 10]
+    """
+    def __init__(self, seq, part, total):
+        if not ( 1 <= part <= total):
+            raise ValueError(
+                "cannot make part {part}/{total}".format_map(vars())
+            )
+        self.part = part - 1
+        self._len = len(seq) // total
+
+        # Place the remainder in the last part.
+        self._remainder = len(seq) % total if part == total else 0
+
+        self._seq = seq
+
+    @property
+    def start(self):
+        return self._len * self.part
+
+    @property
+    def end(self):
+        return self._len * (self.part + 1) + self._remainder
+
+    def __iter__(self):
+        return islice(self._seq, self.start, self.end)
+
+    def __len__(self):
+        return self._len + self._remainder
+
+
 if __name__ == '__main__':
     corpus = Corpus.connect_to('javascript-sources.sqlite3')
     vectors = CondensedCorpus.connect_to(location_of_vectors())
     populate_folds()
 
-    with Mutations() as mutations, Results() as results:
-        for file_hash, mutation in tqdm(mutations):
+    _, part = sys.argv
+    part = int(part)
+    TOTAL_PARTS = 8
+
+    # TODO: subset with islice()
+    with Mutations() as mutations, Results(part) as results:
+        for file_hash, mutation in tqdm(fraction(mutations, part, TOTAL_PARTS)):
             # Figure out what fold it's in.
             fold_no = FOLDS[file_hash]
 
@@ -267,7 +314,7 @@ if __name__ == '__main__':
             tokens = corpus.get_tokens(file_hash)
             # Ensure that both files use the same indices!
             tokens = ('/*start*/',) + tokens + ('/*end*/',)
-            assert len(tokens) == len(tokens)
+            assert len(program) == len(tokens)
 
             # Figure out the line of the mutation in the original file.
             correct_line = tokens[mutation.location].line
@@ -278,7 +325,9 @@ if __name__ == '__main__':
                 ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
 
             # Figure out the rank of the actual mutation.
-            line_of_top_location = tokens[ranked_locations[0].index].line
+            top_error_index = ranked_locations[0].index
+            assert top_error_index < len(tokens)
+            line_of_top_location = tokens[top_error_index].line
             rank_correct_line = first_with_line_no(ranked_locations,
                                                    correct_line, tokens)
 
