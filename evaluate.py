@@ -121,12 +121,12 @@ class SensibilityForEvaluation:
                 squared_error_agreement(prefix_pred, suffix_pred),
                 index
             )
-            print("%4d  %.3f %5.2f%% ::: (%s)>>> %s <<<(%s)" % (
+            print("%4d  %.3f %5.2f%% ::: \033[1m%s\033[m ::: \033[31m%s \033[34m%s\033[m" % (
                 index,
                 agreement.probability,
                 harmonic_mean_agreement(prefix_pred, suffix_pred) * 100,
-                vocabulary.to_text(top_next_prediction),
                 tokens[index - 1],
+                vocabulary.to_text(top_next_prediction),
                 vocabulary.to_text(top_prev_prediction),
             ))
             least_agreements.append(agreement)
@@ -208,6 +208,7 @@ def populate_folds():
 
 
 def apply_mutation(mutation, program):
+    print("Applying", mutation, vocabulary.to_text(mutation.token) if mutation.token else '')
     mutated_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
     # Apply the mutatation and write it to disk.
     mutation.format(program, mutated_file)
@@ -261,7 +262,6 @@ if __name__ == '__main__':
 
             # Apply the original mutation.
             with apply_mutation(mutation, program) as mutated_file:
-                print(mutation, vocabulary.to_text(mutation.token) if mutation.token else '')
                 # Do the (canned) prediction...
                 ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
 
@@ -285,3 +285,4 @@ if __name__ == '__main__':
                 ftoken=fix.token if fix else None,
                 same_fix=None
             )
+            print()
