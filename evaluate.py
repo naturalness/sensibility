@@ -121,17 +121,18 @@ class SensibilityForEvaluation:
                 squared_error_agreement(prefix_pred, suffix_pred),
                 index
             )
+            hm_a = harmonic_mean_agreement(prefix_pred, suffix_pred)
             print("%4d  %.3f %5.2f%% ::: \033[1m%s\033[m ::: \033[31m%s \033[34m%s\033[m" % (
                 index,
                 agreement.probability,
-                harmonic_mean_agreement(prefix_pred, suffix_pred) * 100,
+                hm_a * 100,
                 tokens[index - 1],
                 vocabulary.to_text(top_next_prediction),
                 vocabulary.to_text(top_prev_prediction),
             ))
             least_agreements.append(agreement)
 
-        fixes = Fixes(tokens, offset=1)
+        fixes = Fixes(tokens, offset=-1)
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
@@ -142,14 +143,18 @@ class SensibilityForEvaluation:
             # Assume an addition. Let's try removing some tokens.
             fixes.try_remove(pos)
 
+            likely_next = id_to_token(forwards_predictions[pos])
+            likely_prev = id_to_token(backwards_predictions[pos])
+
             # Assume a deletion. Let's try inserting some tokens.
-            fixes.try_insert(pos, id_to_token(forwards_predictions[pos]))
-            fixes.try_insert(pos, id_to_token(backwards_predictions[pos]))
-            # TODO: make substitution rule
+            fixes.try_insert(pos, likely_next)
+            fixes.try_insert(pos, likely_prev)
+
+            # Assume it's a substitution. Let's try inserting the token.
+            fixes.try_substitute(pos, likely_next)
+            fixes.try_substitute(pos, likely_prev)
 
         fix = None if not fixes else tuple(fixes)[0]
-
-        # TODO: I might need "fix position" as well as fix.
         return least_agreements, fix
 
     def contexts(self, file_vector):
@@ -234,6 +239,24 @@ def location_of_vectors():
         shared_memory if shared_memory.exists() else current_dir
     )
 
+def print_tokens(tokens, marker='{token} \033[38;5;236m{index}\033[m'):
+    current_line = 0
+    col = 0
+    for index, token in enumerate(tokens, start=1):
+        while token.line > current_line:
+            print()
+            current_line += 1
+            print('{:4d}: '.format(current_line), end='')
+            col = 0
+
+        column_difference =  token.loc.end.column - col
+        if column_difference > 0:
+            col += column_difference
+            print(' ' * column_difference, end='')
+        col += len(str(token))
+        print(marker.format(token=token, index=index), end=' ')
+    print()
+
 
 if __name__ == '__main__':
     corpus = Corpus.connect_to('javascript-sources.sqlite3')
@@ -253,8 +276,9 @@ if __name__ == '__main__':
 
             # Get the actual file's tokens, including line numbers!
             tokens = corpus.get_tokens(file_hash)
+            print_tokens(tokens)
             # Ensure that both files use the same indices!
-            tokens = ('start',) + tokens + ('end',)
+            tokens = ('/*start*/',) + tokens + ('/*end*/',)
             assert len(tokens) == len(tokens)
 
             # Figure out the line of the mutation in the original file.
@@ -280,7 +304,7 @@ if __name__ == '__main__':
                 line_of_top_rank=line_of_top_location,
                 rank_correct_line=rank_correct_line,
                 fixed=bool(fix),
-                fkind=fix.kind if fix else None,
+                fkind=fix.name if fix else None,
                 fpos=fix.location if fix else None,
                 ftoken=fix.token if fix else None,
                 same_fix=None
