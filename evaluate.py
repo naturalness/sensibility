@@ -121,15 +121,6 @@ class SensibilityForEvaluation:
                 squared_error_agreement(prefix_pred, suffix_pred),
                 index
             )
-            hm_a = harmonic_mean_agreement(prefix_pred, suffix_pred)
-            print("%4d  %.3f %5.2f%% ::: \033[1m%s\033[m ::: \033[31m%s \033[34m%s\033[m" % (
-                index,
-                agreement.probability,
-                hm_a * 100,
-                tokens[index - 1],
-                vocabulary.to_text(top_next_prediction),
-                vocabulary.to_text(top_prev_prediction),
-            ))
             least_agreements.append(agreement)
 
         fixes = Fixes(tokens, offset=-1)
@@ -137,7 +128,6 @@ class SensibilityForEvaluation:
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
         for disagreement in least_agreements[:3]:
-            print(disagreement)
             pos = disagreement.index
 
             # Assume an addition. Let's try removing some tokens.
@@ -213,7 +203,6 @@ def populate_folds():
 
 
 def apply_mutation(mutation, program):
-    print("Applying", mutation, vocabulary.to_text(mutation.token) if mutation.token else '')
     mutated_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
     # Apply the mutatation and write it to disk.
     mutation.format(program, mutated_file)
@@ -276,7 +265,6 @@ if __name__ == '__main__':
 
             # Get the actual file's tokens, including line numbers!
             tokens = corpus.get_tokens(file_hash)
-            print_tokens(tokens)
             # Ensure that both files use the same indices!
             tokens = ('/*start*/',) + tokens + ('/*end*/',)
             assert len(tokens) == len(tokens)
@@ -309,4 +297,3 @@ if __name__ == '__main__':
                 ftoken=fix.token if fix else None,
                 same_fix=None
             )
-            print()

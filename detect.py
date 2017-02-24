@@ -356,33 +356,23 @@ class Fixes:
 
     def try_remove(self, index):
         pos = index + self.offset
-        print("Will try removing token at", pos, self.tokens[pos],
-              "originally at", index)
         suggestion = self.tokens[:pos] + self.tokens[pos + 1:]
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Remove(pos, self.tokens))
-            print("    Success!")
 
     def try_insert(self, index, new_token):
         assert isinstance(new_token, Token)
         pos = index + self.offset
-        print("Will try inserting", new_token, " at", pos,
-              "originally at", index)
         suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Insert(new_token, pos, self.tokens))
-            print("    Success!")
 
     def try_substitute(self, index, new_token):
         assert isinstance(new_token, Token)
         pos = index + self.offset
-        print("Will try substituting", new_token, " for ",
-              self.tokens[pos], "at", pos,
-              "originally at", index)
         suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos + 1:]
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Substitute(new_token, pos, self.tokens))
-            print("    Success!")
 
     def __bool__(self):
         return len(self.fixes) > 0
