@@ -337,13 +337,14 @@ class Insert(Fix):
 
 
 class Fixes:
-    def __init__(self, tokens, offset=PREFIX_LENGTH):
+    def __init__(self, tokens, offset=0):
         self.tokens = tokens
         self.offset = offset
         self.fixes = []
 
     def try_remove(self, index):
         pos = index + self.offset
+        print("Will try removing token at", pos, self.tokens[pos])
         suggestion = self.tokens[:pos] + self.tokens[pos + 1:]
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Remove(pos, self.tokens))
@@ -351,6 +352,7 @@ class Fixes:
     def try_insert(self, index, new_token):
         assert isinstance(new_token, Token)
         pos = index + self.offset
+        print("Will try inserting", new_token, " at", pos)
         suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
         if check_syntax(tokens_to_source_code(suggestion)):
             self.fixes.append(Insert(new_token, pos, self.tokens))
@@ -408,7 +410,7 @@ def suggest(**kwargs):
         min_token_id, min_prob = paired_rankings[0]
         least_agreements.append(Agreement(min_prob, index))
 
-    fixes = Fixes(common.tokens)
+    fixes = Fixes(common.tokens, offset=PREFIX_LENGTH)
 
     # For the top disagreements, synthesize fixes.
     least_agreements.sort()

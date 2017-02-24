@@ -9,6 +9,7 @@ import csv
 import tempfile
 import math
 import sys
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -59,7 +60,7 @@ def squared_error_agreement(prefix_pred, suffix_pred):
     """
     # Pretend the sum of squared error is like the cross-entropy of
     # prefix and suffix.
-    entropy = np.sum((prefix_pred - suffix_pred) ** 2)
+    entropy = ((prefix_pred - suffix_pred) ** 2).sum()
     return -entropy
 
 
@@ -82,6 +83,8 @@ class SensibilityForEvaluation:
 
         # Get file vector for the incorrect file.
         with open(str(filename), 'rt', encoding='UTF-8') as script:
+            # NOTE! INDICIES IN tokens ARE OFFSET BY ONE (- 1 from other
+            # mentions of "index")
             tokens = tokenize_file(script)
         file_vector = vectorize_tokens(tokens)
 
@@ -96,7 +99,10 @@ class SensibilityForEvaluation:
         contexts = enumerate(self.contexts(file_vector), start=padding)
 
         for index, ((prefix, token), (suffix, _)) in contexts:
-            assert token == file_vector[index], str(token) + ' ' + str(file_vector[index])
+            assert token == file_vector[index], (
+                str(token) + ' ' + str(file_vector[index])
+            )
+
             # Fetch predictions.
             prefix_pred = self.forwards_predict(prefix)
             suffix_pred = self.backwards_predict(suffix)
@@ -105,19 +111,32 @@ class SensibilityForEvaluation:
             assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)
 
             # Store the TOP prediction from both models.
-            forwards_predictions.append(index_of_max(prefix_pred))
-            backwards_predictions.append(index_of_max(suffix_pred))
+            top_next_prediction = index_of_max(prefix_pred)
+            forwards_predictions.append(top_next_prediction)
+            top_prev_prediction = index_of_max(suffix_pred)
+            backwards_predictions.append(top_prev_prediction)
+            assert top_next_prediction == forwards_predictions[index]
 
-            least_agreements.append(Agreement(
-                harmonic_mean_agreement(prefix_pred, suffix_pred),
+            agreement = Agreement(
+                squared_error_agreement(prefix_pred, suffix_pred),
                 index
+            )
+            print("%4d  %.3f %5.2f%% ::: (%s)>>> %s <<<(%s)" % (
+                index,
+                agreement.probability,
+                harmonic_mean_agreement(prefix_pred, suffix_pred) * 100,
+                vocabulary.to_text(top_next_prediction),
+                tokens[index - 1],
+                vocabulary.to_text(top_prev_prediction),
             ))
+            least_agreements.append(agreement)
 
-        fixes = Fixes(tokens)
+        fixes = Fixes(tokens, offset=1)
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
         for disagreement in least_agreements[:3]:
+            print(disagreement)
             pos = disagreement.index
 
             # Assume an addition. Let's try removing some tokens.
@@ -242,6 +261,7 @@ if __name__ == '__main__':
 
             # Apply the original mutation.
             with apply_mutation(mutation, program) as mutated_file:
+                print(mutation, vocabulary.to_text(mutation.token) if mutation.token else '')
                 # Do the (canned) prediction...
                 ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
 
