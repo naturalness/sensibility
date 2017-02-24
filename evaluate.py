@@ -36,6 +36,33 @@ def fix_zeros(preds, epsilon=sys.float_info.epsilon):
             preds[i] = epsilon
 
 
+# TODO: can create tests to check the value of agreement...
+
+def harmonic_mean_agreement(prefix_pred, suffix_pred):
+    # Avoid NaNs
+    fix_zeros(prefix_pred)
+    fix_zeros(suffix_pred)
+
+    mean = harmonic_mean(prefix_pred, suffix_pred)
+    # Rank the values from lowest to top (???)
+    paired_rankings = rank(mean)
+    # Get the value with the minimum probability (???)
+    _, min_prob = paired_rankings[0]
+
+    return min_prob
+
+
+def squared_error_agreement(prefix_pred, suffix_pred):
+    """
+    Return the agreement (probability) of this token using sum of squared
+    errors.
+    """
+    # Pretend the sum of squared error is like the cross-entropy of
+    # prefix and suffix.
+    entropy = np.sum((prefix_pred - suffix_pred) ** 2)
+    return -entropy
+
+
 class SensibilityForEvaluation:
     sentence_length = 20
 
@@ -74,23 +101,18 @@ class SensibilityForEvaluation:
             prefix_pred = self.forwards_predict(prefix)
             suffix_pred = self.backwards_predict(suffix)
 
-            fix_zeros(prefix_pred)
-            fix_zeros(suffix_pred)
-
             assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)
             assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)
-
-            # Get its harmonic mean
-            mean = harmonic_mean(prefix_pred, suffix_pred)
 
             # Store the TOP prediction from both models.
             forwards_predictions.append(index_of_max(prefix_pred))
             backwards_predictions.append(index_of_max(suffix_pred))
 
-            paired_rankings = rank(mean)
-            min_token_id, min_prob = paired_rankings[0]
-            least_agreements.append(Agreement(min_prob, index))
-        
+            least_agreements.append(Agreement(
+                harmonic_mean_agreement(prefix_pred, suffix_pred),
+                index
+            ))
+
         fixes = Fixes(tokens)
 
         # For the top disagreements, synthesize fixes.
@@ -185,9 +207,17 @@ def first_with_line_no(disagreements, correct_line, tokens):
             return rank
 
 
+def location_of_vectors():
+    shared_memory = Path('/dev/shm/javascript.sqlite3')
+    current_dir = Path('./javascript.sqlite3')
+    return str(
+        shared_memory if shared_memory.exists() else current_dir
+    )
+
+
 if __name__ == '__main__':
     corpus = Corpus.connect_to('javascript-sources.sqlite3')
-    vectors = CondensedCorpus.connect_to('/dev/shm/javascript.sqlite3')
+    vectors = CondensedCorpus.connect_to(location_of_vectors())
     populate_folds()
 
     with Mutations() as mutations, Results() as results:
