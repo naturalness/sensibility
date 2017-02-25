@@ -142,12 +142,16 @@ class SensibilityForEvaluation:
             likely_prev = id_to_token(backwards_predictions[pos])
 
             # Assume a deletion. Let's try inserting some tokens.
-            fixes.try_insert(pos, likely_next)
-            fixes.try_insert(pos, likely_prev)
+            if likely_next is not None:
+                fixes.try_insert(pos, likely_next)
+            if likely_prev is not None:
+                fixes.try_insert(pos, likely_prev)
 
-            # Assume it's a substitution. Let's try inserting the token.
-            fixes.try_substitute(pos, likely_next)
-            fixes.try_substitute(pos, likely_prev)
+            # Assume it's a substitution. Let's try swapping the token.
+            if likely_next is not None:
+                fixes.try_substitute(pos, likely_next)
+            if likely_prev is not None:
+                fixes.try_substitute(pos, likely_prev)
 
         fix = None if not fixes else tuple(fixes)[0]
         return least_agreements, fix

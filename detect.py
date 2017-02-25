@@ -383,12 +383,20 @@ class Fixes:
 
 def id_to_token(token_id):
     """
+    Return a synthetic token for the given token ID.
+
+    Returns None if the token is not representable in code.
+
     >>> token = id_to_token(70)
     >>> token.type
     'Keyword'
     >>> token.value
     'function'
+    >>> id_to_token(0) is None
+    True
     """
+    if token_id not in range(1, 101):
+        return None
     with synthetic_file(vocabulary.to_text(token_id)) as file_obj:
         return tokenize_file(file_obj)[0]
 
