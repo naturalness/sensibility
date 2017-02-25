@@ -103,4 +103,5 @@ model-architecture.json
 all-models.mk
 test_set_hashes*
 results.csv
+results.*.csv
 *.cookie

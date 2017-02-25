@@ -42,7 +42,11 @@ SPLIT = $(shell which gsplit || which split)
 all: results
 
 .PHONY: results rm-results
-results: results.1.csv results.2.csv results.3.csv results.4.csv results.5.csv results.6.csv results.7.csv results.8.csv
+results: results.csv
+
+results.csv: results.1.csv results.2.csv results.3.csv results.4.csv results.5.csv results.6.csv results.7.csv results.8.csv
+	./concat-results.sh $^ > $@
+
 results.%.csv:
 	./evaluate.py $*
 
