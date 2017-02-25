@@ -124,7 +124,10 @@ class SensibilityForEvaluation:
             )
             least_agreements.append(agreement)
 
-        assert len(least_agreements)
+        # The loop may not have executed at all -- return empty.
+        if not least_agreements:
+            return [], None
+
         fixes = Fixes(tokens, offset=-1)
 
         # For the top disagreements, synthesize fixes.
@@ -312,6 +315,11 @@ def evaluate_mutant(file_hash, mutation):
     with apply_mutation(mutation, program) as mutated_file:
         # Do the (canned) prediction...
         ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
+
+    if not ranked_locations:
+        # rank_and_fix() can occasional return a zero-sized list.
+        # In which case, return early.
+        return
 
     # Figure out the rank of the actual mutation.
     top_error_index = ranked_locations[0].index
