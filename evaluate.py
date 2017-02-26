@@ -76,7 +76,7 @@ class SensibilityForEvaluation:
         self.forwards_predict = lambda prefix: db.get_prediction(model_recipe=forwards, context=prefix)
         self.backwards_predict = lambda suffix: db.get_prediction(model_recipe=backwards, context=suffix)
 
-    def rank_and_fix(self, filename):
+    def rank_and_fix(self, filename, k=3):
         """
         Rank the syntax error location (in token number) and returns a possible
         fix for the given filename.
@@ -132,7 +132,7 @@ class SensibilityForEvaluation:
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
-        for disagreement in least_agreements[:3]:
+        for disagreement in least_agreements[:k]:
             pos = disagreement.index
 
             # Assume an addition. Let's try removing some tokens.
@@ -231,6 +231,8 @@ def first_with_line_no(disagreements, correct_line, tokens):
     for rank, disagreement in enumerate(disagreements, start=1):
         if tokens[disagreement.index].line == correct_line:
             return rank
+    # TODO: debug this!
+    #import pdb; pdb.set_trace()
 
 
 def location_of_vectors():
@@ -327,7 +329,6 @@ def evaluate_mutant(file_hash, mutation):
 
     # Figure out the rank of the actual mutation.
     top_error_index = ranked_locations[0].index
-    assert top_error_index < len(tokens)
     line_of_top_location = tokens[top_error_index].line
     rank_correct_line = first_with_line_no(ranked_locations,
                                            correct_line, tokens)
@@ -336,6 +337,7 @@ def evaluate_mutant(file_hash, mutation):
         fold=fold_no,
         file=file_hash,
         mkind=mutation.name,
+        # TODO: return the token as it is in the vocabulary.
         mtoken=mutation.token,
         mpos=mutation.location,
         correct_line=correct_line,
