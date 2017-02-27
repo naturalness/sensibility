@@ -17,9 +17,15 @@
 
 import array
 import warnings
+from typing import NewType, Sequence, Iterator
 
+from token_utils import Token
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 from stringify_token import stringify_token
+
+
+# A SourceVector, which can be treated as a Sequence of vocabulary indices.
+SourceVector = NewType('SourceVector', array.array)
 
 
 def vectorize_tokens(tokens):
@@ -45,21 +51,20 @@ def generated_vector(tokens):
         yield vocabulary.to_index(stringify_token(token))
 
 
-def serialize_tokens(tokens, constructor=array.array):
+def serialize_tokens(tokens: Sequence[Token]) -> SourceVector:
     """
     Return an (unsigned) byte array of tokens, useful for storing.
 
-    >>> from token_utils import Token
     >>> toks = [Token(value='var', type='Keyword', loc=None)]
     >>> serialize_tokens(toks)
     array('B', [86])
     >>> serialize_tokens(toks).tobytes()
     b'V'
     """
-    return constructor('B', generated_vector(tokens))
+    return SourceVector(array.array('B', generated_vector(tokens)))
 
 
-def deserialize(byte_string):
+def deserialize_tokens(byte_string: bytes) -> SourceVector:
     """
     Return an array of vocabulary entries given a byte string produced by
     serialize_token().tobytes()
@@ -67,4 +72,4 @@ def deserialize(byte_string):
     >>> deserialize(b'VZD')
     array('B', [86, 90, 68])
     """
-    return array.array('B', byte_string)
+    return SourceVector(array.array('B', byte_string))

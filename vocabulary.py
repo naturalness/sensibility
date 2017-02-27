@@ -17,6 +17,7 @@
 
 
 import logging
+from typing import Sized
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ START_TOKEN = '/*<START>*/'
 END_TOKEN = '/*<END>*/'
 
 
-class Vocabulary:
+class Vocabulary(Sized):
     """
     >>> v = Vocabulary([START_TOKEN, 'var', '$identifier', ';', END_TOKEN])
     >>> v.to_text(2)
