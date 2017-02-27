@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Manages a vector of files with fold assignments.
+"""
 
 import io
 import sqlite3
@@ -237,3 +240,27 @@ class Vectors:
             self.conn.execute("DELETE FROM fold_assignment")
 
 
+if __name__ == '__main__':
+    # Vectorizes the corpus.
+    import sys
+    from corpus import Corpus
+    from tokenize_js import tokenize
+
+    try:
+        _, source, destination = sys.argv
+    except ValueError:
+        print("Usage:  python", sys.argv[0], "sources.sqlite3 "
+              "vectors.sqlite3")
+        exit(-1)
+
+    corpus = Corpus.connect_to(source)
+    vectors = Vectors.connect_to(destination)
+
+    for file_hash in corpus:
+        source_file = corpus.get_source(file_hash)
+        try:
+            tokens = tokenize(source_file.decode('UTF-8'))
+        except Exception as err:
+            print("Error:", file_hash, repr(err), file=sys.stderr)
+            continue
+        vectors.insert(file_hash, tokens)
