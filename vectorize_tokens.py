@@ -16,6 +16,7 @@
 # limitations under the License.
 
 import array
+import warnings
 
 from vocabulary import vocabulary, START_TOKEN, END_TOKEN
 from stringify_token import stringify_token
@@ -30,6 +31,7 @@ def vectorize_tokens(tokens):
     >>> vectorize_tokens([Token(value='var', type='Keyword', loc=None)])
     (0, 86, 99)
     """
+    warnings.warn('Use serialize_token() instead', DeprecationWarning)
     def generate():
         yield vocabulary.to_index(START_TOKEN)
         yield from generated_vector(tokens)
@@ -55,3 +57,14 @@ def serialize_tokens(tokens, constructor=array.array):
     b'V'
     """
     return constructor('B', generated_vector(tokens))
+
+
+def deserialize(byte_string):
+    """
+    Return an array of vocabulary entries given a byte string produced by
+    serialize_token().tobytes()
+
+    >>> deserialize(b'VZD')
+    array('B', [86, 90, 68])
+    """
+    return array.array('B', byte_string)
