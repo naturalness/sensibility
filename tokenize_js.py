@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Sequence, TextIO, cast
 
 from token_utils import Token
+from vocabulary import vocabulary
 
 
 THIS_DIRECTORY = Path(__file__).parent
@@ -107,3 +108,25 @@ def check_syntax_file(source_file: TextIO) -> bool:
     """
     status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
     return status.returncode == 0
+
+
+# TODO: def id_to_token(token_id: VocabularyID) -> Token:
+def id_to_token(token_id):
+    """
+    Return a synthetic token for the given token ID.
+
+    Returns None if the token is not representable in code.
+
+    >>> token = id_to_token(70)
+    >>> token.type
+    'Keyword'
+    >>> token.value
+    'function'
+    >>> id_to_token(0) is None
+    True
+    """
+    if token_id not in range(1, 101):
+        return None
+    with synthetic_file(vocabulary.to_text(token_id)) as file_obj:
+        return tokenize_file(file_obj)[0]
+

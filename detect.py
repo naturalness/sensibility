@@ -385,6 +385,7 @@ class Fixes:
         return iter(self.fixes)
 
 
+# TODO: use tokenize_js
 def id_to_token(token_id):
     """
     Return a synthetic token for the given token ID.

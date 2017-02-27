@@ -20,9 +20,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-UNK_TOKEN = '/*<unknown>*/'
-START_TOKEN = '/*<start>*/'
-END_TOKEN = '/*<end>*/'
+UNK_TOKEN = '/*<UNK>*/'
+START_TOKEN = '/*<START>*/'
+END_TOKEN = '/*<END>*/'
 
 
 class Vocabulary:

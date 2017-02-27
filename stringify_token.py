@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+# Copyright 2016, 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 
 """
->>> from corpus import Token
+>>> from token_utils import Token
 >>> stringify_token(Token(value='**=', type='Punctuator', loc=None))
 '**='
 >>> stringify_token(Token(value='var', type='Keyword', loc=None))
@@ -36,6 +36,10 @@
 '}template-tail`'
 >>> stringify_token(Token(value='}  ${', type='Template', loc=None))
 '}template-middle${'
+>>> stringify_token(Token(value='"hello world"', type='String', loc=None))
+'"string"'
+>>> stringify_token(Token(value='💩', type='Identifier', loc=None))
+'Identifier'
 """
 
 
@@ -56,7 +60,7 @@ class stringify_token:
         return text
 
     def Identifier(self, text):
-        return '$anyIdentifier'
+        return 'Identifier'
 
     def Keyword(self, text):
         return text
@@ -65,16 +69,16 @@ class stringify_token:
         return 'null'
 
     def Numeric(self, text):
-        return '/*any-number*/0'
+        return '/*number*/0'
 
     def Punctuator(self, text):
         return text
 
     def String(self, text):
-        return '"any-string"'
+        return '"string"'
 
     def RegularExpression(self, text):
-        return '/any-regexp/'
+        return '/regexp/'
 
     def Template(self, text):
         assert len(text) >= 2

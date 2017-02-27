@@ -8,14 +8,13 @@ All observed vocabulary tokens as witnessed by vocabulary.py on the October
 2016 GitHub JavaScript corpus.
 """
 
-# TODO: change the concrete entries to be less dumb looking.
 VOCAB = [
- '/*<start>*/',
+ '/*<START>*/',
  '!',
  '!=',
  '!==',
- '"any-string"',
- '$anyIdentifier',
+ '"string"',
+ 'Identifier',
  '%',
  '%=',
  '&',
@@ -37,9 +36,9 @@ VOCAB = [
  '.',
  '...',
  '/',
- '/*any-number*/0',
+ '/*number*/0',
  '/=',
- '/any-regexp/',
+ '/regexp/',
  ':',
  ';',
  '<',
@@ -109,5 +108,5 @@ VOCAB = [
  '}template-middle${',
  '}template-tail`',
  '~',
- '/*<end>*/'
+ '/*<END>*/'
 ]
