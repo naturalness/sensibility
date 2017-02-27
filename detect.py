@@ -112,6 +112,7 @@ class Model:
         return cls(model, **kwargs)
 
 
+# TODO: delete me in favour or tokenize_js.
 def synthetic_file(text):
     file_obj = tempfile.TemporaryFile('w+t', encoding='utf-8')
     file_obj.write(text)
@@ -119,6 +120,7 @@ def synthetic_file(text):
     return file_obj
 
 
+# TODO: delete me in favour or tokenize_js.
 def check_syntax(source):
     """
     >>> check_syntax('function name() {}')
@@ -130,11 +132,13 @@ def check_syntax(source):
         return check_syntax_file(source_file)
 
 
+# TODO: Delete me in favour of tokenize_js.
 def check_syntax_file(source_file):
     status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
     return status.returncode == 0
 
 
+# TODO: Delete me in favour of tokenize_js.
 def tokenize_file(file_obj):
     """
     >>> with synthetic_file('$("hello");') as f:
