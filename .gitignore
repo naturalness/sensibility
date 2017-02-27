@@ -105,3 +105,4 @@ test_set_hashes*
 results.csv
 results.*.csv
 *.cookie
+.mypy_cache
