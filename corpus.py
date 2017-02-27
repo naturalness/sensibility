@@ -28,13 +28,13 @@ True
 import sqlite3
 import json
 import logging
+from pathlib import Path
+
+from typing import Iterable, Tuple, Sized
 
 from collections import namedtuple, OrderedDict
 
-from path import Path
 
-
-logger = logging.Logger(__name__)
 _DIRECTORY = Path(__file__).parent
 
 # CREATE VIEW IF NOT EXISTS usable_source AS
@@ -45,18 +45,18 @@ WHERE path NOT GLOB '*.min.js';
 '''
 
 
-class Corpus:
+class Corpus(Iterable[str], Sized):
     """
     Controls access to the BIG corpus of source code.
     """
 
-    def __init__(self, connection):
+    def __init__(self, connection: sqlite3.Connection) -> None:
         self.conn = connection
 
     def __iter__(self):
         return self.iterate()
 
-    def iterate(self):
+    def iterate(self) -> Iterable[str]:
         """
         >>> corpus = Corpus(new_connection_for_testing())
         >>> files = tuple(corpus.iterate())
@@ -75,7 +75,7 @@ class Corpus:
         ''')
 
     @property
-    def projects(self):
+    def projects(self) -> Iterable[Tuple[str, str]]:
         """
         An iterator of projects with each of their file hashes.
         """
@@ -110,6 +110,23 @@ class Corpus:
     def get_tokens(self, file_hash):
         raise NotImplementedError
 
+    def get_source(self, file_hash: str) -> bytes:
+        """
+        >>> corpus = Corpus(new_connection_for_testing())
+        >>> s = corpus.get_source('86cc829b0a086a9f655b942278f6be5c9e5057c34459dafafa312dfdfa3a27d0')
+        >>> isinstance(s, bytes)
+        True
+        >>> s.decode('UTF-8')
+        '(name) => console.log(`Hello, ${name}!`);'
+
+        """
+        source, = self.conn.execute('''
+            SELECT source
+              FROM source_file
+             WHERE hash = :hash
+        ''', dict(hash=file_hash)).fetchone()
+        return source
+
     def __len__(self):
         """
         Return the amount of usable sources.
@@ -124,13 +141,13 @@ class Corpus:
         return int(count)
 
     @classmethod
-    def connect_to(cls, filename):
+    def connect_to(cls, filename: str) -> 'Corpus':
         """
         Connect to the database (read-only) with the given filename.
         """
-        filename = Path(filename).abspath()
-        assert filename.exists(), '%r does not exist' % (filename,)
-        conn = sqlite3.connect('file:{}?mode=ro'.format(filename),
+        path = Path(filename).resolve()
+        assert path.exists(), '%r does not exist' % (filename,)
+        conn = sqlite3.connect('file:{}?mode=ro'.format(filename),  # type: ignore
                                uri=True)
         return Corpus(conn)
 
@@ -140,6 +157,6 @@ def new_connection_for_testing():
     Return an SQLite3 connection suitable for testing.
     """
     conn = sqlite3.connect(':memory:')
-    with open(_DIRECTORY/'test.sql') as sqlfile:
+    with open(str(_DIRECTORY / 'test.sql')) as sqlfile:
         conn.executescript(sqlfile.read())
     return conn

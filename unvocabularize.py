@@ -39,7 +39,7 @@ from vocabulary import vocabulary
 def unvocabularize(vector):
     """
     >>> unvocabularize((0, 86, 5, 31, 99))
-    '/*<start>*/ var $anyIdentifier ; /*<end>*/'
+    '/*<START>*/ var Identifier ; /*<END>*/'
     """
 
     return ' '.join(vocabulary.to_text(element) for element in vector)
