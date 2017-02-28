@@ -19,55 +19,103 @@
 Trains an LSTM from sentences in the vectorized corpus.
 """
 
-# TODO: MAKE IT SAVE THE MODEL WITH ARCHITECTURE!
-
 import argparse
 from pathlib import Path
+from typing import Optional, Tuple, Iterable
 
-import numpy as np
-
-from condensed_corpus import CondensedCorpus
-from model_recipe import ModelRecipe
+from vectors import Vectors
+from sentences import Sentence, T, forward_sentences, backward_sentences
 from vocabulary import vocabulary
 
 
 # Based on White et al. 2015
-SENTENCE_LENGTH = 20
-SIGMOID_ACTIVATIONS = 300
+SENTENCE_LENGTH = 20 + 1  # In the paper, context is set to 20
+SIZE_OF_HIDDEN_LAYER = 300
 
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 512
 
+# Create the argument parser.
+parser = argparse.ArgumentParser(description='Train from corpus '
+                                 'of vectors, with fold assignments')
+parser.add_argument('-f', '--fold', type=int, required=True,
+                    help='which fold to use')
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('--backwards', action='store_true')
+group.add_argument('--forwards', action='store_false', dest='backwards')
+parser.add_argument('--hidden-layer', type=int, default=SIZE_OF_HIDDEN_LAYER,
+                    help='default: %d' % SIZE_OF_HIDDEN_LAYER)
+parser.add_argument('--sentence-length', type=int, default=SENTENCE_LENGTH,
+                    help='default: %d' % SENTENCE_LENGTH)
+parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
+                    help='default: %d' % BATCH_SIZE)
+parser.add_argument('vectors_path', metavar='vectors',
+                    help='corpus of vectors, with assigned folds')
+#parser.add_argument('---continue', type=Path,
+#                    help='Loads weights and biases from a previous run')
 
-def when_none_selected(**kwargs):
+
+def compile_model(
+        *,
+        sentence_length: int,
+        hidden_layer: int,
+        learning_rate: float = 0.001
+) -> object:
+    from keras.models import Sequential
+    from keras.layers import Dense, Activation
+    from keras.layers import LSTM
+    from keras.optimizers import RMSprop
+
+    # Timesteps are the context tokens.
+    timesteps = sentence_length - 1
+    model = Sequential()
+    model.add(LSTM(hidden_layer,
+                   input_shape=(timesteps, len(vocabulary))))
+    # Output is number of samples x size of hidden layer
+    model.add(Dense(len(vocabulary)))
+    # To make a thing that looks like a probability distribution.
+    model.add(Activation('softmax'))
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=RMSprop(lr=learning_rate),
+                  metrics=['categorical_accuracy'])
+    return model
+
+
+def create_batches(batch_size: int) -> Tuple[Iterable[Sentence],
+                                             Iterable[Sentence]]:
     """
-    Print usage and die.
+    Creates training and validation batches
     """
-    parser.print_help()
-    exit(-1)
 
 
-# TODO: Replace when_train with fit_generator that uses
-# keras.callbacks.ModelCheckpoint.
-# Another thing: at the end of the epoch, make a symlink to the current model.
-def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
-             sentence_length=None, batch_size=None, fold=None, **kwargs):
-    assert Path(vector_filename).exists()
-
-    label = Path(vector_filename).stem
-    recipe = ModelRecipe(label, backwards, sigmoid_activations,
-                         sentence_length, fold)
-
-    corpus = CondensedCorpus.connect_to(vector_filename)
-    assert fold in corpus.fold_ids, (
-        'Requested fold {} is not in {}'.format(fold, corpus.fold_ids)
+def train(
+        *,
+        vectors_path: Path,
+        fold: int,
+        backwards: bool,
+        hidden_layer: int,
+        sentence_length: int,
+        batch_size: int,
+        previous_model: Optional[Path] = None
+) -> None:
+    assert vectors_path.exists()
+    vectors = Vectors.connect_to(str(vectors_path))
+    assert fold in vectors.fold_ids, (
+        'Requested fold {} is not in {}'.format(fold, vectors.fold_ids)
     )
-    corpus.disconnect()
+    vectors.disconnect()
 
-    print("Compiling the model...")
-    model = recipe.create_model()
-    print("Done!")
+    # TODO:
+    #  - save model with architecture after each epoch
+    #  - save acc, val_acc, loss, val_loss after each epoch
+    #       - keras.callbacks.ModelCheckpoint.
+    #  - point a symlink at the best model after each epoch
 
+    model = compile_model(sentence_length=20,
+                          hidden_layer=hidden_layer)
+
+    """
     print("Creating batches with size:", batch_size)
     training_batches, eval_batches = recipe.create_batches(
         vector_filename, batch_size
@@ -85,72 +133,9 @@ def when_new(vector_filename=None, backwards=None, sigmoid_activations=None,
 
     print("Saving model to", recipe.filename)
     model.save(recipe.filename)
+    """
 
-
-def when_continue(vector_filename=None, previous_model=None, batch_size=None,
-                  **kwargs):
-    from condensed_corpus import CondensedCorpus
-    assert Path(previous_model.filename).is_file()
-
-    recipe = previous_model.next_epoch()
-
-    print("Loading existing model...")
-    model = previous_model.load_model()
-    print("Done!")
-
-    print("Creating batches with size:", batch_size)
-    training_batches, eval_batches = recipe.create_batches(
-        args.vector_filename, args.batch_size
-    )
-
-    print("Will train on", training_batches.samples_per_epoch, "samples")
-    print("Training:", recipe.filename)
-    model.fit_generator(iter(training_batches),
-                        samples_per_epoch=training_batches.samples_per_epoch,
-                        validation_data=iter(eval_batches),
-                        nb_val_samples=eval_batches.samples_per_epoch // batch_size,
-                        verbose=1,
-                        pickle_safe=True,
-                        # initial_epoch is 0-indexed
-                        initial_epoch=previous_model.epoch - 1,
-                        # nb_epoch is TOTAL number of epochs, ever,
-                        # so this must be GREATER than initial_epoch
-                        nb_epoch=previous_model.epoch)
-
-    print("Saving model.")
-    model.save(recipe.filename)
-
-
-# Create the argument parser.
-parser = argparse.ArgumentParser(description='Train one epoch from corpus '
-                                 'of vectors, with fold assignments')
-parser.set_defaults(action=when_none_selected)
-
-subparsers = parser.add_subparsers(help='must choose one subaction')
-new = subparsers.add_parser('new')
-new.set_defaults(action=when_new)
-extend = subparsers.add_parser('continue')
-extend.set_defaults(action=when_continue)
-
-new.add_argument('-f', '--fold', type=int, required=True,
-                 help='which fold to use')
-group = new.add_mutually_exclusive_group(required=True)
-group.add_argument('--backwards', action='store_true')
-group.add_argument('--forwards', action='store_false', dest='backwards')
-new.add_argument('--sigmoid-activations', type=int, default=SIGMOID_ACTIVATIONS,
-                 help='default: %d' % SIGMOID_ACTIVATIONS)
-new.add_argument('--sentence-length', type=int, default=SENTENCE_LENGTH,
-                 help='default: %d' % SENTENCE_LENGTH)
-
-for subparser in new, extend:
-    subparser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
-                           help='default: %d' % BATCH_SIZE)
-    subparser.add_argument('vector_filename', metavar='vectors',
-                           help='corpus of vectors, with assigned folds')
-
-extend.add_argument('previous_model', type=ModelRecipe.from_string,
-                    help='Loads weights and biases from a previous run')
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    args.action(**vars(args))
+    train(**vars(args))

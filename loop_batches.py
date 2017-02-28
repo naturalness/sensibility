@@ -20,57 +20,55 @@ Loops batches for training and for validation (development) forever.
 """
 
 from pathlib import Path
-from typing import Iterable
+from more_itertools import chunked
+from typing import Iterable, Iterator, Sequence, cast, Any
 
 from vectors import Vectors
 from sentences import Sentence, T, forward_sentences, backward_sentences
 from training_utils import one_hot_batch, training_folds, evaluation_folds
-from abram import at_least
 
 
-class LoopBatchesEndlessly(Iterable[Sentence]):
+class LoopBatchesEndlessly(Iterable[Any]):
     def __init__(self,
                  *,
                  vectors_path: Path,
                  fold: int,
                  batch_size: int,
-                 sentence_length: int,
+                 context_length: int,
                  backwards: bool) -> None:
         assert vectors_path.exists()
-        self.filename = vectors_path
+        self.filename = str(vectors_path)
         self.fold = fold
         self.batch_size = batch_size
-        self.sentence_length = sentence_length
+        self.context_length = context_length
         self.sentence_generator = (
             backward_sentences if backwards else forward_sentences
         )
 
         # Samples are number of tokens in the fold.
-        vectors = Vectors.connect_to(str(vectors_path))
-        self.samples_per_epoch = vectors.ntokens_in_fold(1)
+        vectors = Vectors.connect_to(self.filename)
+        self.samples_per_epoch = vectors.ntokens_in_fold(self.fold)
         vectors.disconnect()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         batch_size = self.batch_size
         for batch in self._yield_batches_endlessly():
             yield one_hot_batch(batch, batch_size=batch_size,
-                                sentence_length=self.sentence_length)
+                                # This parameter name is weird...
+                                sentence_length=self.context_length)
 
-    def _yield_sentences_from_corpus(self):
+    def _yield_sentences_from_corpus(self) -> Iterable[Sentence]:
         """
         Yields all sentences from the corpus exactly once.
         """
-        sentence_length = self.sentence_length
-        corpus = CondensedCorpus.connect_to(self.filename)
-        for fold in self.folds:
-            for file_hash in corpus.hashes_in_fold(fold):
-                _, tokens = corpus[file_hash]
-                yield from Sentences(tokens,
-                                     size=sentence_length,
-                                     backwards=self.backwards)
-        corpus.disconnect()
-
-        batch_size = self.batch_size
+        context_length = self.context_length
+        vectors = Vectors.connect_to(self.filename)
+        for file_hash in vectors.hashes_in_fold(self.fold):
+            _, tokens = vectors[file_hash]
+            yield from self.sentence_generator(
+                cast(Sequence[int], tokens), context=context_length
+            )
+        vectors.disconnect()
 
     def _yield_batches_endlessly(self):
         """
@@ -83,21 +81,21 @@ class LoopBatchesEndlessly(Iterable[Sentence]):
                                batch_size)
 
     @classmethod
-    def for_training(cls, corpus_filename, fold, **kwargs):
+    def for_training(cls, fold: int, **kwargs) -> 'LoopBatchesEndlessly':
         """
         Endlessly yields (X, Y) pairs from the corpus for training.
         """
         # XXX: hardcode a lot of stuff
-        # Assume there are 10 folds.
-        assert 0 <= fold <= 9
-        return cls(corpus_filename, training_folds(fold), **kwargs)
+        # Assume there are 5 training folds.
+        assert 0 <= fold < 5
+        return cls(fold=fold, **kwargs)
 
     @classmethod
-    def for_evaluation(cls, corpus_filename, fold, **kwargs):
+    def for_validation(cls, fold: int, **kwargs) -> 'LoopBatchesEndlessly':
         """
-        Endlessly yields (X, Y) pairs from the corpus for evaluation.
+        Endlessly yields (X, Y) pairs from the corpus for validation.
         """
-        # XXX: hardcode a lot of stuff
-        # Assume there are 10 folds.
-        assert 0 <= fold <= 9
-        return cls(corpus_filename, evaluation_folds(fold), **kwargs)
+        # XXX: hardcoded assumptions
+        # Assume there are 5 validation folds
+        assert 5 < fold < 9
+        return cls(fold=fold, **kwargs)
