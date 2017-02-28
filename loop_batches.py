@@ -29,6 +29,10 @@ from training_utils import one_hot_batch, training_folds, evaluation_folds
 
 
 class LoopBatchesEndlessly(Iterable[Any]):
+    """
+    Loops batches of vectors endlessly from the corpus for a given fold.
+    """
+
     def __init__(self,
                  *,
                  vectors_path: Path,
@@ -54,7 +58,7 @@ class LoopBatchesEndlessly(Iterable[Any]):
         batch_size = self.batch_size
         for batch in self._yield_batches_endlessly():
             yield one_hot_batch(batch, batch_size=batch_size,
-                                # This parameter name is weird...
+                                # The parameter name is mismatched, I know...
                                 sentence_length=self.context_length)
 
     def _yield_sentences_from_corpus(self) -> Iterable[Sentence]:

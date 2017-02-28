@@ -24,13 +24,13 @@ from pathlib import Path
 from typing import Optional, Tuple, Iterable
 
 from vectors import Vectors
-from sentences import Sentence, T, forward_sentences, backward_sentences
+from loop_batches import LoopBatchesEndlessly
 from vocabulary import vocabulary
 
 
 # Based on White et al. 2015
-SENTENCE_LENGTH = 20 + 1  # In the paper, context is set to 20
 SIZE_OF_HIDDEN_LAYER = 300
+CONTEXT_LENGTH = 20
 
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 512
@@ -45,32 +45,30 @@ group.add_argument('--backwards', action='store_true')
 group.add_argument('--forwards', action='store_false', dest='backwards')
 parser.add_argument('--hidden-layer', type=int, default=SIZE_OF_HIDDEN_LAYER,
                     help='default: %d' % SIZE_OF_HIDDEN_LAYER)
-parser.add_argument('--sentence-length', type=int, default=SENTENCE_LENGTH,
-                    help='default: %d' % SENTENCE_LENGTH)
+parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
+                    help='default: %d' % CONTEXT_LENGTH)
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help='default: %d' % BATCH_SIZE)
 parser.add_argument('vectors_path', metavar='vectors',
                     help='corpus of vectors, with assigned folds')
-#parser.add_argument('---continue', type=Path,
-#                    help='Loads weights and biases from a previous run')
+parser.add_argument('---continue', type=Path,
+                    help='Loads weights and biases from a previous run')
 
 
 def compile_model(
         *,
-        sentence_length: int,
+        context_length: int,
         hidden_layer: int,
-        learning_rate: float = 0.001
+        learning_rate: float=0.001
 ) -> object:
     from keras.models import Sequential
     from keras.layers import Dense, Activation
     from keras.layers import LSTM
     from keras.optimizers import RMSprop
 
-    # Timesteps are the context tokens.
-    timesteps = sentence_length - 1
     model = Sequential()
     model.add(LSTM(hidden_layer,
-                   input_shape=(timesteps, len(vocabulary))))
+                   input_shape=(context_length, len(vocabulary))))
     # Output is number of samples x size of hidden layer
     model.add(Dense(len(vocabulary)))
     # To make a thing that looks like a probability distribution.
@@ -82,11 +80,11 @@ def compile_model(
     return model
 
 
-def create_batches(batch_size: int) -> Tuple[Iterable[Sentence],
-                                             Iterable[Sentence]]:
-    """
-    Creates training and validation batches
-    """
+def create_batches(*, fold: int, **kwargs) -> Tuple[LoopBatchesEndlessly,
+                                                    LoopBatchesEndlessly]:
+    training = LoopBatchesEndlessly.for_training(fold=fold, **kwargs)
+    validation = LoopBatchesEndlessly.for_validation(fold=fold + 5, **kwargs)
+    return training, validation
 
 
 def train(
@@ -95,9 +93,9 @@ def train(
         fold: int,
         backwards: bool,
         hidden_layer: int,
-        sentence_length: int,
+        context_length: int,
         batch_size: int,
-        previous_model: Optional[Path] = None
+        previous_model: Optional[Path]=None
 ) -> None:
     assert vectors_path.exists()
     vectors = Vectors.connect_to(str(vectors_path))
@@ -112,28 +110,42 @@ def train(
     #       - keras.callbacks.ModelCheckpoint.
     #  - point a symlink at the best model after each epoch
 
-    model = compile_model(sentence_length=20,
+    model = compile_model(context_length=20,
                           hidden_layer=hidden_layer)
 
-    """
-    print("Creating batches with size:", batch_size)
-    training_batches, eval_batches = recipe.create_batches(
-        vector_filename, batch_size
+    training_batches, validation_batches = create_batches(
+        fold=fold,
+        backwards=backwards,
+        batch_size=batch_size,
+        vectors_path=vectors_path,
+        context_length=context_length
     )
+    print("Will train on", training_batches.samples_per_epoch, "samples",
+          "using a batch size of", batch_size)
 
-    print("Will train on", training_batches.samples_per_epoch, "samples")
-    print("Training:", recipe.filename)
-    model.fit_generator(iter(training_batches),
-                        samples_per_epoch=training_batches.samples_per_epoch,
-                        validation_data=iter(eval_batches),
-                        nb_val_samples=eval_batches.samples_per_epoch // batch_size,
-                        verbose=1,
-                        pickle_safe=True,
-                        nb_epoch=1)
-
-    print("Saving model to", recipe.filename)
-    model.save(recipe.filename)
-    """
+    from keras.callbacks import ModelCheckpoint, CSVLogger
+    try:
+        model.fit_generator(  # type: ignore
+            iter(training_batches),
+            validation_data=iter(validation_batches),
+            nb_epoch=2**31 - 1,  # a long-ass time
+            samples_per_epoch=training_batches.samples_per_epoch,
+            nb_val_samples=validation_batches.samples_per_epoch // batch_size,
+            callbacks=[
+                ModelCheckpoint(
+                    './models/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+                    save_best_only=False,
+                    save_weights_only=False
+                ),
+                CSVLogger('./models/training.log', append=True)
+            ],
+            verbose=1,
+            pickle_safe=True,
+        )
+    except KeyboardInterrupt:
+        filename = './models/interrupted.hdf5'
+        print("Saving model to", filename)
+        model.save(filename)  # type: ignore
 
 
 if __name__ == '__main__':
