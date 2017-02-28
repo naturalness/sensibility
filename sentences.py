@@ -39,7 +39,7 @@ def forward_sentences(
 ) -> Iterable[Sentence]:
     """
     Yield "sentences" which consist of a context, and the token immediately to
-    the RIGHT of the context.
+    the RIGHT of the context (c.f., backward_sentences()).
     """
     if context is None:
         context = sentence - adjacent
@@ -58,5 +58,29 @@ def forward_sentences(
             yield tuple(real_context), element
 
 
-def backward_sentences():
-    ...
+def backward_sentences(
+        vector: Sequence[T],
+        context: int=None,
+        adjacent: int=1,
+        sentence: int=20
+) -> Iterable[Sentence]:
+    """
+    Yield "sentences" which consist of a context, and the token immediately to
+    the LEFT of the context (c.f., forward_sentences()).
+    """
+    if context is None:
+        context = sentence - adjacent
+
+    padding_token = vocabulary.end_token_index
+
+    # Generate a sentence for each element in the vector.
+    for c_start, element in enumerate(vector, start=1):
+        c_end = c_start + context
+        real_context = islice(vector, c_start, c_end)
+        # Must add padding when the context goes over the size of the vector.
+        if c_end >= len(vector):
+            padding = repeat(padding_token, c_end - len(vector))
+            yield tuple(chain(real_context, padding)), element
+        else:
+            # All tokens come from the vector
+            yield tuple(real_context), element
