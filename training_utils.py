@@ -19,6 +19,7 @@
 TODO: rename this file!
 """
 
+import warning
 from itertools import islice
 
 import numpy as np
@@ -61,6 +62,7 @@ class Sentences:
     """
 
     def __init__(self, vector, *, size=None, backwards=False):
+        warning.warn('Use `sentences` module instead', DeprecationWarning)
         # TODO: Step?
         self.vector = vector
         self.size= size
