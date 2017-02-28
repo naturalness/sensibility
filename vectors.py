@@ -240,6 +240,17 @@ class Vectors:
             self.conn.execute("DELETE FROM fold_assignment")
 
 
+def maybe_decode(string):
+    """
+    HACK! SQLite3 sometimes returns mis-typed strings...
+    """
+    if isinstance(string, bytes):
+        return string.decode('UTF-8')
+    else:
+        assert isinstance(string, str)
+        return string
+
+
 def convert_to_vectors(corpus: 'Corpus', vectors: Vectors) -> None:
     """
     Convert every usable source in the corpus to a vector.
@@ -248,7 +259,7 @@ def convert_to_vectors(corpus: 'Corpus', vectors: Vectors) -> None:
     for file_hash in corpus:
         source_file = corpus.get_source(file_hash)
         try:
-            tokens = tokenize(source_file.decode('UTF-8'))
+            tokens = tokenize(maybe_decode(source_file))
         except Exception as err:
             print("Error:", file_hash, repr(err), file=sys.stderr)
             continue
