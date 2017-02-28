@@ -16,14 +16,14 @@
 # limitations under the License.
 
 """
-Tests the generation of contexts.
+Tests the generation of sentences.
 """
 
 import pytest
 
 from token_utils import Token
 from vectorize_tokens import serialize_tokens
-from contexts import forward_contexts, backward_contexts
+from sentences import forward_sentences, backward_sentences
 from vocabulary import vocabulary
 
 FILE = serialize_tokens([
@@ -42,33 +42,33 @@ FILE = serialize_tokens([
     Token(value=';', type='Punctuator', loc=None)
 ])
 
-def test_forward_contexts():
+assert len(FILE) == 13
+
+
+def test_forward_sentences():
     """
-    Test creatign padded contexts.
+    Test creatign padded forward sentences.
     """
+    n = 10  # sentence length.
+    m = n - 1  # context length.
 
-    # context length.
-    n = 10
-    m = n - 1
+    sentences = list(forward_sentences(FILE, context=m, adjacent=1))
 
-    assert len(FILE) == 13
-    contexts = list(forward_contexts(FILE, context=m, adjacent=1))
+    # Even with padding, there should be the same number of sentences as there
+    # are tokens in the original vector.
+    assert len(sentences) == len(FILE)
 
-    # Even with padding, there should be the same number of contexts as there
-    # are tokens in the original stream.
-    assert len(contexts) == len(FILE)
-
-    for i, (context, adjacent) in enumerate(contexts):
+    # Test each sentence generated.
+    for i, (context, adjacent) in enumerate(sentences):
         assert len(context) == m
         assert adjacent == FILE[i]
 
     # The first context should be a context with all padding.
-    context, adjacent = contexts[0]
+    context, adjacent = sentences[0]
     assert all(index == vocabulary.start_token_index for index in context)
 
     # Try using ONLY sentence length. Should get the same result.
-    sentences = list(forward_contexts(FILE, sentence=n))
-    assert sentences == contexts
+    assert list(forward_sentences(FILE, sentence=n)) == sentences
 
     # TODO: test for when sentence size is LARGER than file
 
@@ -79,14 +79,15 @@ def test_backwards_contexts():
 
 
 @pytest.mark.skip
-def test_both_contexts():
+def test_both_sentences():
     args = FILE
     kwargs = dict(context=9, result=1)
-    combined = zip(forward_contexts(*args, **kwargs), backward_contexts(*args, **kwargs))
+    combined = zip(forward_sentences(*args, **kwargs),
+                   backward_sentences(*args, **kwargs))
 
     # Check if both contexts are THE SAME.
     i = 1
-    for (_, t1), (_, t1) in enumerate(combined):
+    for (_, t1), (_, t1) in combined:
         i += 1
         assert t1 == t2
     assert i == len(FILE)

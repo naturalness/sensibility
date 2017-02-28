@@ -31,7 +31,7 @@ T = TypeVar('T')
 Sentence = Tuple[Sequence[T], T]
 
 
-def forward_contexts(
+def forward_sentences(
         vector: Sequence[T],
         context: int=None,
         adjacent: int=1,
@@ -58,5 +58,5 @@ def forward_contexts(
             yield tuple(real_context), element
 
 
-def backward_contexts():
+def backward_sentences():
     ...
