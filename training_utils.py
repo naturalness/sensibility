@@ -19,7 +19,7 @@
 TODO: rename this file!
 """
 
-import warning
+import warnings
 from itertools import islice
 
 import numpy as np
@@ -27,7 +27,7 @@ from more_itertools import chunked
 from path import Path
 
 from vocabulary import vocabulary
-from condensed_corpus import CondensedCorpus
+from abram import at_least
 
 
 class Sentences:
@@ -62,7 +62,7 @@ class Sentences:
     """
 
     def __init__(self, vector, *, size=None, backwards=False):
-        warning.warn('Use `sentences` module instead', DeprecationWarning)
+        warnings.warn('Use `sentences` module instead', DeprecationWarning)
         # TODO: Step?
         self.vector = vector
         self.size= size
@@ -149,6 +149,7 @@ class LoopBatchesEndlessly:
                  batch_size=None,
                  sentence_length=None,
                  backwards=False):
+        warnings.warn('Use `loop_batches` module instead', DeprecationWarning)
         assert Path(corpus_filename).exists()
         assert isinstance(batch_size, int)
         assert isinstance(sentence_length, int)
@@ -250,10 +251,3 @@ def count_samples_slow(filename, folds, sentence_length):
         corpus.disconnect()
 
 
-def at_least(value, *args):
-    """
-    Returns **at least** the given number.
-
-    For Dr. Hindle's sanity.
-    """
-    return max(value, *args)

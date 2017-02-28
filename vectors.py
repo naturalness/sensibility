@@ -80,6 +80,13 @@ class Vectors:
     86
     >>> c.min_index
     1
+    >>> c.max_index
+    1
+
+    >>> tokens = (
+    ...     Token(value='var', type='Keyword', loc=None),
+    ...     Token(value='foo', type='Identifier', loc=None)
+    ... )
     >>> c.insert('foobar', tokens)
     >>> c.max_index
     2
@@ -108,6 +115,10 @@ class Vectors:
     Traceback (most recent call last):
       ...
     sqlite3.IntegrityError: FOREIGN KEY constraint failed
+
+    We can count how many tokens are in a fold:
+    >>> c.ntokens_in_fold(0)
+    3
     """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
@@ -171,6 +182,15 @@ class Vectors:
         """
         for file_hash in self.hashes_in_fold(fold_no):
             yield self.get_tokens_by_hash(file_hash)
+
+    def ntokens_in_fold(self, fold: int) -> int:
+        assert fold in self.fold_ids
+        result, = self.conn.execute(r'''
+            SELECT SUM(n_tokens)
+              FROM vectorized_source JOIN fold_assignment USING (hash)
+             WHERE fold = :fold
+         ''', dict(fold=fold)).fetchone()
+        return result
 
     @property
     def unassigned_files(self) -> Iterable[str]:
