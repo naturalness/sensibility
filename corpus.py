@@ -16,6 +16,8 @@
 # limitations under the License.
 
 """
+Represents a read-only corpus of sources, repositories, and all kinds of
+goodness.
 
 >>> corpus = Corpus(new_connection_for_testing())
 >>> len(corpus) == len(list(corpus))
@@ -26,13 +28,8 @@ True
 """
 
 import sqlite3
-import json
-import logging
 from pathlib import Path
-
 from typing import Iterable, Tuple, Sized
-
-from collections import namedtuple, OrderedDict
 
 
 _DIRECTORY = Path(__file__).parent
@@ -84,7 +81,7 @@ class Corpus(Iterable[str], Sized):
         ''')
         yield from cur
 
-    def filenames_from_project(self, project):
+    def filenames_from_project(self, project: str):
         """
         Yields (hash, filename) tuples that belong to the given project.
         """
