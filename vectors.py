@@ -240,6 +240,21 @@ class Vectors:
             self.conn.execute("DELETE FROM fold_assignment")
 
 
+def convert_to_vectors(corpus: 'Corpus', vectors: Vectors) -> None:
+    """
+    Convert every usable source in the corpus to a vector.
+    Does NOT create fold assignments.
+    """
+    for file_hash in corpus:
+        source_file = corpus.get_source(file_hash)
+        try:
+            tokens = tokenize(source_file.decode('UTF-8'))
+        except Exception as err:
+            print("Error:", file_hash, repr(err), file=sys.stderr)
+            continue
+        vectors.insert(file_hash, tokens)
+
+
 if __name__ == '__main__':
     # Vectorizes the corpus.
     import sys
@@ -255,12 +270,4 @@ if __name__ == '__main__':
 
     corpus = Corpus.connect_to(source)
     vectors = Vectors.connect_to(destination)
-
-    for file_hash in corpus:
-        source_file = corpus.get_source(file_hash)
-        try:
-            tokens = tokenize(source_file.decode('UTF-8'))
-        except Exception as err:
-            print("Error:", file_hash, repr(err), file=sys.stderr)
-            continue
-        vectors.insert(file_hash, tokens)
+    convert_to_vectors(corpus, vectors)

@@ -63,16 +63,15 @@ class Corpus(Iterable[str], Sized):
         >>> len(files)
         2
 
-        >>> file_hash, = next((corpus.iterate()))
-        >>> file_hash
+        >>> next((corpus.iterate()))
         '86cc829b0a086a9f655b942278f6be5c9e5057c34459dafafa312dfdfa3a27d0'
         """
 
-        yield from self.conn.execute('''
+        yield from (t[0] for t in self.conn.execute('''
             SELECT hash
               FROM source_file JOIN parsed_source USING (hash)
              WHERE path NOT GLOB '*.min.js';
-        ''')
+        '''))
 
     @property
     def projects(self) -> Iterable[Tuple[str, str]]:
@@ -113,12 +112,12 @@ class Corpus(Iterable[str], Sized):
     def get_source(self, file_hash: str) -> bytes:
         """
         >>> corpus = Corpus(new_connection_for_testing())
-        >>> s = corpus.get_source('86cc829b0a086a9f655b942278f6be5c9e5057c34459dafafa312dfdfa3a27d0')
+        >>> file_hash = next(iter(corpus))
+        >>> s = corpus.get_source(file_hash)
         >>> isinstance(s, bytes)
         True
         >>> s.decode('UTF-8')
         '(name) => console.log(`Hello, ${name}!`);'
-
         """
         source, = self.conn.execute('''
             SELECT source
@@ -147,8 +146,8 @@ class Corpus(Iterable[str], Sized):
         """
         path = Path(filename).resolve()
         assert path.exists(), '%r does not exist' % (filename,)
-        conn = sqlite3.connect('file:{}?mode=ro'.format(filename),  # type: ignore
-                               uri=True)
+        uri = 'file:{}?mode=ro'.format(filename)
+        conn = sqlite3.connect(uri, uri=True)  # type: ignore
         return Corpus(conn)
 
 
