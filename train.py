@@ -49,9 +49,9 @@ parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help='default: %d' % CONTEXT_LENGTH)
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help='default: %d' % BATCH_SIZE)
-parser.add_argument('vectors_path', metavar='vectors',
+parser.add_argument('vectors_path', type=Path, metavar='vectors', 
                     help='corpus of vectors, with assigned folds')
-parser.add_argument('---continue', type=Path,
+parser.add_argument('---continue', type=Path, dest='previous_model',
                     help='Loads weights and biases from a previous run')
 
 

@@ -91,7 +91,7 @@ class LoopBatchesEndlessly(Iterable[Any]):
         """
         # XXX: hardcode a lot of stuff
         # Assume there are 5 training folds.
-        assert 0 <= fold < 5
+        assert 0 <= fold <= 4
         return cls(fold=fold, **kwargs)
 
     @classmethod
@@ -101,5 +101,5 @@ class LoopBatchesEndlessly(Iterable[Any]):
         """
         # XXX: hardcoded assumptions
         # Assume there are 5 validation folds
-        assert 5 < fold < 9
+        assert 5 <= fold <= 9
         return cls(fold=fold, **kwargs)
