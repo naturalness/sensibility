@@ -24,7 +24,7 @@ from itertools import islice
 
 import numpy as np
 from more_itertools import chunked
-from path import Path
+from pathlib import Path
 
 from vocabulary import vocabulary
 from abram import at_least

@@ -1,6 +1,5 @@
 numpy >= 1.11.0
 tqdm
-path.py
 blessings
 Keras==1.2.2
 more-itertools==2.3
