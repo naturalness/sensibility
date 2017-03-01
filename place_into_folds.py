@@ -74,37 +74,44 @@ from fnmatch import fnmatch
 from tqdm import tqdm
 
 from corpus import Corpus
-from condensed_corpus import CondensedCorpus
+from vectors import Vectors
 
 stderr = partial(print, file=sys.stderr)
 
 parser = argparse.ArgumentParser('Divides the corpus into folds.')
 parser.add_argument('filename', type=Path, metavar='corpus')
+parser.add_argument('-o', '--offset', type=int, default=0)
 parser.add_argument('-k', '--folds', type=int, default=10, help='default: 10')
 parser.add_argument('-n', '--min-tokens', type=int, default=None)
 parser.add_argument('-f', '--overwrite', action='store_true')
 
 MAIN_CORPUS = Path('javascript-sources.sqlite3')
 
+
 def main():
-    # Creates variables: folds, min_tokens, filename, overwrite
+    # Creates variables: filename, offset, folds, min_tokens, overwrite
     globals().update(vars(parser.parse_args()))
     assert filename.exists()
     assert folds >= 1
+    assert offset >= 0
 
-    vectors = CondensedCorpus.connect_to(str(filename))
+    vectors = Vectors.connect_to(str(filename))
     corpus = Corpus.connect_to(str(MAIN_CORPUS))
 
-    if vectors.has_fold_assignments:
+    # We will be assigning to these folds.
+    new_fold_ids = tuple(range(offset, offset + folds))
+
+    conflict = set(vectors.fold_ids) & set(new_fold_ids)
+    if conflict:
         if overwrite:
             vectors.destroy_fold_assignments()
         else:
-            stderr('Will not overwrite existing fold assignments!')
+            stderr('Not overwriting existing fold assignments:', conflict)
             exit(-1)
 
     # We maintain a priority queue of folds. At the top of the heap is the
     # fold with the fewest tokens.
-    heap = [(0, fold_no) for fold_no in range(folds)]
+    heap = [(0, fold_no) for fold_no in new_fold_ids]
     heapq.heapify(heap)
 
     # This is kinda dumb, but:
@@ -121,11 +128,9 @@ def main():
         Yields a random project from the main corpus.
         """
         for file_hash, path in corpus.filenames_from_project(project):
-            # Heuristic: ignore minified file.
-            if fnmatch(path, '*.min.js'):
-                stderr('Ignoring minified file:', path)
-                continue
-
+            # Although all files are only stored once in the database,
+            # multiple projects could have THE SAME FILE. Skip 'em if that's
+            # the case.
             if file_hash in hashes_seen:
                 stderr('Ignoring duplicate file:', path, file_hash)
                 continue
@@ -146,7 +151,7 @@ def main():
         Rule of thumb calculation for normality.
         """
         sample_mean = statistics.mean(map(getter, heap))
-        sample_sd= statistics.stdev(map(getter, heap))
+        sample_sd = statistics.stdev(map(getter, heap))
 
         progress.set_description("mean: {}, stddev: {}".format(
             sample_mean, sample_sd

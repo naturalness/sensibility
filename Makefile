@@ -21,7 +21,8 @@ FOLDS = 5
 # 75 million, which is a semi-arbitrarily chosen number.
 # My last training phase used 9 folds of around 7.5 million tokens each; hencem
 # this value is 10 times that (so the same amount of tokens, plus a few more).
-TOKENS_PER_FOLD = 75000000
+TOKENS_PER_FOLD_TRAIN = 75000000
+TOKENS_PER_FOLD_VALID = 25000000
 
 CORPUS = javascript
 SOURCES = $(CORPUS)-sources.sqlite3
