@@ -121,6 +121,12 @@ def main():
     random.shuffle(shuffled_projects)
 
     hashes_seen = set()
+    previously_assigned = set()
+
+    # Add all existing fold assignments to hashes seen.
+    for fold_no in vectors.fold_ids:
+        for file_hash in vectors.hashes_in_fold(fold_no):
+            previously_assigned.add(file_hash)
 
     # A series of helper functions.
     def appropriate_files(project):
@@ -134,6 +140,10 @@ def main():
             if file_hash in hashes_seen:
                 stderr('Ignoring duplicate file:', path, file_hash)
                 continue
+
+            if file_hash in previously_assigned:
+                # This project has already been assigned.
+                break
 
             hashes_seen.add(file_hash)
             try:

@@ -134,7 +134,7 @@ class Vectors:
     def disconnect(self) -> None:
         self.conn.close()
 
-    def get_tokens_by_hash(self, file_hash: str) -> Result:
+    def get_result_by_hash(self, file_hash: str) -> Result:
         cur = self.conn.cursor()
         cur.execute("""
             SELECT array FROM vectorized_source
@@ -208,7 +208,7 @@ class Vectors:
 
     def __getitem__(self, key: Union[str, int]) -> Result:
         if isinstance(key, str):
-            return self.get_tokens_by_hash(key)
+            return self.get_result_by_hash(key)
         else:
             return self.get_result_by_rowid(key)
 
