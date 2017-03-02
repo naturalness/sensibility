@@ -1,0 +1,4 @@
+# This directory is meant to hold random junk data that may be temporarily
+# useful.
+*
+!.gitignore
