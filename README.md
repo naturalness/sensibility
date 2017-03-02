@@ -3,6 +3,20 @@ Grammar Guru
 
 Detects and fixes syntax errors. Currently works with JavaScript.
 
+> **NOTE**: The [`cmput680`][cmput680] tag has the working proof-of-concept. Either
+> clone this repo at the `cmput680` tag:
+> 
+>     git clone --branch=cmput680 https://github.com/eddieantonio/training-grammar-guru.git
+> 
+> Or switch to the tag in the already cloned repository:
+> 
+>     git checkout cmput680
+> 
+> Then following the [Install](#Install) and [Usage](#Usage) sections
+> below.
+
+[cmput680]: https://github.com/eddieantonio/training-grammar-guru/tree/cmput680
+
 Install
 -------
 
