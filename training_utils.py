@@ -34,7 +34,7 @@ class Sentences:
     """
     Generates samples from the given vector.
 
-    >>> from corpus import Token
+    >>> from token_utils import Token
     >>> from vectorize_tokens import vectorize_tokens
     >>> t = Token(value='var', type='Keyword', loc=None)
     >>> v = vectorize_tokens([t])

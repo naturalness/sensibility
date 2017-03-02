@@ -69,7 +69,7 @@ def deserialize_tokens(byte_string: bytes) -> SourceVector:
     Return an array of vocabulary entries given a byte string produced by
     serialize_token().tobytes()
 
-    >>> deserialize(b'VZD')
+    >>> deserialize_tokens(b'VZD')
     array('B', [86, 90, 68])
     """
     return SourceVector(array.array('B', byte_string))
