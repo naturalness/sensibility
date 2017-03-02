@@ -37,7 +37,7 @@ from blessings import Terminal
 
 from unvocabularize import unvocabularize
 from vectorize_tokens import vectorize_tokens
-from corpus import Token
+from token_utils import Token
 from vocabulary import vocabulary
 from training_utils import Sentences, one_hot_batch
 

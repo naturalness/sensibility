@@ -29,7 +29,7 @@ True
 
 import sqlite3
 from pathlib import Path
-from typing import Iterable, Tuple, Sized
+from typing import Iterable, Tuple, Sized, Union
 
 
 _DIRECTORY = Path(__file__).parent
@@ -137,7 +137,7 @@ class Corpus(Iterable[str], Sized):
         return int(count)
 
     @classmethod
-    def connect_to(cls, filename: str) -> 'Corpus':
+    def connect_to(cls, filename: Union[str, Path]) -> 'Corpus':
         """
         Connect to the database (read-only) with the given filename.
         """

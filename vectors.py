@@ -21,6 +21,7 @@ Manages a vector of files with fold assignments.
 
 import io
 import sqlite3
+from pathlib import Path
 from typing import NewType, Union, Tuple, Sequence, Iterable
 
 from token_utils import Token
@@ -126,11 +127,6 @@ class Vectors:
             conn.executescript(SCHEMA)
         self.conn = conn
 
-    @classmethod
-    def connect_to(cls, filename: str) -> 'Vectors':
-        conn = sqlite3.connect(filename)
-        return cls(conn)
-
     def disconnect(self) -> None:
         self.conn.close()
 
@@ -181,7 +177,7 @@ class Vectors:
         Generated all hash, token pairs from the corpus.
         """
         for file_hash in self.hashes_in_fold(fold_no):
-            yield self.get_tokens_by_hash(file_hash)
+            yield self.get_result_by_hash(file_hash)
 
     def ntokens_in_fold(self, fold: int) -> int:
         assert fold in self.fold_ids
@@ -258,6 +254,11 @@ class Vectors:
         """
         with self.conn:
             self.conn.execute("DELETE FROM fold_assignment")
+
+    @classmethod
+    def connect_to(cls, filename: Union[str, Path]) -> 'Vectors':
+        conn = sqlite3.connect(str(filename))
+        return cls(conn)
 
 
 def maybe_decode(string):

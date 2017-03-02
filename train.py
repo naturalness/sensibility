@@ -49,7 +49,7 @@ parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help='default: %d' % CONTEXT_LENGTH)
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help='default: %d' % BATCH_SIZE)
-parser.add_argument('vectors_path', type=Path, metavar='vectors', 
+parser.add_argument('vectors_path', type=Path, metavar='vectors',
                     help='corpus of vectors, with assigned folds')
 parser.add_argument('---continue', type=Path, dest='previous_model',
                     help='Loads weights and biases from a previous run')
@@ -65,6 +65,9 @@ def compile_model(
     from keras.layers import Dense, Activation
     from keras.layers import LSTM
     from keras.optimizers import RMSprop
+
+    # TODO:
+    #  - experiment with layers
 
     model = Sequential()
     model.add(LSTM(hidden_layer,
@@ -105,12 +108,9 @@ def train(
     vectors.disconnect()
 
     # TODO:
-    #  - save model with architecture after each epoch
-    #  - save acc, val_acc, loss, val_loss after each epoch
-    #       - keras.callbacks.ModelCheckpoint.
     #  - point a symlink at the best model after each epoch
 
-    model = compile_model(context_length=20,
+    model = compile_model(context_length=context_length,
                           hidden_layer=hidden_layer)
 
     training_batches, validation_batches = create_batches(
