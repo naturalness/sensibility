@@ -1,0 +1,3 @@
+# Include the License file
+include LICENSE
+include README.md

@@ -57,7 +57,6 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
-.ipynb_checkpoints
 
 # pyenv
 .python-version
