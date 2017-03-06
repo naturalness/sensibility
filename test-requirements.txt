@@ -1,3 +1,4 @@
 tox
-py.test
+pytest
+pytest-xdist
 mypy

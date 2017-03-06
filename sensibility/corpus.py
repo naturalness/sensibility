@@ -18,13 +18,6 @@
 """
 Represents a read-only corpus of sources, repositories, and all kinds of
 goodness.
-
->>> corpus = Corpus(new_connection_for_testing())
->>> len(corpus) == len(list(corpus))
-True
->>> hashes = next(iter(corpus))
->>> all(isinstance(x, str) for x in hashes)
-True
 """
 
 import sqlite3
@@ -32,14 +25,7 @@ from pathlib import Path
 from typing import Iterable, Tuple, Sized, Union
 
 
-_DIRECTORY = Path(__file__).parent
-
-# CREATE VIEW IF NOT EXISTS usable_source AS
-USABLE_SOURCE_QUERY = r'''
-SELECT hash
-FROM source_file JOIN parsed_source USING (hash)
-WHERE path NOT GLOB '*.min.js';
-'''
+__all__ = ['Corpus']
 
 
 class Corpus(Iterable[str], Sized):
@@ -55,15 +41,8 @@ class Corpus(Iterable[str], Sized):
 
     def iterate(self) -> Iterable[str]:
         """
-        >>> corpus = Corpus(new_connection_for_testing())
-        >>> files = tuple(corpus.iterate())
-        >>> len(files)
-        2
-
-        >>> next((corpus.iterate()))
-        '86cc829b0a086a9f655b942278f6be5c9e5057c34459dafafa312dfdfa3a27d0'
+        Iterate through all usable sources in the file.
         """
-
         yield from (t[0] for t in self.conn.execute('''
             SELECT hash
               FROM source_file JOIN parsed_source USING (hash)
@@ -108,13 +87,7 @@ class Corpus(Iterable[str], Sized):
 
     def get_source(self, file_hash: str) -> bytes:
         """
-        >>> corpus = Corpus(new_connection_for_testing())
-        >>> file_hash = next(iter(corpus))
-        >>> s = corpus.get_source(file_hash)
-        >>> isinstance(s, bytes)
-        True
-        >>> s.decode('UTF-8')
-        '(name) => console.log(`Hello, ${name}!`);'
+        Return the source code of the given file.
         """
         source, = self.conn.execute('''
             SELECT source
@@ -146,13 +119,3 @@ class Corpus(Iterable[str], Sized):
         uri = 'file:{}?mode=ro'.format(filename)
         conn = sqlite3.connect(uri, uri=True)  # type: ignore
         return Corpus(conn)
-
-
-def new_connection_for_testing():
-    """
-    Return an SQLite3 connection suitable for testing.
-    """
-    conn = sqlite3.connect(':memory:')
-    with open(str(_DIRECTORY / 'test.sql')) as sqlfile:
-        conn.executescript(sqlfile.read())
-    return conn
