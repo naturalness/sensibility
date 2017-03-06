@@ -22,7 +22,7 @@ Yields contexts in both forwards and backwards directions.
 from itertools import chain, repeat, islice
 from typing import Sequence, TypeVar, Iterable, Tuple
 
-from vocabulary import vocabulary
+from .vocabulary import vocabulary
 
 
 # Types

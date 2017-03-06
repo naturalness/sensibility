@@ -19,9 +19,9 @@ import array
 import warnings
 from typing import NewType, Sequence, Iterator
 
-from token_utils import Token
-from vocabulary import vocabulary, START_TOKEN, END_TOKEN
-from stringify_token import stringify_token
+from . import Token
+from .vocabulary import vocabulary, START_TOKEN, END_TOKEN
+from .stringify_token import stringify_token
 
 
 # A SourceVector, which can be treated as a Sequence of vocabulary indices.
@@ -33,7 +33,6 @@ def vectorize_tokens(tokens):
     Turns a file into a vector of indices (not a one-hot vector per token!).
     Automatically inserts start and end tokens.
 
-    >>> from token_utils import Token
     >>> vectorize_tokens([Token(value='var', type='Keyword', loc=None)])
     (0, 86, 99)
     """

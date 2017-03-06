@@ -17,3 +17,6 @@
 """
 Sensibility --- detect and fix syntax errors in source code.
 """
+
+from .token_utils import Token
+from .vectorize_tokens import serialize_tokens

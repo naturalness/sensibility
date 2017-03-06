@@ -21,10 +21,10 @@ Tests the generation of sentences.
 
 import pytest
 
-from token_utils import Token
-from vectorize_tokens import serialize_tokens
-from sentences import forward_sentences, backward_sentences
-from vocabulary import vocabulary
+from sensibility import Token, serialize_tokens
+from sensibility.sentences import forward_sentences, backward_sentences
+from sensibility.vocabulary import vocabulary
+
 
 FILE = serialize_tokens([
     Token(value='(', type='Punctuator', loc=None),

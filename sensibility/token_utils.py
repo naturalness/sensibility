@@ -22,6 +22,12 @@ it breaks things if you shadow standard library stuff...
 
 from collections import namedtuple
 
+__all__ = [
+    'Token',
+    'Location',
+    'Position'
+]
+
 
 class Token(namedtuple('BaseToken', 'value type loc')):
     """

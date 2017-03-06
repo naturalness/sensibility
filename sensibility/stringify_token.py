@@ -15,9 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import Token
 
 """
->>> from token_utils import Token
 >>> stringify_token(Token(value='**=', type='Punctuator', loc=None))
 '**='
 >>> stringify_token(Token(value='var', type='Keyword', loc=None))
