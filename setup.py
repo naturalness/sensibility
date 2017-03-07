@@ -42,7 +42,11 @@ setup(
         'blessings',
         'more-itertools>=2.3',
     ],
-    extra_require={
-        'test': ['py.test', 'mypy', 'pystyleguide']
+    extras_require={
+        'test': [
+            'pytest',
+            'mypy',
+            'pystyleguide'
+        ]
     },
 )
