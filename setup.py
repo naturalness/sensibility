@@ -14,7 +14,7 @@ setup(
     version='0.2.dev0',
 
     description='Syntax error detecter and fixer',
-    long_description=slurp(path.join(here, 'README.md')),
+    long_description=slurp(path.join(here, 'README.rst')),
     url='https://github.com/eddieantonio/training-grammar-guru',
 
     author='Eddie Antonio Santos',
