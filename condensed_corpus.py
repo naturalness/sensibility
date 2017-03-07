@@ -21,12 +21,11 @@ Compatibility file.
 
 import warnings
 
-warnings.warn("Should 'from vectors import Vectors' instead",
+warnings.warn("Should 'from sensibility import Vectors' instead",
               DeprecationWarning)
 
 # Pretend we're the old module.
-from vectors import *
-CondensedCorpus = Vectors
+from sensibility import Vectors as CondensedCorpus
 
 # TODO: remove this this is weird here.
 def unblob(blob):

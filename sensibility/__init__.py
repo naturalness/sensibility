@@ -21,3 +21,5 @@ Sensibility --- detect and fix syntax errors in source code.
 from .token_utils import Token, Location, Position
 from .vectorize_tokens import vectorize_tokens, serialize_tokens
 from .vocabulary import vocabulary
+from .corpus import Corpus
+from .vectors import Vectors

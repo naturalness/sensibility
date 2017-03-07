@@ -24,11 +24,11 @@ import sqlite3
 from pathlib import Path
 from typing import NewType, Union, Tuple, Sequence, Iterable
 
-from token_utils import Token
-from vectorize_tokens import (
+from .token_utils import Token
+from .vectorize_tokens import (
     SourceVector, serialize_tokens, deserialize_tokens
 )
-from vocabulary import vocabulary
+from .vocabulary import vocabulary
 
 
 # Results are always the hash and the source vector.
