@@ -19,7 +19,7 @@ import array
 import warnings
 from typing import NewType, Sequence, Iterator
 
-from . import Token
+from .token_utils import Token
 from .vocabulary import vocabulary, START_TOKEN, END_TOKEN
 from .stringify_token import stringify_token
 
@@ -37,6 +37,7 @@ def vectorize_tokens(tokens):
     (0, 86, 99)
     """
     warnings.warn('Use serialize_token() instead', DeprecationWarning)
+
     def generate():
         yield vocabulary.to_index(START_TOKEN)
         yield from generated_vector(tokens)

@@ -21,9 +21,8 @@ Tests the generation of sentences.
 
 import pytest
 
-from sensibility import Token, serialize_tokens
+from sensibility import Token, serialize_tokens, vocabulary
 from sensibility.sentences import forward_sentences, backward_sentences
-from sensibility.vocabulary import vocabulary
 
 
 FILE = serialize_tokens([
@@ -47,7 +46,7 @@ assert len(FILE) == 13
 
 def test_forward_sentences():
     """
-    Test creatign padded forward sentences.
+    Test creating padded forward sentences.
     """
     n = 10  # sentence length.
     m = n - 1  # context length.
@@ -98,7 +97,7 @@ def test_forward_sentences_too_big():
 
 def test_backward_sentences():
     """
-    Test creatign padded backwards sentences.
+    Test creating padded backwards sentences.
     """
     n = 10  # sentence length.
     m = n - 1  # context length.
@@ -132,6 +131,6 @@ def test_both_sentences():
     combined = zip(forward_sentences(*args, **kwargs),
                    backward_sentences(*args, **kwargs))
 
-    # Check if both adjacents are THE SAME.
+    # Check if both adjacent are THE SAME.
     for (_, t1), (_, t2) in combined:
         assert t1 == t2
