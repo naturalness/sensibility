@@ -20,9 +20,27 @@ Tests the round trip mapping from vocabulary string entry, to stringified
 token, to
 """
 
-from tokenize_js import id_to_token, tokenize
-from vocabulary import vocabulary
-from stringify_token import stringify_token
+import pytest
+
+from sensibility import vocabulary
+from sensibility.stringify_token import stringify_token
+from sensibility.tokenize_js import id_to_token, tokenize
+
+
+slow = pytest.mark.skipif(
+        not pytest.config.getoption("--runslow"),
+        reason="need --runslow option to run"
+)
+
+
+def test_javascript_vocabulary():
+    """
+    Tests random properties of the JavaScript vocabulary.
+    """
+    LENGTH = 100
+    assert len(vocabulary) == LENGTH
+    assert vocabulary.to_text(0) == vocabulary.start_token
+    assert vocabulary.to_text(LENGTH - 1) == vocabulary.end_token
 
 
 def test_start_entry():
@@ -50,11 +68,13 @@ def test_end_entry():
     assert id_to_token(0) is None, 'end token CANNOT have a token form!'
 
 
+@slow
 def test_round_trip():
     """
     This very slow test ensures that (nearly) all tokens can go from
     vocabulary entries, to their stringified text, and back.
     """
+
     # Iterate throught all entries EXCEPT special-cased start and end entries.
     for entry_id in range(vocabulary.start_token_index + 1, vocabulary.end_token_index):
         # Ensure that the text cooresponds to the ID and vice-versa.

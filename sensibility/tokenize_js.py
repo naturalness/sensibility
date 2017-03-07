@@ -18,6 +18,9 @@
 
 """
 Tokenizes JavaScript.
+
+Requires Node.JS >= 4.0. The first invocation of any of the external commands
+will automatically install all required Node.JS dependencies through NPM.
 """
 
 import json
@@ -26,8 +29,8 @@ import tempfile
 from pathlib import Path
 from typing import Sequence, TextIO, cast
 
-from token_utils import Token
-from vocabulary import vocabulary
+from .token_utils import Token
+from .vocabulary import vocabulary
 
 
 THIS_DIRECTORY = Path(__file__).parent
@@ -129,4 +132,3 @@ def id_to_token(token_id):
         return None
     with synthetic_file(vocabulary.to_text(token_id)) as file_obj:
         return tokenize_file(file_obj)[0]
-

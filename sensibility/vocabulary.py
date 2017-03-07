@@ -79,7 +79,7 @@ class Vocabulary(Sized):
 
 
 try:
-    from calculated_vocabulary import VOCAB
+    from .js_vocabulary import VOCAB
 except ImportError:
     logger.exception("Could not load generated vocabulary.")
 else:
