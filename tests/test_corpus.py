@@ -26,8 +26,13 @@ from sensibility.corpus import Corpus
 
 _DIRECTORY = Path(__file__).parent
 
+import pytest
+slow = pytest.mark.skipif(
+        not pytest.config.getoption("--runslow"),
+        reason="need --runslow option to run"
+)
 
-def basic_test():
+def test_meta():
     """
     Tests opening and iterating the sample corpus.
     """
@@ -51,6 +56,25 @@ def test_get_source():
     source = corpus.get_source(file_hash)
     assert isinstance(source, bytes)
     assert source == b'(name) => console.log(`Hello, ${name}!`);'
+
+
+@slow
+def test_real_database():
+    """
+    Connects to the real, actual, database, and ENSURES all the files exists
+    and have sources.
+
+    The database MUST be in the following directory:
+
+    ../data/javascript-source.sqlite3
+    """
+    path = _DIRECTORY.parent / 'data' / 'javascript-sources.sqlite3'
+    assert path.exists()
+    corpus = Corpus.connect_to(path)
+    assert len(corpus) >= 400_000
+    for file_hash in corpus:
+        source = corpus.get_source(file_hash)
+        assert isinstance(source, bytes)
 
 
 def new_connection_for_testing():

@@ -45,8 +45,7 @@ class Corpus(Iterable[str], Sized):
         """
         yield from (t[0] for t in self.conn.execute('''
             SELECT hash
-              FROM source_file JOIN parsed_source USING (hash)
-             WHERE path NOT GLOB '*.min.js';
+              FROM usable_source
         '''))
 
     @property
@@ -82,9 +81,6 @@ class Corpus(Iterable[str], Sized):
         ((repo, owner, path),) = results
         return repo, owner, path
 
-    def get_tokens(self, file_hash):
-        raise NotImplementedError
-
     def get_source(self, file_hash: str) -> bytes:
         """
         Return the source code of the given file.
@@ -94,6 +90,10 @@ class Corpus(Iterable[str], Sized):
               FROM source_file
              WHERE hash = :hash
         ''', dict(hash=file_hash)).fetchone()
+        if not isinstance(source, bytes):
+            import warnings
+            warnings.warn("Unexpected type: "
+                          f"{file_hash}'s source is a {type(source)}")
         return source
 
     def __len__(self):
@@ -101,11 +101,7 @@ class Corpus(Iterable[str], Sized):
         Return the amount of usable sources.
         """
         cur = self.conn.cursor()
-        cur.execute(r'''
-          SELECT COUNT(*)
-            FROM source_file JOIN parsed_source USING (hash)
-           WHERE path NOT GLOB '*.min.js'
-        ''')
+        cur.execute(r'SELECT COUNT(*) FROM usable_source')
         count, = cur.fetchone()
         return int(count)
 
