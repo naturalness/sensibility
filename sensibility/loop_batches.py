@@ -19,16 +19,22 @@
 Loops batches for training and for validation (development) forever.
 """
 
+import warnings
 from pathlib import Path
+from typing import Iterable, Iterator, Sequence, cast, Tuple
+
+import numpy as np
 from more_itertools import chunked
-from typing import Iterable, Iterator, Sequence, cast, Any
 
-from vectors import Vectors
-from sentences import Sentence, T, forward_sentences, backward_sentences
-from training_utils import one_hot_batch, training_folds, evaluation_folds
+from .vectors import Vectors
+from .vocabulary import vocabulary
+from .sentences import Sentence, T, forward_sentences, backward_sentences
 
 
-class LoopBatchesEndlessly(Iterable[Any]):
+Batch = Tuple[np.ndarray, np.ndarray]
+
+
+class LoopBatchesEndlessly(Iterable[Batch]):
     """
     Loops batches of vectors endlessly from the corpus for a given fold.
     """
@@ -54,12 +60,12 @@ class LoopBatchesEndlessly(Iterable[Any]):
         self.samples_per_epoch = vectors.ntokens_in_fold(self.fold)
         vectors.disconnect()
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[Batch]:
         batch_size = self.batch_size
         for batch in self._yield_batches_endlessly():
-            yield one_hot_batch(batch, batch_size=batch_size,
-                                # The parameter name is mismatched, I know...
-                                sentence_length=self.context_length)
+            yield one_hot_batch(batch,
+                                batch_size=batch_size,
+                                context_length=self.context_length)
 
     def _yield_sentences_from_corpus(self) -> Iterable[Sentence]:
         """
@@ -103,3 +109,45 @@ class LoopBatchesEndlessly(Iterable[Any]):
         # Assume there are 5 validation folds
         assert 5 <= fold <= 9
         return cls(fold=fold, **kwargs)
+
+
+def one_hot_batch(batch, *,
+                  batch_size: int,
+                  context_length: int,
+                  vocab_size: int=len(vocabulary)) -> Batch:
+    """
+    Creates one hot vectors (x, y arrays) of the batch.
+
+    >>> x, y = one_hot_batch([(np.array([36]), 48)],
+    ...                      batch_size=1024,
+    ...                      context_length=20)
+    >>> x.shape
+    (1, 20, 100)
+    >>> x[0, 0, 36]
+    1
+    >>> y.shape
+    (1, 100)
+    >>> y[0, 48]
+    1
+    """
+    # Create empty one-hot vectors
+    x = np.zeros((batch_size, context_length, vocab_size), dtype=np.bool)
+    y = np.zeros((batch_size, vocab_size), dtype=np.bool)
+
+    # Fill in the vectors.
+    for sentence_id, (sentence, last_token_id) in enumerate(batch):
+        # Fill in the one-hot matrix for X
+        for pos, token_id in enumerate(sentence):
+            x[sentence_id, pos, token_id] = True
+
+        # Add the last token for the one-hot vector Y.
+        y[sentence_id, last_token_id] = True
+
+    samples_produced = sentence_id + 1
+
+    if samples_produced < batch_size:
+        warnings.warn(f"less samples than batch size: {samples_produced}")
+        x = np.resize(x, ((samples_produced, context_length, vocab_size)))
+        y = np.resize(y, ((samples_produced, vocab_size)))
+
+    return x, y

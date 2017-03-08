@@ -121,6 +121,8 @@ def one_hot_batch(batch, *, batch_size=None, sentence_length=None,
     >>> y[0, 48]
     1
     """
+    warnings.warn('Use `from sensibility import one_hot_batch` instead',
+                  DeprecationWarning)
     # Create empty one-hot vectors
     x = np.zeros((batch_size, sentence_length, vocab_size), dtype=np.bool)
     y = np.zeros((batch_size, vocab_size), dtype=np.bool)
@@ -249,5 +251,3 @@ def count_samples_slow(filename, folds, sentence_length):
         return n_samples
     finally:
         corpus.disconnect()
-
-
