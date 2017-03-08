@@ -21,8 +21,11 @@ FOLDS = 5
 # 75 million, which is a semi-arbitrarily chosen number.
 # My last training phase used 9 folds of around 7.5 million tokens each; hencem
 # this value is 10 times that (so the same amount of tokens, plus a few more).
-TOKENS_PER_FOLD_TRAIN = 75000000
-TOKENS_PER_FOLD_VALID = 25000000
+TOKENS_PER_FOLD_TRAINING = 75000000
+TOKENS_PER_FOLD_VALIDATION = 25000000
+
+HIDDEN_LAYERS = 300,300,300
+CONTEXT = 20
 
 CORPUS = javascript
 SOURCES = $(CORPUS)-sources.sqlite3
@@ -42,23 +45,17 @@ SPLIT = $(shell which gsplit || which split)
 
 all: results
 
-.PHONY: results rm-results
-results: results.csv
+# This will include a LOT of rules to make models, mutations, and results.
+include extra-rules.mk
+# So many in fact, I've written a script to generate all the rules.
+%.mk: %.pl
+	perl $< > $@
 
-results.csv: results.1.csv results.2.csv results.3.csv results.4.csv results.5.csv results.6.csv results.7.csv results.8.csv
-	./concat-results.sh $^ > $@
+results: results.csv
 
 results.%.csv:
 	./evaluate.py $*
 
-rm-results:
-	$(RM) $(wildcard results.*.csv)
-
-# This will include a LOT of rules to make models.
-include all-models.mk
-# So many in fact, I've written a script to generate all the rules.
-all-models.mk: all-models.pl
-	perl $< > $@
 
 # Assign files to folds. Create a vectorized corpus suitable for training.
 $(ASSIGNED_VECTORS): $(VECTORS)
