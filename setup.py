@@ -34,6 +34,10 @@ setup(
     ],
 
     packages=find_packages(),
+
+    # Node.JS app is NOT zip safe!
+    zip_safe=False,
+
     install_requires=[
         'Keras>=1.2.2',
         'numpy>=1.11.0',

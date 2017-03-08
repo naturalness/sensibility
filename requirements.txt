@@ -1,5 +1,5 @@
 Keras==1.2.2
-numpy >= 1.11.0
+numpy>=1.11.0
 h5py==2.6.0
 more-itertools==2.3
 tqdm

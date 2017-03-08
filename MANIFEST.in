@@ -1,2 +1,5 @@
 # Include the License file
 include LICENSE
+include *.rst
+recursive-include sensibility *.js *.sh *.json
+prune sensibility/tokenize-js/node_modules
