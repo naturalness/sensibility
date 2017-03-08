@@ -73,14 +73,13 @@ from fnmatch import fnmatch
 
 from tqdm import tqdm
 
-from corpus import Corpus
-from vectors import Vectors
+from sensibility import Corpus, Vectors
 
 stderr = partial(print, file=sys.stderr)
 
-parser = argparse.ArgumentParser('Divides the corpus into folds.')
+parser = argparse.ArgumentParser(description='Divides the corpus into folds.')
 parser.add_argument('filename', type=Path, metavar='corpus')
-parser.add_argument('-o', '--offset', type=int, default=0)
+parser.add_argument('-o', '--offset', type=int, default=0, help='default: 0')
 parser.add_argument('-k', '--folds', type=int, default=10, help='default: 10')
 parser.add_argument('-n', '--min-tokens', type=int, default=None)
 parser.add_argument('-f', '--overwrite', action='store_true')

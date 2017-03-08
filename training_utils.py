@@ -26,8 +26,8 @@ import numpy as np
 from more_itertools import chunked
 from pathlib import Path
 
-from vocabulary import vocabulary
-from abram import at_least
+from sensibility.vocabulary import vocabulary
+from sensibility.abram import at_least
 
 
 class Sentences:

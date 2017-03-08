@@ -15,7 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from vocabulary import vocabulary
+import warnings
+
+from sensibility import vocabulary
+
+
+warnings.warn("Do not use this module anymore.")
 
 
 class ModelRecipe:

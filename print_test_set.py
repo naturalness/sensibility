@@ -12,13 +12,16 @@ These files are:
 
 """
 
+raise NotImplementedError("""TODO:
+ - must search from USABLE source files
+""")
+
 import sys
 
 from fnmatch import fnmatch
 from pathlib import Path
 
-from corpus import Corpus
-from condensed_corpus import CondensedCorpus
+from sensibility import Corpus, Vectors
 
 
 def is_minified(path_name):
@@ -30,7 +33,7 @@ if __name__ == '__main__':
     assert Path(vector_filename).exists()
     assert Path(corpus_filename).exists()
 
-    vectors = CondensedCorpus.connect_to(vector_filename)
+    vectors = Vectors.connect_to(vector_filename)
     corpus = Corpus.connect_to(corpus_filename)
 
     assert vectors.has_fold_assignments
