@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
 Takes a vector representing a file with the vocabulary and spits out a
 (hopefully) syntactically valid replica of said file.
@@ -27,17 +26,24 @@ e.g.,
  $ npm install -g js-beautify
  $ ./unvocabularize.py corpus.sqlite3 1 | js-beautify
  /*<start>*/
- var $anyIdentifier = $anyIdentifier("any-string");
- $anyIdentifier().$anyIdentifier(function ($anyIdentifier) {
-    $anyIdentifier.$anyIdentifier(`template-head${$anyIdentifier}template-tail`);
+ var Identifier = Identifier("string");
+ Identifier().Identifier(function (Identifier) {
+    Identifier.Identifier(`template-head${Identifier}template-tail`);
  }); /*<end>*/
 """
 
-from vocabulary import vocabulary
+import warnings
+
+from .vocabulary import vocabulary
 
 
-def unvocabularize(vector):
+warnings.warn('This module is of dubious value')
+
+
+def unvocabularize(vector) -> str:
     """
+    Return a string of the JavaScript source given by the vocabulary indices.
+
     >>> unvocabularize((0, 86, 5, 31, 99))
     '/*<START>*/ var Identifier ; /*<END>*/'
     """
@@ -52,10 +58,10 @@ if __name__ == '__main__':
 
     # Attempt to convert the thing into an index.
     try:
-        query = int(query)
+        index = int(query)
     except ValueError:
         pass
 
     corpus = CondensedCorpus.connect_to(filename)
-    file_hash, vector = corpus[query]
+    file_hash, vector = corpus[index]
     print(unvocabularize(vector))
