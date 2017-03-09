@@ -25,13 +25,14 @@ Finds and fixes syntax errors. Currently works with JavaScript.
 Install
 -------
 
-Requires Python 3.5 and Node.JS.
+Requires Python 3.6 and Node.JS >= 4.0.
 
 Activate a virtualenv, if that's your thing. Then,
 
 ::
 
     pip install -r requirements.txt
+    pip install -e .
 
 Download the `model data`_ and copy the
 ``*.h5`` and ``*.json`` files into the directory you'll run the tool.
@@ -61,9 +62,8 @@ To dump the model's token-by-token consensus about the file:
 Development
 -----------
 
-To run the scripts in bin, do this:
+To run the scripts in bin, do this::
 
-::
     pip install -e .
 
 License
