@@ -58,6 +58,14 @@ To dump the model's token-by-token consensus about the file:
 
     $ ./detect.py dump my-incorrect-file.js
 
+Development
+-----------
+
+To run the scripts in bin, do this:
+
+::
+    pip install -e .
+
 License
 -------
 
