@@ -3,8 +3,10 @@
 # An ad hoc file that gives some (maybe) imporant descriptive statistics.
 
 CORPUS='./data/javascript-sources.sqlite3'
+VECTORS='./data/javascript-vectors.sqlite3'
 
 
+# Performs a query against the corpus.
 query-corpus() {
     local query
     query="$1"
@@ -17,7 +19,39 @@ query-corpus() {
     sqlite3 -header -csv "$CORPUS" "$query"
 }
 
-minified_files() {
+# Performs a query against the vectors.
+query-vectors() {
+    local query
+    query="$1"
+    if [ ! -f "$VECTORS" ]; then
+        echo "Vectors not found: $VECTORS" 2>&1
+        exit -1
+    fi
+    echo "> $query"
+
+    sqlite3 -header -csv "$VECTORS" "$query"
+}
+
+verify() {
+    local db expected actual
+    expected="$1"
+    db="$2"
+
+    echo "Verifying $db's SHA256 hash"
+    actual="$(shasum -a256 "$db")"
+    actual="${actual:0:64}"
+
+    if [ "$expected" != "$actual" ]; then
+        echo "ERROR: $db is not the database we expected!"2>&1
+        echo "Exepcted SHA256: $expected" 2>&1
+        echo "Actual SHA256: $actual" 2>&1
+    fi
+}
+
+################################################################################
+
+# How many minified files are in the corpus?
+minified-files() {
     local query
     read -r -d '' query <<'SQL'
     SELECT COUNT(*) as `minified.files`
@@ -27,58 +61,60 @@ SQL
     query-corpus "$query"
 }
 
-usable_files() {
+# How many usable files (syntax ok, not minifed) are in the corpus?
+usable-files() {
     local query
     read -r -d '' query <<'SQL'
     SELECT COUNT(*) as `usable.files`
-      FROM usable_source
+      FROM usable_source;
 SQL
     query-corpus "$query"
 }
 
-sum_folds() {
+# How many tokens are there per fold?
+fold-stats() {
     local query
     read -r -d '' query <<'SQL'
-        SELECT fold, SUM(n_tokens)
+        SELECT fold,
+               SUM(n_tokens) as `sum.tokens`,
+               AVG(n_tokens) as `avg.tokens`,
+               MIN(n_tokens) as `min.tokens`,
+               MAX(n_tokens) as `max.tokens`
           FROM vectorized_source JOIN fold_assignment USING (hash)
          GROUP BY fold;
 SQL
-    echo "> $query"
-    sqlite3 javascript.sqlite3 "$query"
+    query-vectors "$query"
 }
 
-avg_folds() {
+# What's the average number of tokens per file in each fold?
+avg-folds() {
     local query
     read -r -d '' query <<SQL
-        SELECT AVG(tokens) FROM (
-            SELECT SUM(n_tokens) tokens
-              FROM vectorized_source JOIN fold_assignment USING (hash)
-             GROUP BY fold
-        );
+        SELECT fold, AVG(n_tokens) as `avg_tokens`
+          FROM vectorized_source JOIN fold_assignment USING (hash)
+         GROUP BY fold
 SQL
-
-    echo "> $query"
-    sqlite3 javascript.sqlite3 "$query"
+    query-vectors "$query"
 }
 
-minified_files
+verify '33d28b2ddbaaff71625e8924750177d4b67fc20102ea4ab3e54503ba462ed1fd' "$CORPUS"
+verify '31379189c9ec5f4ca3abd92a45a4a2b6c137fe68b0db800384ea7ff30d3c7cc5' "$VECTORS"
+
+minified-files
 # 14354
 
-usable_files
+usable-files
 # 479998
 
-
-#sum_folds
-# 0|10148370
-# 1|11757743
-# 2|10929836
-# 3|10283616
-# 4|10783852
-# 5|14807363
-# 6|10253839
-# 7|10026583
-# 8|11170749
-# 9|10446591
-
-#avg_folds
-# 11060854.2
+fold-stats
+# fold,sum.tokens,avg.tokens,min.tokens,max.tokens
+# 0,75618799,2577.41569242305,0,1083099
+# 1,82052620,3057.44382755151,0,1689070
+# 2,76414771,3871.45460532982,0,1566840
+# 3,75011480,4493.5889294914,0,1363496
+# 4,75438115,2622.38380783537,0,670474
+# 5,10139291,1747.85226685054,0,295068
+# 6,10010735,3740.93236173393,0,563216
+# 7,13645866,2096.13917050691,0,519157
+# 8,10014792,2303.83988957902,0,942116
+# 9,10065279,2879.08438215103,0,402537
