@@ -122,9 +122,19 @@ class Vectors:
     """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
-        with conn:
-            conn.executescript(SCHEMA)
         self.conn = conn
+        self._maybe_instantiate_schema()
+
+    def _maybe_instantiate_schema(self):
+        # try querying the database
+        try:
+            self.conn.execute('''
+                SELECT COUNT(*) FROM vectorized_source
+            ''')
+        except sqlite3.OperationalError:
+            # Otherwise, we need to create the schema...
+            with self.conn:
+                self.conn.executescript(SCHEMA)
 
     def disconnect(self) -> None:
         self.conn.close()

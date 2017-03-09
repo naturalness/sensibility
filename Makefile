@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# A directory on a fast filesystem (e.g., a ramdisk)
-FAST_DIR = /dev/shm
-
 # How many training folds?
 FOLDS = 5
 
@@ -27,11 +24,12 @@ TOKENS_PER_FOLD_VALIDATION = 25000000
 HIDDEN_LAYERS = 300,300,300
 CONTEXT = 20
 
+DATA_DIR = data
+
 CORPUS = javascript
-SOURCES = $(CORPUS)-sources.sqlite3
-VECTORS = $(CORPUS).sqlite3
-ASSIGNED_VECTORS = $(FAST_DIR)/$(VECTORS)
-TEST_SET = test_set_hashes
+SOURCES = $(DATA_DIR)/$(CORPUS)-sources.sqlite3
+VECTORS = $(DATA_DIR)/$(CORPUS)-vectors.sqlite3
+TEST_SET = $(DATA_DIR)/test_set_hashes
 
 # Always use the GNU versions of shuf(1) and split(1)
 # shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
@@ -51,21 +49,17 @@ include extra-rules.mk
 %.mk: %.pl
 	perl $< > $@
 
+.PHONY: results
 results: results.csv
-
 results.%.csv:
 	./evaluate.py $*
 
-
-# Assign files to folds. Create a vectorized corpus suitable for training.
-$(ASSIGNED_VECTORS): $(VECTORS)
-	cp $(VECTORS) $(ASSIGNED_VECTORS)
-	chmod u+w $(ASSIGNED_VECTORS)
-	./place_into_folds.py --overwrite --folds 10 --min-tokens $(TOKENS_PER_FOLD) $(ASSIGNED_VECTORS)
-
-$(TEST_SET): $(ASSIGNED_VECTORS) $(SOURCES)
-	./print_test_set.py $(ASSIGNED_VECTORS) $(SOURCES) | $(SHUF) > $@
-
+.PHONY: test-sets
+test-sets: $(TEST_SET).0 $(TEST_SET).1 $(TEST_SET).2 $(TEST_SET).3 $(TEST_SET).4
+# Create the entire test set.
+$(TEST_SET): $(VECTORS) $(SOURCES)
+	bin/print-test-set $(VECTORS) | $(SHUF) > $@
+# Split the giant test set into several files.
 # The pattern rule is a hack that allows one recipe to make several targets,
 # but does not run the recipe several times.
 # From: http://stackoverflow.com/a/3077254/6626414
