@@ -75,6 +75,9 @@ def test_real_database():
     for file_hash in corpus:
         source = corpus.get_source(file_hash)
         assert isinstance(source, bytes)
+        _, _, path = corpus.file_info(file_hash)
+        assert path.endswith('.js'), 'Found non-javascript files?'
+        assert not path.endswith('.min.js'), 'Found minified file'
 
 
 def new_connection_for_testing():
