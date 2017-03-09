@@ -2,8 +2,38 @@
 
 # An ad hoc file that gives some (maybe) imporant descriptive statistics.
 
+CORPUS='./data/javascript-sources.sqlite3'
+
+
+query-corpus() {
+    local query
+    query="$1"
+    if [ ! -f "$CORPUS" ]; then
+        echo "Corpus not found: $CORPUS" 2>&1
+        exit -1
+    fi
+    echo "> $query"
+
+    sqlite3 -header -csv "$CORPUS" "$query"
+}
+
 minified_files() {
-    grep -c 'minified' "$HOME/Documents/Log at 2017-02-15 09.27.31.txt"
+    local query
+    read -r -d '' query <<'SQL'
+    SELECT COUNT(*) as `minified.files`
+      FROM source_file
+     WHERE path GLOB '*.min.js';
+SQL
+    query-corpus "$query"
+}
+
+usable_files() {
+    local query
+    read -r -d '' query <<'SQL'
+    SELECT COUNT(*) as `usable.files`
+      FROM usable_source
+SQL
+    query-corpus "$query"
 }
 
 sum_folds() {
@@ -32,9 +62,13 @@ SQL
 }
 
 minified_files
-# 10767
+# 14354
 
-sum_folds
+usable_files
+# 479998
+
+
+#sum_folds
 # 0|10148370
 # 1|11757743
 # 2|10929836
@@ -46,5 +80,5 @@ sum_folds
 # 8|11170749
 # 9|10446591
 
-avg_folds
+#avg_folds
 # 11060854.2
