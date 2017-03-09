@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 
 # Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
@@ -15,12 +16,33 @@
 # limitations under the License.
 
 """
-Sensibility --- detect and fix syntax errors in source code.
+Programs, and the edits that can be done to them.
 """
 
-from .corpus import Corpus
-from .program import Program
-from .token_utils import Token, Location, Position
-from .vectorize_tokens import vectorize_tokens, serialize_tokens
-from .vectors import Vectors
-from .vocabulary import vocabulary
+import abc
+
+
+class Edit(abc.ABC):
+    """
+    An abstract base class for edits:
+
+     * Insertion
+     * Deletion
+     * Substitution
+
+    All edits MUST hold the following property:
+
+        program + edit + (-edit) == program
+    """
+
+    @abc.abstractmethod
+    def __neg__(self) -> 'Edit':
+        """
+        Return the additive inverse of this edit.
+
+        That is, adding this edit, and then adding the inverse will result in
+        the original program:::
+
+            program + edit + (-edit) == program
+
+        """
