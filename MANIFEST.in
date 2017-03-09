@@ -1,5 +1,8 @@
 # Include the License file
 include LICENSE
 include *.rst
+# Include binaries
+graft bin
+# Include freaky Node.JS stuff.
 recursive-include sensibility *.js *.sh *.json
 prune sensibility/tokenize-js/node_modules

@@ -84,7 +84,7 @@ parser.add_argument('-k', '--folds', type=int, default=10, help='default: 10')
 parser.add_argument('-n', '--min-tokens', type=int, default=None)
 parser.add_argument('-f', '--overwrite', action='store_true')
 
-MAIN_CORPUS = Path('javascript-sources.sqlite3')
+MAIN_CORPUS = Path('data/javascript-sources.sqlite3')
 
 
 def main():
