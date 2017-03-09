@@ -58,15 +58,15 @@ class Program(Sized, Iterable[Vind]):
 
     def random_token_index(self) -> int:
         """
-        Produces a random insertion point in the program. Does not include
-        start and end tokens.
+        Return the index of a random token in the file.
         """
         return random.randrange(0, len(self))
 
     def random_insertion_point(self) -> int:
         """
-        Produces a random insertion point in the program. Does not include
-        start and end tokens.
+        Return a random insertion point in the program.  That is, an index in
+        the program to insert BEFORE. This the imaginary token after the last
+        token in the file.
         """
         return random.randint(0, len(self))
 

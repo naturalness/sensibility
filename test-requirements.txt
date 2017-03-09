@@ -1,4 +1,4 @@
-tox
-pytest
-pytest-xdist
-mypy
+tox==2.6.0
+pytest==3.0.6
+mypy==0.501
+hypothesis==3.6.1
