@@ -17,15 +17,37 @@
 
 import array
 import warnings
-from typing import NewType, Sequence, Iterator
+from typing import Sized, Sequence, Iterator, cast
 
 from .token_utils import Token
-from .vocabulary import vocabulary, START_TOKEN, END_TOKEN
+from .vocabulary import vocabulary, Vind, START_TOKEN, END_TOKEN
 from .stringify_token import stringify_token
 
 
-# A SourceVector, which can be treated as a Sequence of vocabulary indices.
-SourceVector = NewType('SourceVector', array.array)
+class SourceVector(Sequence[Vind]):
+    """
+    A sequence of vocabulary indices with MAXIMUM STORAGE EFFICENCY.
+    """
+    __slots__ = ('_array',)
+
+    def __init__(self, token_sequence: Sequence[int]) -> None:
+        self._array = array.array('B', token_sequence)
+
+    def __iter__(self) -> Iterator[Vind]:
+        return iter(cast(Iterator[Vind], self._array))
+
+    def __getitem__(self, key):
+        return self._array[key]
+
+    def __len__(self) -> int:
+        return len(cast(Sized, self._array))
+
+    def __repr__(self) -> str:
+        clsname = type(self).__name__
+        return f"{clsname}([{', '.join(str(x) for x in self)}])"
+
+    def tobytes(self) -> bytes:
+        return self._array.tobytes()
 
 
 def vectorize_tokens(tokens):
@@ -53,15 +75,15 @@ def generated_vector(tokens):
 
 def serialize_tokens(tokens: Sequence[Token]) -> SourceVector:
     """
-    Return an (unsigned) byte array of tokens, useful for storing.
+    Return an (unsigned) byte array of tokens, useful for storage.
 
     >>> toks = [Token(value='var', type='Keyword', loc=None)]
     >>> serialize_tokens(toks)
-    array('B', [86])
+    SourceVector([86])
     >>> serialize_tokens(toks).tobytes()
     b'V'
     """
-    return SourceVector(array.array('B', generated_vector(tokens)))
+    return SourceVector(generated_vector(tokens))
 
 
 def deserialize_tokens(byte_string: bytes) -> SourceVector:
@@ -70,6 +92,6 @@ def deserialize_tokens(byte_string: bytes) -> SourceVector:
     serialize_token().tobytes()
 
     >>> deserialize_tokens(b'VZD')
-    array('B', [86, 90, 68])
+    SourceVector([86, 90, 68])
     """
-    return SourceVector(array.array('B', byte_string))
+    return SourceVector(byte_string)

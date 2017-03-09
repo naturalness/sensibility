@@ -221,7 +221,7 @@ class Vectors:
         """
         Insert tokens in the database of vectors.
         """
-        byte_string = serialize_tokens(tokens).tobytes()  # type: bytes
+        byte_string = serialize_tokens(tokens).tobytes()
         assert len(byte_string) == len(tokens)
 
         with self.conn:
