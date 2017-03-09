@@ -1,2 +1,4 @@
-test_set_hashes*
+train_set_*
+validate_set_*
+test_set_*
 *.sqlite3
