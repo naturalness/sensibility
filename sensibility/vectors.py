@@ -19,10 +19,9 @@
 Manages a vector of files with fold assignments.
 """
 
-import io
 import sqlite3
 from pathlib import Path
-from typing import NewType, Union, Tuple, Sequence, Iterable
+from typing import Union, Tuple, Sequence, Iterable
 
 from .token_utils import Token
 from .vectorize_tokens import (
@@ -259,47 +258,3 @@ class Vectors:
     def connect_to(cls, filename: Union[str, Path]) -> 'Vectors':
         conn = sqlite3.connect(str(filename))
         return cls(conn)
-
-
-def maybe_decode(string):
-    """
-    HACK! SQLite3 sometimes returns mis-typed strings...
-    """
-    if isinstance(string, bytes):
-        return string.decode('UTF-8')
-    else:
-        assert isinstance(string, str)
-        return string
-
-
-def convert_to_vectors(corpus: 'Corpus', vectors: Vectors) -> None:
-    """
-    Convert every usable source in the corpus to a vector.
-    Does NOT create fold assignments.
-    """
-    for file_hash in corpus:
-        source_file = corpus.get_source(file_hash)
-        try:
-            tokens = tokenize(maybe_decode(source_file))
-        except Exception as err:
-            print("Error:", file_hash, repr(err), file=sys.stderr)
-            continue
-        vectors.insert(file_hash, tokens)
-
-
-if __name__ == '__main__':
-    # Vectorizes the corpus.
-    import sys
-    from corpus import Corpus
-    from tokenize_js import tokenize
-
-    try:
-        _, source, destination = sys.argv
-    except ValueError:
-        print("Usage:  python", sys.argv[0], "sources.sqlite3 "
-              "vectors.sqlite3")
-        exit(-1)
-
-    corpus = Corpus.connect_to(source)
-    vectors = Vectors.connect_to(destination)
-    convert_to_vectors(corpus, vectors)
