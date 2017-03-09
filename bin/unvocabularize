@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+# Copyright 2016, 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,31 +24,16 @@ Pipe this into a JavaScript formatter like js-beautify.
 e.g.,
 
  $ npm install -g js-beautify
- $ ./unvocabularize.py corpus.sqlite3 1 | js-beautify
- /*<start>*/
+ $ ./unvocabularize.py data/javascript-vectors.sqlite3 1 | js-beautify
  var Identifier = Identifier("string");
  Identifier().Identifier(function (Identifier) {
     Identifier.Identifier(`template-head${Identifier}template-tail`);
- }); /*<end>*/
+ });
 """
 
 import warnings
 
-from .vocabulary import vocabulary
-
-
-warnings.warn('This module is of dubious value')
-
-
-def unvocabularize(vector) -> str:
-    """
-    Return a string of the JavaScript source given by the vocabulary indices.
-
-    >>> unvocabularize((0, 86, 5, 31, 99))
-    '/*<START>*/ var Identifier ; /*<END>*/'
-    """
-
-    return ' '.join(vocabulary.to_text(element) for element in vector)
+from sensibility import Program, Vectors
 
 
 if __name__ == '__main__':
@@ -62,6 +47,6 @@ if __name__ == '__main__':
     except ValueError:
         pass
 
-    corpus = CondensedCorpus.connect_to(filename)
-    file_hash, vector = corpus[index]
-    print(unvocabularize(vector))
+    corpus = Vectors.connect_to(filename)
+    program = Program(*corpus[index])
+    program.print()

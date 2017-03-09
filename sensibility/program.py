@@ -16,6 +16,7 @@
 # limitations under the License.
 
 
+import sys
 import random
 from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar
 
@@ -49,7 +50,7 @@ class Program(Sized, Iterable[Vind]):
     def __len__(self) -> int:
         return len(self.tokens)
 
-    def print(self, file: IO[str]) -> None:
+    def print(self, file: IO[str]=sys.stdout) -> None:
         """
         Prints the tokens to a file, using real tokens.
         """
