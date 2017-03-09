@@ -53,8 +53,10 @@ class Program(Sized, Iterable[Vind]):
         """
         Prints the tokens to a file, using real tokens.
         """
-        raise NotImplementedError
-        # TODO: O(n) printing source code.
+        for token in self:
+            print(vocabulary.to_text(token), file=file, end=' ')
+        # Print a final newline.
+        print(file=file)
 
     def random_token_index(self) -> int:
         """
@@ -69,6 +71,10 @@ class Program(Sized, Iterable[Vind]):
         token in the file.
         """
         return random.randint(0, len(self))
+
+    def __repr__(self) -> str:
+        clsname = type(self).__name__
+        return f'{clsname}({self.filehash!r}, [...])'
 
 # TODO: O(1) applying edits
 
