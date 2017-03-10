@@ -19,9 +19,9 @@
 Programs, and the edits that can be done to them.
 """
 
-import abc
 import random
-from typing import Any, Hashable, Tuple, Optional
+from abc import ABCMeta, abstractmethod
+from typing import Any, Dict, Hashable, Optional, Tuple, Type
 
 from .vocabulary import vocabulary, Vind
 from .program import Program
@@ -36,7 +36,7 @@ Serialization = Tuple[str, int, Optional[Vind], Optional[Vind]]
 PartialSerialization = Tuple[int, Optional[Vind], Optional[Vind]]
 
 
-class Edit(abc.ABC, Hashable):
+class Edit(metaclass=ABCMeta):
     """
     An abstract base class for edits:
 
@@ -49,7 +49,22 @@ class Edit(abc.ABC, Hashable):
         program + edit + (-edit) == program
     """
 
-    @abc.abstractmethod
+    code: str
+    _subclasses: Dict[str, Type['Edit']] = {}
+
+    def __init_subclass__(cls) -> None:
+        """
+        Registers each subclass (Insertion, Deletion, Substitution) with a
+        single-letter code. Used for serialization and deserialization.
+        """
+        assert hasattr(cls, 'code')
+        code = cls.code
+        assert code not in Edit._subclasses, (
+            f"Error creating {cls.__name__}: code {code!r} already exists"
+        )
+        Edit._subclasses[code] = cls
+
+    @abstractmethod
     def additive_inverse(self) -> 'Edit':
         """
         Return the additive inverse of this edit.
@@ -60,13 +75,13 @@ class Edit(abc.ABC, Hashable):
             program + edit + (-edit) == program
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def apply(self, program: Program) -> Program:
         """
         Applies the edit to a program.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def serialize_components(self) -> PartialSerialization:
         """
         Return a tuple of the edit location (token stream index) and any
@@ -74,7 +89,7 @@ class Edit(abc.ABC, Hashable):
         """
 
     @classmethod
-    @abc.abstractmethod
+    @abstractmethod
     def create_random_mutation(cls, program: Program) -> 'Edit':
         """
         Creates a random mutation of this kind for the given program.
@@ -94,7 +109,7 @@ class Edit(abc.ABC, Hashable):
         Return a triple (3-tuple) of the (name, location, token), useful for
         serializing and recreating Edit instances.
         """
-        return (self.name, *self.serialize_components())
+        return (self.code, *self.serialize_components())
 
     def __neg__(self) -> 'Edit':
         """
@@ -127,6 +142,10 @@ class Insertion(Edit):
         vocabulary is inserted before this token (the end of the file is also
         considered a “token” for the purposes of the insertion operation).
     """
+
+    __slots__ = 'index', 'token'
+
+    code = 'i'
 
     def __init__(self, index: int, token: Vind) -> None:
         self.token = token
@@ -161,6 +180,8 @@ class Deletion(Edit):
 
     __slots__ = 'index', 'original_token'
 
+    code = 'x'
+
     def __init__(self, original_token: Vind, index: int) -> None:
         self.index = index
         self.original_token = original_token
@@ -193,6 +214,8 @@ class Substitution(Edit):
     """
 
     __slots__ = 'token', 'index', 'original_token'
+
+    code = 's'
 
     def __init__(self, index: int, *,
                  original_token: Vind,
