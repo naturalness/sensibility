@@ -21,7 +21,7 @@ Programs, and the edits that can be done to them.
 
 import random
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Hashable, Optional, Tuple, Type
+from typing import Any, Dict, Hashable, Optional, Tuple, Type, TypeVar
 
 from .vocabulary import vocabulary, Vind
 from .program import Program
@@ -106,8 +106,9 @@ class Edit(metaclass=ABCMeta):
 
     def serialize(self) -> Serialization:
         """
-        Return a triple (3-tuple) of the (name, location, token), useful for
-        serializing and recreating Edit instances.
+        Return a quadruplet (4-tuple) of
+        (code, location, token, original_token),
+        useful for serializing and recreating Edit instances.
         """
         return (self.code, *self.serialize_components())
 
@@ -131,6 +132,27 @@ class Edit(metaclass=ABCMeta):
 
     def __hash__(self) -> int:
         return hash(self.serialize())
+
+    @classmethod
+    def deserialize(cls, code: str, location: int,
+                    token: Optional[Vind],
+                    original_token: Optional[Vind]) -> 'Edit':
+        """
+        Deserializes an edit from tuple notation.
+        """
+        subclass = cls._subclasses[code]
+        if subclass is Insertion:
+            assert original_token is None
+            return Insertion(location, not_none(token))
+        elif subclass is Deletion:
+            return Deletion(not_none(original_token), location)
+        else:
+            assert subclass is Substitution
+            return Substitution(
+                location,
+                replacement=not_none(token),
+                original_token=not_none(original_token)
+            )
 
 
 class Insertion(Edit):
@@ -263,3 +285,15 @@ def random_vocabulary_entry() -> Vind:
     """
     return Vind(random.randint(vocabulary.start_token_index + 1,
                                vocabulary.end_token_index - 1))
+
+
+T = TypeVar('T')
+
+
+def not_none(item: Optional[T]) -> T:
+    """
+    Return the item unchanged, but raises ValueError if the value is None.
+    """
+    if item is not None:
+        return item
+    raise ValueError('Item cannot be None')
