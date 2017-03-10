@@ -4,25 +4,23 @@
 import io
 
 from hypothesis import given
-from hypothesis.strategies import builds, lists, integers, just
+from hypothesis.strategies import lists, integers, random_module, composite
 
-from sensibility import Program, vocabulary
-
-
-tokens = integers(min_value=vocabulary.start_token_index + 1,
-                  max_value=vocabulary.end_token_index - 1)
-vectors = lists(tokens, min_size=1)
-programs = builds(Program, just('<test>'), vectors)
+from strategies import programs
 
 
-@given(programs)
-def test_program_random(program):
+@given(programs(), random_module())
+def test_program_random(program, random):
     assert 0 <= program.random_token_index() < len(program)
     assert 0 <= program.random_insertion_point() <= len(program)
 
 
-@given(programs)
+@given(programs())
 def test_program_print(program):
+    """
+    Test that printing programs gives the proper amount of space-separated
+    tokens.
+    """
     with io.StringIO() as output:
         program.print(output)
         output_text = output.getvalue()
