@@ -133,13 +133,13 @@ class Insertion(Edit):
         self.index = index
 
     def additive_inverse(self) -> Edit:
-        raise NotImplementedError
+        return Deletion(self.token, self.index)
 
     def apply(self, program: Program) -> Program:
         return program.with_token_inserted(self.index, self.token)
 
-    def serialize_components(self):
-        raise NotImplementedError
+    def serialize_components(self) -> PartialSerialization:
+        return (self.index, self.token, None)
 
     @classmethod
     def create_random_mutation(cls, program: Program) -> 'Insertion':

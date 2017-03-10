@@ -77,9 +77,6 @@ def test_additive_inverse(program, edit_cls):
     For all edits $x$ there is an additive inverse $y such that for a program
     $p$, $p + x + y = p$.
     """
-    # TEMPORARY:
-    assume(edit_cls is not Insertion)
-
     # Deletions may only be applied on programs with more than one token.
     if edit_cls is Deletion:
         assume(len(program) > 1)
@@ -90,7 +87,6 @@ def test_additive_inverse(program, edit_cls):
     assert mutant != program
     # Applying the mutation, then the inverse returns the original program
     assert mutant + (-mutation) == program
-    # TEMPORARY:
-    if edit_cls is not Deletion:
-        # Inverse of the inverse is the original mutation
-        assert mutation == -(-mutation)
+
+    # Inverse of the inverse is the original mutation
+    assert mutation == -(-mutation)
