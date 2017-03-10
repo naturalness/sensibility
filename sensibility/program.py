@@ -101,6 +101,15 @@ class Program(Sized, Iterable[Vind]):
         sequence.extend(self.tokens[index + 1:])
         return Program(self.filehash, sequence)
 
+    def with_token_removed(self, index: int) -> 'Program':
+        """
+        Return a new program with the token at the given index removed.
+        """
+        sequence: List[Vind] = []
+        sequence.extend(self.tokens[:index])
+        sequence.extend(self.tokens[index + 1:])
+        return Program(self.filehash, sequence)
+
 
 # TODO: O(1) applying edits
 

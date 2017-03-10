@@ -109,14 +109,41 @@ class Edit(abc.ABC, Hashable):
         return hash(self.serialize())
 
 
+class Deletion(Edit):
+    """
+    An edit that deletes one token from the program
+
+        A token is chosen randomly in the file. This token is removed from the
+        file.
+    """
+
+    def __init__(self, index: int) -> None:
+        self.index = index
+
+    def additive_inverse(self) -> Edit:
+        ...
+
+    def apply(self, program: Program) -> Program:
+        return program.with_token_removed(self.index)
+
+    def serialize_components(self):
+        ...
+
+    @classmethod
+    def create_random_mutation(cls, program: Program) -> 'Deletion':
+        """
+        Creates a random deletion for the given program.
+        """
+        index = program.random_token_index()
+        return Deletion(index)
+
+
 class Substitution(Edit):
     """
     An edit that swaps one token for another one.
 
-    Campbell et al. 2014:
-
-        A token was chosen at random and replaced with a random token
-        found in the same file.
+        A token is chosen randomly in the file. This token is replaced with a
+        random token from the vocabulary.
     """
 
     __slots__ = 'token', 'index'

@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis.strategies import random_module, sampled_from
 
 from strategies import programs
 
-from sensibility import Substitution
+from sensibility import Deletion, Substitution
 
 
 @given(programs(), random_module())
-def test_substitution_creation(program, random):
+def test_create_substitution(program, random):
     mutation = Substitution.create_random_mutation(program)
-    assert isinstance(mutation, Substitution)
-    index = mutation.index
 
     # Ensure the substitution doesn't generate an identity function...
+    index = mutation.index
     assert program[index] != mutation.token
+    # TODO: assert old token?
 
 
 @given(programs(), random_module())
-def test_substitution_application(program, random):
+def test_apply_substitution(program, random):
     mutation = Substitution.create_random_mutation(program)
     mutant = program + mutation
     assert len(mutant) == len(program)
@@ -29,11 +29,40 @@ def test_substitution_application(program, random):
     n_identical_tokens = sum(t_p == t_m for t_p, t_m in zip(program, mutant))
     assert n_identical_tokens == len(program) - 1
 
-"""
-@given(programs(), sampled_from([Addition, Deletion, Substitution]))
+
+@given(programs(), random_module())
+def test_create_deletion(program, random):
+    mutation = Deletion.create_random_mutation(program)
+    assert 0 <= mutation.index < len(program)
+    # TODO: assert old token?
+
+
+@given(programs(), random_module())
+def test_apply_deletion(program, random):
+    assume(len(program) > 1)
+    mutation = Deletion.create_random_mutation(program)
+    mutant = program + mutation
+    assert len(mutant) == len(program) - 1
+    # Ensure it's all the same tokens until the mutation point
+    assert all(program[i] == mutant[i]
+               for i in range(0, mutation.index))
+    assert all(program[i + 1] == mutant[i]
+               for i in range(mutation.index, len(mutant)))
+
+
+'''
+@given(programs(), sampled_from((Addition, Deletion, Substitution)))
 def test_additive_inverse(program, edit_cls):
+    r"""
+    For all edits $x$ there is an additive inverse $y such that for a program
+    $p$, $p + x + y = p$.
+    """
     mutation = edit_cls.create_random_mutation(program)
     mutant = program + mutation
+    # The mutation ALWAYS produces a different program
     assert mutant != program
+    # Applying the mutation, then the inverse returns the original program
     assert mutant + (-mutation) == program
-"""
+    # Inverse of the inverse is the original mutation
+    assert mutation == -(-mutation)
+'''
