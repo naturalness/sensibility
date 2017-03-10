@@ -6,7 +6,7 @@ from hypothesis.strategies import random_module, sampled_from
 
 from strategies import programs
 
-from sensibility import Deletion, Substitution
+from sensibility import Insertion, Deletion, Substitution
 
 
 @given(programs(), random_module())
@@ -50,8 +50,28 @@ def test_apply_deletion(program, random):
                for i in range(mutation.index, len(mutant)))
 
 
+@given(programs(), random_module())
+def test_create_insertion(program, random):
+    mutation = Insertion.create_random_mutation(program)
+    assert 0 <= mutation.index <= len(program)
+    # TODO: assert old token?
+
+
+@given(programs(), random_module())
+def test_apply_insertion(program, random):
+    mutation = Insertion.create_random_mutation(program)
+    mutant = program + mutation
+    assert len(mutant) == len(program) + 1
+    # Ensure it's all the same tokens until the mutation point
+    assert all(program[i] == mutant[i]
+               for i in range(0, mutation.index))
+    # Ensure it's all the same program AFTER the mutation point
+    assert all(program[i] == mutant[i + 1]
+               for i in range(mutation.index, len(program)))
+
+
 '''
-@given(programs(), sampled_from((Addition, Deletion, Substitution)))
+@given(programs(), sampled_from((Insertion, Deletion, Substitution)))
 def test_additive_inverse(program, edit_cls):
     r"""
     For all edits $x$ there is an additive inverse $y such that for a program

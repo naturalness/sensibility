@@ -109,6 +109,39 @@ class Edit(abc.ABC, Hashable):
         return hash(self.serialize())
 
 
+class Insertion(Edit):
+    """
+    An edit that wedges in a token at a random position in the file, including
+    at the very end.
+
+        A token is chosen randomly in the file. A random token from the
+        vocabulary is inserted before this token (the end of the file is also
+        considered a “token” for the purposes of the insertion operation).
+    """
+
+    def __init__(self, index: int, token: Vind) -> None:
+        self.token = token
+        self.index = index
+
+    def additive_inverse(self) -> Edit:
+        ...
+
+    def apply(self, program: Program) -> Program:
+        return program.with_token_inserted(self.index, self.token)
+
+    def serialize_components(self):
+        ...
+
+    @classmethod
+    def create_random_mutation(cls, program: Program) -> 'Insertion':
+        """
+        Creates a random insertion for the given program.
+        """
+        index = program.random_insertion_point()
+        token = random_vocabulary_entry()
+        return Insertion(index, token)
+
+
 class Deletion(Edit):
     """
     An edit that deletes one token from the program

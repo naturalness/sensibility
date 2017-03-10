@@ -110,6 +110,17 @@ class Program(Sized, Iterable[Vind]):
         sequence.extend(self.tokens[index + 1:])
         return Program(self.filehash, sequence)
 
+    def with_token_inserted(self, index: int, token: Vind) -> 'Program':
+        """
+        Return a new program with the token at the given index removed.
+        """
+        assert 0 <= index <= len(self)
+        sequence: List[Vind] = []
+        sequence.extend(self.tokens[:index])
+        sequence.append(token)
+        sequence.extend(self.tokens[index:])
+        return Program(self.filehash, sequence)
+
 
 # TODO: O(1) applying edits
 
