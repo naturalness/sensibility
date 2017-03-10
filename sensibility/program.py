@@ -83,7 +83,8 @@ class Program(Sized, Iterable[Vind]):
 
     def __repr__(self) -> str:
         clsname = type(self).__name__
-        return f'{clsname}({self.filehash!r}, [...])'
+        tokens = ', '.join(repr(token) for token in self)
+        return f"{clsname}({self.filehash!r}, [{tokens}])"
 
 
 # TODO: O(1) applying edits

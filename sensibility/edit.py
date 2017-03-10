@@ -20,7 +20,7 @@ Programs, and the edits that can be done to them.
 """
 
 import abc
-from typing import Hashable, Tuple
+from typing import Any, Hashable, Tuple
 
 from .program import Program
 
@@ -89,6 +89,13 @@ class Edit(abc.ABC, Hashable):
         Applies the edit to a program.
         """
         return self.apply(other)
+
+    def __eq__(self, other: Any) -> bool:
+        if type(self) == type(other):
+            return self.serialize() == other.serialize()
+        else:
+            return False
+
 
     def __hash__(self) -> int:
         return hash(self.serialize())
