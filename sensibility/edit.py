@@ -21,10 +21,19 @@ Programs, and the edits that can be done to them.
 
 import abc
 import random
-from typing import Any, Hashable, Tuple
+from typing import Any, Hashable, Tuple, Optional
 
 from .vocabulary import vocabulary, Vind
 from .program import Program
+
+
+# Serialization format:
+#   - Name of edit class
+#   - The location (exact semantics depend on edit class)
+#   - New token (optional)
+#   - Original token (optional)
+Serialization = Tuple[str, int, Optional[Vind], Optional[Vind]]
+PartialSerialization = Tuple[int, Optional[Vind], Optional[Vind]]
 
 
 class Edit(abc.ABC, Hashable):
@@ -58,7 +67,7 @@ class Edit(abc.ABC, Hashable):
         """
 
     @abc.abstractmethod
-    def serialize_components(self) -> Tuple[int, Vind]:
+    def serialize_components(self) -> PartialSerialization:
         """
         Return a tuple of the edit location (token stream index) and any
         relelvant vocabulary index.
@@ -80,7 +89,7 @@ class Edit(abc.ABC, Hashable):
         """
         return type(self).__name__.lower()
 
-    def serialize(self) -> Tuple[str, int, Vind]:
+    def serialize(self) -> Serialization:
         """
         Return a triple (3-tuple) of the (name, location, token), useful for
         serializing and recreating Edit instances.
@@ -124,13 +133,13 @@ class Insertion(Edit):
         self.index = index
 
     def additive_inverse(self) -> Edit:
-        ...
+        raise NotImplementedError
 
     def apply(self, program: Program) -> Program:
         return program.with_token_inserted(self.index, self.token)
 
     def serialize_components(self):
-        ...
+        raise NotImplementedError
 
     @classmethod
     def create_random_mutation(cls, program: Program) -> 'Insertion':
@@ -154,13 +163,13 @@ class Deletion(Edit):
         self.index = index
 
     def additive_inverse(self) -> Edit:
-        ...
+        raise NotImplementedError
 
     def apply(self, program: Program) -> Program:
         return program.with_token_removed(self.index)
 
     def serialize_components(self):
-        ...
+        raise NotImplementedError
 
     @classmethod
     def create_random_mutation(cls, program: Program) -> 'Deletion':
@@ -179,20 +188,25 @@ class Substitution(Edit):
         random token from the vocabulary.
     """
 
-    __slots__ = 'token', 'index'
+    __slots__ = 'token', 'index', 'original_token'
 
-    def __init__(self, index: int, token: Vind) -> None:
-        self.token = token
+    def __init__(self, index: int, *,
+                 original_token: Vind,
+                 replacement: Vind) -> None:
+        self.token = replacement
+        self.original_token = original_token
         self.index = index
 
-    def additive_inverse(self) -> Edit:
-        ...
+    def additive_inverse(self) -> 'Substitution':
+        return Substitution(self.index,
+                            original_token=self.token,
+                            replacement=self.original_token)
 
     def apply(self, program: Program) -> Program:
         return program.with_substitution(self.index, self.token)
 
-    def serialize_components(self):
-        ...
+    def serialize_components(self) -> PartialSerialization:
+        return (self.index, self.token, self.original_token)
 
     @classmethod
     def create_random_mutation(cls, program: Program) -> 'Substitution':
@@ -202,14 +216,16 @@ class Substitution(Edit):
         Ensures that the new token is NOT the same as the old token!
         """
         index = program.random_token_index()
+        original_token = program[index]
 
         # Generate a token that is NOT the same as the one that is already in
         # the program!
-        token = program[index]
+        token = original_token
         while token == program[index]:
             token = random_vocabulary_entry()
 
-        return Substitution(index, token)
+        return Substitution(index, original_token=original_token,
+                            replacement=token)
 
 
 def random_vocabulary_entry() -> Vind:

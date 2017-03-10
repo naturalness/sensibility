@@ -16,7 +16,8 @@ def test_create_substitution(program, random):
     # Ensure the substitution doesn't generate an identity function...
     index = mutation.index
     assert program[index] != mutation.token
-    # TODO: assert old token?
+    # Ensure that the substitution remembers the token it has replaced.
+    assert program[index] == mutation.original_token
 
 
 @given(programs(), random_module())
@@ -70,13 +71,15 @@ def test_apply_insertion(program, random):
                for i in range(mutation.index, len(program)))
 
 
-'''
 @given(programs(), sampled_from((Insertion, Deletion, Substitution)))
 def test_additive_inverse(program, edit_cls):
-    r"""
+    """
     For all edits $x$ there is an additive inverse $y such that for a program
     $p$, $p + x + y = p$.
     """
+    # TEMPORARY:
+    assume(edit_cls not in (Insertion, Deletion))
+
     mutation = edit_cls.create_random_mutation(program)
     mutant = program + mutation
     # The mutation ALWAYS produces a different program
@@ -85,4 +88,3 @@ def test_additive_inverse(program, edit_cls):
     assert mutant + (-mutation) == program
     # Inverse of the inverse is the original mutation
     assert mutation == -(-mutation)
-'''
