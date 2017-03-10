@@ -19,7 +19,7 @@
 import sys
 import random
 from itertools import zip_longest
-from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any
+from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any, List
 
 from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
@@ -35,15 +35,6 @@ class Program(Sized, Iterable[Vind]):
         assert len(tokens) > 0
         self.tokens = tokens
         self.filehash = filehash
-
-    def __iter__(self) -> Iterator[Vind]:
-        return iter(self.tokens)
-
-    def __len__(self) -> int:
-        return len(self.tokens)
-
-    def __getitem__(self, index: int) -> Vind:
-        return self.tokens[index]
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -61,6 +52,20 @@ class Program(Sized, Iterable[Vind]):
             return all(a == b for a, b in zip_longest(self, other))
         else:
             return False
+
+    def __iter__(self) -> Iterator[Vind]:
+        return iter(self.tokens)
+
+    def __getitem__(self, index: int) -> Vind:
+        return self.tokens[index]
+
+    def __len__(self) -> int:
+        return len(self.tokens)
+
+    def __repr__(self) -> str:
+        clsname = type(self).__name__
+        tokens = ', '.join(repr(token) for token in self)
+        return f"{clsname}({self.filehash!r}, [{tokens}])"
 
     def print(self, file: IO[str]=sys.stdout) -> None:
         """
@@ -85,10 +90,16 @@ class Program(Sized, Iterable[Vind]):
         """
         return random.randint(0, len(self))
 
-    def __repr__(self) -> str:
-        clsname = type(self).__name__
-        tokens = ', '.join(repr(token) for token in self)
-        return f"{clsname}({self.filehash!r}, [{tokens}])"
+    def with_substitution(self, index: int, token: Vind) -> 'Program':
+        """
+        Return a new program, swapping out the token at index with the given
+        token.
+        """
+        sequence: List[Vind] = []
+        sequence.extend(self.tokens[:index])
+        sequence.append(token)
+        sequence.extend(self.tokens[index + 1:])
+        return Program(self.filehash, sequence)
 
 
 # TODO: O(1) applying edits
