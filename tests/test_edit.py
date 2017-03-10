@@ -35,7 +35,7 @@ def test_apply_substitution(program, random):
 def test_create_deletion(program, random):
     mutation = Deletion.create_random_mutation(program)
     assert 0 <= mutation.index < len(program)
-    # TODO: assert old token?
+    assert program[mutation.index] == mutation.original_token
 
 
 @given(programs(), random_module())
@@ -78,7 +78,11 @@ def test_additive_inverse(program, edit_cls):
     $p$, $p + x + y = p$.
     """
     # TEMPORARY:
-    assume(edit_cls not in (Insertion, Deletion))
+    assume(edit_cls is not Insertion)
+
+    # Deletions may only be applied on programs with more than one token.
+    if edit_cls is Deletion:
+        assume(len(program) > 1)
 
     mutation = edit_cls.create_random_mutation(program)
     mutant = program + mutation
@@ -86,5 +90,7 @@ def test_additive_inverse(program, edit_cls):
     assert mutant != program
     # Applying the mutation, then the inverse returns the original program
     assert mutant + (-mutation) == program
-    # Inverse of the inverse is the original mutation
-    assert mutation == -(-mutation)
+    # TEMPORARY:
+    if edit_cls is not Deletion:
+        # Inverse of the inverse is the original mutation
+        assert mutation == -(-mutation)

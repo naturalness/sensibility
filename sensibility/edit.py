@@ -159,17 +159,21 @@ class Deletion(Edit):
         file.
     """
 
-    def __init__(self, index: int) -> None:
+    __slots__ = 'index', 'original_token'
+
+    def __init__(self, original_token: Vind, index: int) -> None:
         self.index = index
+        self.original_token = original_token
 
     def additive_inverse(self) -> Edit:
-        raise NotImplementedError
+        # Insert the deleted token back again
+        return Insertion(self.index, self.original_token)
 
     def apply(self, program: Program) -> Program:
         return program.with_token_removed(self.index)
 
-    def serialize_components(self):
-        raise NotImplementedError
+    def serialize_components(self) -> PartialSerialization:
+        return (self.index, None, self.original_token)
 
     @classmethod
     def create_random_mutation(cls, program: Program) -> 'Deletion':
@@ -177,7 +181,7 @@ class Deletion(Edit):
         Creates a random deletion for the given program.
         """
         index = program.random_token_index()
-        return Deletion(index)
+        return Deletion(program[index], index)
 
 
 class Substitution(Edit):
@@ -198,6 +202,7 @@ class Substitution(Edit):
         self.index = index
 
     def additive_inverse(self) -> 'Substitution':
+        # Simply swap the tokens again.
         return Substitution(self.index,
                             original_token=self.token,
                             replacement=self.original_token)
@@ -224,7 +229,8 @@ class Substitution(Edit):
         while token == program[index]:
             token = random_vocabulary_entry()
 
-        return Substitution(index, original_token=original_token,
+        return Substitution(index,
+                            original_token=original_token,
                             replacement=token)
 
 
