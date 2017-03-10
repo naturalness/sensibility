@@ -20,9 +20,10 @@ Programs, and the edits that can be done to them.
 """
 
 import abc
+import random
 from typing import Any, Hashable, Tuple
 
-from .vocabulary import Vind
+from .vocabulary import vocabulary, Vind
 from .program import Program
 
 
@@ -106,3 +107,54 @@ class Edit(abc.ABC, Hashable):
 
     def __hash__(self) -> int:
         return hash(self.serialize())
+
+
+class Substitution(Edit):
+    """
+    An edit that swaps one token for another one.
+
+    Campbell et al. 2014:
+
+        A token was chosen at random and replaced with a random token
+        found in the same file.
+    """
+
+    __slots__ = 'token', 'index'
+
+    def __init__(self, index: int, token: Vind) -> None:
+        self.token = token
+        self.index = index
+
+    def additive_inverse(self) -> Edit:
+        ...
+
+    def apply(self, program: Program) -> Program:
+        ...
+
+    def serialize_components(self):
+        ...
+
+    @classmethod
+    def create_random_mutation(cls, program: Program) -> 'Substitution':
+        """
+        Creates a random substitution for the given program.
+
+        Ensures that the new token is NOT the same as the old token!
+        """
+        index = program.random_token_index()
+
+        # Generate a token that is NOT the same as the one that is already in
+        # the program!
+        token = program[index]
+        while token == program[index]:
+            token = random_vocabulary_entry()
+
+        return Substitution(index, token)
+
+
+def random_vocabulary_entry() -> Vind:
+    """
+    Returns a random vocabulary index.
+    """
+    return Vind(random.randint(vocabulary.start_token_index + 1,
+                               vocabulary.end_token_index - 1))

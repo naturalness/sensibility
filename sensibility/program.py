@@ -25,6 +25,7 @@ from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
 
 
+# TODO: make this a Sequence[Vind]? Maybe not...
 class Program(Sized, Iterable[Vind]):
     """
     A source code program, with a file hash, and a token stream.
@@ -40,6 +41,9 @@ class Program(Sized, Iterable[Vind]):
 
     def __len__(self) -> int:
         return len(self.tokens)
+
+    def __getitem__(self, index: int) -> Vind:
+        return self.tokens[index]
 
     def __eq__(self, other: Any) -> bool:
         """

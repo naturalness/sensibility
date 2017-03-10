@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from hypothesis.strategies import lists, integers, random_module, composite
+from hypothesis.strategies import lists, integers, composite
 
 from sensibility import Program, vocabulary
 

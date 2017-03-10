@@ -24,3 +24,4 @@ from .token_utils import Token, Location, Position
 from .vectorize_tokens import vectorize_tokens, serialize_tokens
 from .vectors import Vectors
 from .vocabulary import vocabulary
+from .edit import Edit, Substitution

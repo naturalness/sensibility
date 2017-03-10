@@ -4,7 +4,7 @@
 import io
 
 from hypothesis import given
-from hypothesis.strategies import lists, integers, random_module, composite
+from hypothesis.strategies import random_module
 
 from strategies import programs
 
