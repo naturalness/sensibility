@@ -20,9 +20,12 @@ Programs, and the edits that can be done to them.
 """
 
 import abc
+from typing import Hashable, Tuple
+
+from .program import Program
 
 
-class Edit(abc.ABC):
+class Edit(abc.ABC, Hashable):
     """
     An abstract base class for edits:
 
@@ -36,7 +39,7 @@ class Edit(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __neg__(self) -> 'Edit':
+    def additive_inverse(self) -> 'Edit':
         """
         Return the additive inverse of this edit.
 
@@ -44,5 +47,48 @@ class Edit(abc.ABC):
         the original program:::
 
             program + edit + (-edit) == program
-
         """
+
+    @abc.abstractmethod
+    def apply(self, program: Program) -> Program:
+        """
+        Applies the edit to a program.
+        """
+
+    @abc.abstractmethod
+    def serialize(self) -> Tuple[str, int, str]:
+        """
+        Return a tuple of the type name, the token, and the token insertion
+        point.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def create_random_mutation(cls, program: Program) -> 'Edit':
+        """
+        Creates a random mutation of this kind for the given program.
+        """
+
+    # The rest of the functions are given for free.
+
+    @property
+    def name(self) -> str:
+        """
+        Returns the name of this class.
+        """
+        return type(self).__name__.lower()
+
+    def __neg__(self) -> 'Edit':
+        """
+        Return the additive inverse of this edit.
+        """
+        return self.additive_inverse()
+
+    def __radd__(self, other: Program) -> Program:
+        """
+        Applies the edit to a program.
+        """
+        return self.apply(other)
+
+    def __hash__(self) -> int:
+        return hash(self.serialize())

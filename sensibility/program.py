@@ -18,7 +18,8 @@
 
 import sys
 import random
-from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar
+from itertools import zip_longest
+from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any
 
 from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
@@ -49,6 +50,23 @@ class Program(Sized, Iterable[Vind]):
 
     def __len__(self) -> int:
         return len(self.tokens)
+
+    def __eq__(self, other: Any) -> bool:
+        """
+        True when both programs are token for token equivalent.
+
+        >>> a = Program('<a>', [23, 48, 70])
+        >>> b = Program('<b>', [23, 48, 70])
+        >>> a == b
+        True
+        >>> c = Program('<a>', [23, 48])
+        >>> a == c
+        False
+        """
+        if isinstance(other, Program):
+            return all(a == b for a, b in zip_longest(self, other))
+        else:
+            return False
 
     def print(self, file: IO[str]=sys.stdout) -> None:
         """
