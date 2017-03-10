@@ -22,6 +22,7 @@ Programs, and the edits that can be done to them.
 import abc
 from typing import Any, Hashable, Tuple
 
+from .vocabulary import Vind
 from .program import Program
 
 
@@ -56,10 +57,10 @@ class Edit(abc.ABC, Hashable):
         """
 
     @abc.abstractmethod
-    def serialize(self) -> Tuple[str, int, str]:
+    def serialize_components(self) -> Tuple[int, Vind]:
         """
-        Return a tuple of the type name, the token, and the token insertion
-        point.
+        Return a tuple of the edit location (token stream index) and any
+        relelvant vocabulary index.
         """
 
     @classmethod
@@ -78,6 +79,13 @@ class Edit(abc.ABC, Hashable):
         """
         return type(self).__name__.lower()
 
+    def serialize(self) -> Tuple[str, int, Vind]:
+        """
+        Return a triple (3-tuple) of the (name, location, token), useful for
+        serializing and recreating Edit instances.
+        """
+        return (self.name, *self.serialize_components())
+
     def __neg__(self) -> 'Edit':
         """
         Return the additive inverse of this edit.
@@ -95,7 +103,6 @@ class Edit(abc.ABC, Hashable):
             return self.serialize() == other.serialize()
         else:
             return False
-
 
     def __hash__(self) -> int:
         return hash(self.serialize())
