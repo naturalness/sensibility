@@ -4,28 +4,26 @@
 import io
 
 from hypothesis import given
-from hypothesis.strategies import lists, integers
+from hypothesis.strategies import builds, lists, integers, just
 
 from sensibility import Program, vocabulary
-#semicolon = vocabulary.to_index(';')
 
 
-@given(lists(integers(min_value=vocabulary.start_token_index + 1,
-                      max_value=vocabulary.end_token_index - 1),
-             min_size=1))
-def test_program_random(tokens):
-    p = Program('<none>', tokens)
-    assert 0 <= p.random_token_index() < len(p)
-    assert 0 <= p.random_insertion_point() <= len(p)
+tokens = integers(min_value=vocabulary.start_token_index + 1,
+                  max_value=vocabulary.end_token_index - 1)
+vectors = lists(tokens, min_size=1)
+programs = builds(Program, just('<test>'), vectors)
 
 
-@given(lists(integers(min_value=vocabulary.start_token_index + 1,
-                      max_value=vocabulary.end_token_index - 1),
-             min_size=1))
-def test_program_print(tokens):
-    program = Program('<none>', tokens)
+@given(programs)
+def test_program_random(program):
+    assert 0 <= program.random_token_index() < len(program)
+    assert 0 <= program.random_insertion_point() <= len(program)
+
+
+@given(programs)
+def test_program_print(program):
     with io.StringIO() as output:
         program.print(output)
         output_text = output.getvalue()
-    assert len(program) >= 1
     assert len(program) == len(output_text.split())
