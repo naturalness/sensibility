@@ -25,16 +25,6 @@ from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
 
 
-T = TypeVar('T')
-
-# reveal_type(Sequence[T].__getitem__)
-# Revealed type is Overload(
-#   def [_T_co] (typing.Sequence[_T_co`1], builtins.int) -> _T_co`1,
-#   def [_T_co] (typing.Sequence[_T_co`1], builtins.slice) ->
-#       typing.Sequence[_T_co`1]
-# )
-
-
 class Program(Sized, Iterable[Vind]):
     """
     A source code program, with a file hash, and a token stream.
@@ -95,7 +85,10 @@ class Program(Sized, Iterable[Vind]):
         clsname = type(self).__name__
         return f'{clsname}({self.filehash!r}, [...])'
 
+
 # TODO: O(1) applying edits
+
+T = TypeVar('T')
 
 
 class ReadOnlySlice(Sequence[T]):
