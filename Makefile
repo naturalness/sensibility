@@ -25,6 +25,7 @@ HIDDEN_LAYERS = 300,300,300
 CONTEXT = 20
 
 DATA_DIR = data
+MODEL_DIR = models
 
 CORPUS = javascript
 SOURCES = $(DATA_DIR)/$(CORPUS)-sources.sqlite3
