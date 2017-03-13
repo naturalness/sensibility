@@ -24,6 +24,20 @@ from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any, List
 from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
 
+"""
+TODO:
+class SourceFile(source):
+    sources: Corpus
+    vectors: Vectors
+
+    @property
+    def vectors(self) -> Program: ...
+
+    @property
+    def source(self) -> Sequence[SourceToken]: ...
+
+    def line_of_token(self, index: int) -> int: ...
+"""
 
 # TODO: make this a Sequence[Vind]? Maybe not...
 class Program(Sized, Iterable[Vind]):
@@ -34,6 +48,7 @@ class Program(Sized, Iterable[Vind]):
     def __init__(self, filehash: str, tokens: Sequence[Vind]) -> None:
         assert len(tokens) > 0
         self.tokens = tokens
+        # TODO: factor out filehash?
         self.filehash = filehash
 
     def __eq__(self, other: Any) -> bool:

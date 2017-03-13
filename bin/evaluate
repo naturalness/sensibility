@@ -179,10 +179,11 @@ class SensibilityForEvaluation:
 
 class Results:
     FIELDS = '''
-        fold file
-        mkind mpos mtoken
-        correct_line line_of_top_rank rank_correct_line
-        fixed fkind fpos ftoken same_fix
+        fold filehash n.lines n.tokens
+        m.kind m.loc m.token m.old
+        correct.line line.top.rank rank.correct.line
+        fixed true.fix
+        f.kind f.loc f.token f.old
     '''.split()
 
     def __init__(self, part):
@@ -197,8 +198,46 @@ class Results:
     def __exit__(self, *exc_info):
         self._file.close()
 
-    def write(self, **kwargs):
-        self._writer.writerow(kwargs)
+    def write(self,
+              fold: int,  # fold
+              program: SourceFile,  # filehash, n.lines, n.tokens
+              mutation: Edit,  # m.kind m.pos m.token m.old
+              fix: Optional[Edit], # fixed true.fix f.kind f.pos f.token f.fold
+              line_top_rank: int,
+              rank_correct_line: int) -> None:
+
+        kind, loc, new_tok, old_tok = mutation.serialize()
+        row = {
+            "fold": fold,
+            "filehash": program.filehash,
+            "n.lines": program.n_lines,  # not implemented!
+            "n.tokens": len(program.tokens),
+            "m.kind": kind,
+            "m.loc": loc,
+            "m.token": vocabulary.to_text(new_tok),
+            "m.old": vocabulary.to_text(old_tok),
+        }
+
+        if fix:
+            kind, loc, new_tok, old_tok = fix.serialize()
+            row.update({
+                "fixed": True,
+                "true.fix": fix == mutation.additive_inverse(),
+                "f.kind": kind,
+                "f.loc": loc,
+                "f.token": vocabulary.to_text(new_tok),
+                "f.old": vocabulary.to_text(old_tok),
+            })
+        else:
+            row.update({
+                "fixed": False,
+                "true.fix": False,
+                "f.loc": None,
+                "f.token": None,
+                "f.old": None,
+            })
+
+        self._writer.writerow(row)
         self._file.flush()
 
 
