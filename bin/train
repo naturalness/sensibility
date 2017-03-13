@@ -137,7 +137,7 @@ class ModelDescription:
                         save_weights_only=False
                     ),
                     CSVLogger(str(self.log_path), append=True),
-                    EarlyStopping(patience=5, verbosity=1)
+                    EarlyStopping(patience=5)
                 ],
                 verbose=1,
                 pickle_safe=True,
@@ -210,7 +210,7 @@ class ModelDescription:
         finally:
             vectors.disconnect()
 
-    def save_summary(self, mode: object) -> None:
+    def save_summary(self, model: object) -> None:
         # We're ready to go!
         with open(str(self.summary_path), 'w') as summary_file:
             print(model.to_json(), file=summary_file)  # type: ignore
@@ -253,12 +253,10 @@ parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
                     help=f"default: {HIDDEN_LAYERS}")
 parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help=f"default: {CONTEXT_LENGTH}")
-parser.add_argument('--max-epochs', type=int, default=None,
-                    help='default: train forever')
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
-parser.add_argument('--base-dir', type=Path, default=REPO_BASE,
-                    help=f"default: {REPO_BASE}")
+parser.add_argument('--base-dir', type=Path, default=MODEL_DIR,
+                    help=f"default: {MODEL_DIR}")
 parser.add_argument('vectors_path', type=Path, metavar='vectors',
                     help='corpus of vectors, with assigned folds')
 
