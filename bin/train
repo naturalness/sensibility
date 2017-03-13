@@ -19,9 +19,10 @@
 Trains an LSTM from sentences in the vectorized corpus.
 """
 
+import os
 import argparse
 from pathlib import Path
-from typing import Optional, Tuple, Iterable
+from typing import Optional, Tuple, Iterable, Sequence
 
 from vectors import Vectors
 from loop_batches import LoopBatchesEndlessly
@@ -29,11 +30,28 @@ from vocabulary import vocabulary
 
 
 # Based on White et al. 2015
-SIZE_OF_HIDDEN_LAYER = 300
+HIDDEN_LAYERS = (300,)
 CONTEXT_LENGTH = 20
 
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 512
+
+MAX_EPOCHS = 30
+
+
+def layers(string: str) -> Sequence[int]:
+    """
+    Parse hidden layer notation.
+
+    >>> layers('2000')
+    (2000,)
+    >>> layers('300,300,300')
+    (300, 300, 300)
+    """
+    result = tuple(int(layer) for layer in string.split(','))
+    assert len(result) >= 1, "Must define at least one hidden layer!"
+    return result
+
 
 # Create the argument parser.
 parser = argparse.ArgumentParser(description='Train from corpus '
@@ -43,11 +61,15 @@ parser.add_argument('-f', '--fold', type=int, required=True,
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--backwards', action='store_true')
 group.add_argument('--forwards', action='store_false', dest='backwards')
-parser.add_argument('--hidden-layer', type=int, default=SIZE_OF_HIDDEN_LAYER,
-                    help='default: %d' % SIZE_OF_HIDDEN_LAYER)
+parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
+                    help='default: %r' % HIDDEN_LAYERS)
 parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help='default: %d' % CONTEXT_LENGTH)
+parser.add_argument('--max-epochs', type=int, default=None,
+                    help='default: train forever')
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
+                    help='default: %d' % BATCH_SIZE)
+parser.add_argument('--base-dir', type=Path, default=Path('~/Backups/models/'),
                     help='default: %d' % BATCH_SIZE)
 parser.add_argument('vectors_path', type=Path, metavar='vectors',
                     help='corpus of vectors, with assigned folds')
@@ -58,7 +80,7 @@ parser.add_argument('---continue', type=Path, dest='previous_model',
 def compile_model(
         *,
         context_length: int,
-        hidden_layer: int,
+        hidden_layers: Sequence[int],
         learning_rate: float=0.001
 ) -> object:
     from keras.models import Sequential
@@ -66,12 +88,27 @@ def compile_model(
     from keras.layers import LSTM
     from keras.optimizers import RMSprop
 
-    # TODO:
-    #  - experiment with layers
-
     model = Sequential()
-    model.add(LSTM(hidden_layer,
-                   input_shape=(context_length, len(vocabulary))))
+
+    if len(hidden_layers) == 1:
+        # One LSTM layer is simple:
+        first_layer = hidden_layers[0]
+        model.add(LSTM(first_layer,
+                       input_shape=(context_length, len(vocabulary))))
+    else:
+        first_layer, *middle_layers, last_layer = hidden_layers
+        # The first layer defines the input, so special case it.  Since there
+        # are more layers, all higher-up layers must return sequences.
+        model.add(LSTM(first_layer,
+                       input_shape=(context_length, len(vocabulary)),
+                       return_sequences=True))
+        # Add the middle LSTM layers (if any).
+        # These layers must also return sequences.
+        for layer in middle_layers:
+            model.add(LSTM(layer, return_sequences=True))
+        # Add the final layer.
+        model.add(LSTM(last_layer))
+
     # Output is number of samples x size of hidden layer
     model.add(Dense(len(vocabulary)))
     # To make a thing that looks like a probability distribution.
@@ -95,11 +132,14 @@ def train(
         vectors_path: Path,
         fold: int,
         backwards: bool,
-        hidden_layer: int,
+        hidden_layers: Sequence[int],
         context_length: int,
         batch_size: int,
+        max_epochs: Optional[int],
+        base_dir: Path,
         previous_model: Optional[Path]=None
 ) -> None:
+    # Ensure the fold exists.
     assert vectors_path.exists()
     vectors = Vectors.connect_to(str(vectors_path))
     assert fold in vectors.fold_ids, (
@@ -107,12 +147,9 @@ def train(
     )
     vectors.disconnect()
 
-    # TODO:
-    #  - point a symlink at the best model after each epoch
-
+    # Compile the model and prepare the training and validation samples.
     model = compile_model(context_length=context_length,
-                          hidden_layer=hidden_layer)
-
+                          hidden_layers=hidden_layers)
     training_batches, validation_batches = create_batches(
         fold=fold,
         backwards=backwards,
@@ -120,7 +157,20 @@ def train(
         vectors_path=vectors_path,
         context_length=context_length
     )
-    print("Will train on", training_batches.samples_per_epoch, "samples",
+
+    name = ','.join(str(layer) for layer in hidden_layers)
+    model_dir = (base_dir / name).expanduser()
+    assert not model_dir.exists(), "refusing to overwrite " + str(model_dir)
+
+    # Create the directory.
+    os.mkdir(str(model_dir))
+
+    # We're ready to go!
+    with open(str(model_dir / 'summary.txt'), 'w') as summary_file:
+        print(model.to_json(), file=summary_file)  # type: ignore
+
+    print("Saving data to", str(model_dir))
+    print("Training on", training_batches.samples_per_epoch, "samples",
           "using a batch size of", batch_size)
 
     from keras.callbacks import ModelCheckpoint, CSVLogger
@@ -128,22 +178,22 @@ def train(
         model.fit_generator(  # type: ignore
             iter(training_batches),
             validation_data=iter(validation_batches),
-            nb_epoch=2**31 - 1,  # a long-ass time
+            nb_epoch=max_epochs or 2**31 - 1,  # a long-ass time
             samples_per_epoch=training_batches.samples_per_epoch,
             nb_val_samples=validation_batches.samples_per_epoch // batch_size,
             callbacks=[
                 ModelCheckpoint(
-                    './models/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+                    str(model_dir / 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'),
                     save_best_only=False,
                     save_weights_only=False
                 ),
-                CSVLogger('./models/training.log', append=True)
+                CSVLogger(str(model_dir / 'training.log'), append=True)
             ],
             verbose=1,
             pickle_safe=True,
         )
     except KeyboardInterrupt:
-        filename = './models/interrupted.hdf5'
+        filename = str(model_dir / 'interrupted.hdf5')
         print("Saving model to", filename)
         model.save(filename)  # type: ignore
 
