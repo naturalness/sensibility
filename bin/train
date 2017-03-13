@@ -29,8 +29,9 @@ from typing import Optional, Tuple, Iterable, Sequence
 
 from sensibility import  Vectors, LoopBatchesEndlessly, vocabulary
 
-# Based on emprical findings: this one gets to max accuracy pretty quickly.
-HIDDEN_LAYERS = (300, 300, 300)
+# Based on emprical findings: this one gets to min loss pretty quickly,
+# and is usable.
+HIDDEN_LAYERS = (300, 300)
 # Based on White et al. 2015
 CONTEXT_LENGTH = 20
 
@@ -105,7 +106,7 @@ class ModelDescription:
     @property
     def weight_path_pattern(self) -> Path:
         return self.base_dir / (
-            self.name + '-{epoch:02d}-{val_categorical_accuracy:.4f}.hdf5'
+            self.name + '-{epoch:02d}-{val_loss:.4f}.hdf5'
         )
 
     def train(self) -> None:
@@ -123,7 +124,7 @@ class ModelDescription:
         try:
             model.fit_generator(  # type: ignore
                 iter(training_batches),
-                nb_epoch=2**31 - 1,  # Indefinitely
+                nb_epoch=2**31 - 1,  # Train indefinitely
                 samples_per_epoch=training_batches.samples_per_epoch,
                 validation_data=iter(validation_batches),
                 nb_val_samples=(
@@ -135,7 +136,8 @@ class ModelDescription:
                         save_best_only=False,
                         save_weights_only=False
                     ),
-                    CSVLogger(str(self.log_path), append=True)
+                    CSVLogger(str(self.log_path), append=True),
+                    EarlyStopping(patience=5, verbosity=1)
                 ],
                 verbose=1,
                 pickle_safe=True,
@@ -220,23 +222,22 @@ class ModelDescription:
             warnings.warn(f"No models found matching pattern: {pattern}")
             return
 
-        # Sorts in ASCENDING order of accuracy (best accuracy last)
-        existing_models.sort(key=accuracy_by_filename)
-        best_model = existing_models[-1]
+        # Get the model with the lowest validation loss.
+        best_model = min(existing_models, key=validation_loss_by_filename)
         # Make the symlink!
         os.symlink(best_model, str(self.model_path))
 
 
-def accuracy_by_filename(filename: str) -> float:
+def validation_loss_by_filename(filename: str) -> float:
     """
-    >>> accuracy_by_filename("models/javascript-f0-02-0.6875.hdf5")
-    0.6875
+    >>> validation_loss_by_filename("models/javascript-f0-02-0.9375.hdf5")
+    0.9375
     """
-    match = re.search(r'(0[.]\d{2,})[.]hdf5$', filename)
+    match = re.search(r'(0[.]\d{1,})[.]hdf5$', filename)
     if match:
         return float(match.group(1))
     else:
-        warnings.warn(f"Could not determine accuracy of {filename}")
+        warnings.warn(f"Could not determine loss of {filename}")
         return 0.0
 
 
