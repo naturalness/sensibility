@@ -232,8 +232,10 @@ def validation_loss_by_filename(filename: str) -> float:
     """
     >>> validation_loss_by_filename("models/javascript-f0-02-0.9375.hdf5")
     0.9375
+    >>> validation_loss_by_filename("models/javascript-f0-02-1.125.hdf5")
+    1.125
     """
-    match = re.search(r'(0[.]\d{1,})[.]hdf5$', filename)
+    match = re.search(r'(\d{1,}[.]\d{1,})[.]hdf5$', filename)
     if match:
         return float(match.group(1))
     else:
