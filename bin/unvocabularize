@@ -33,7 +33,7 @@ e.g.,
 
 import warnings
 
-from sensibility import Program, Vectors
+from sensibility import TokenSequence, Vectors
 
 
 if __name__ == '__main__':
@@ -48,5 +48,6 @@ if __name__ == '__main__':
         pass
 
     corpus = Vectors.connect_to(filename)
-    program = Program(*corpus[index])
+    _, tokens = corpus[index]
+    program = TokenSequence(tokens)
     program.print()

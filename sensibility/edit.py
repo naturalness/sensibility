@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Programs, and the edits that can be done to them.
+The edits that can performed to TokenSequences (a.k.a., source code).
 """
 
 import random
@@ -24,7 +24,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Hashable, Optional, Tuple, Type, TypeVar
 
 from .vocabulary import vocabulary, Vind
-from .program import Program
+from .token_sequence import TokenSequence
 
 
 # Serialization format:
@@ -76,7 +76,7 @@ class Edit(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def apply(self, program: Program) -> Program:
+    def apply(self, program: TokenSequence) -> TokenSequence:
         """
         Applies the edit to a program.
         """
@@ -90,7 +90,7 @@ class Edit(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create_random_mutation(cls, program: Program) -> 'Edit':
+    def create_random_mutation(cls, program: TokenSequence) -> 'Edit':
         """
         Creates a random mutation of this kind for the given program.
         """
@@ -118,7 +118,7 @@ class Edit(metaclass=ABCMeta):
         """
         return self.additive_inverse()
 
-    def __radd__(self, other: Program) -> Program:
+    def __radd__(self, other: TokenSequence) -> TokenSequence:
         """
         Applies the edit to a program.
         """
@@ -176,14 +176,14 @@ class Insertion(Edit):
     def additive_inverse(self) -> Edit:
         return Deletion(self.token, self.index)
 
-    def apply(self, program: Program) -> Program:
+    def apply(self, program: TokenSequence) -> TokenSequence:
         return program.with_token_inserted(self.index, self.token)
 
     def serialize_components(self) -> PartialSerialization:
         return (self.index, self.token, None)
 
     @classmethod
-    def create_random_mutation(cls, program: Program) -> 'Insertion':
+    def create_random_mutation(cls, program: TokenSequence) -> 'Insertion':
         """
         Creates a random insertion for the given program.
         """
@@ -212,14 +212,14 @@ class Deletion(Edit):
         # Insert the deleted token back again
         return Insertion(self.index, self.original_token)
 
-    def apply(self, program: Program) -> Program:
+    def apply(self, program: TokenSequence) -> TokenSequence:
         return program.with_token_removed(self.index)
 
     def serialize_components(self) -> PartialSerialization:
         return (self.index, None, self.original_token)
 
     @classmethod
-    def create_random_mutation(cls, program: Program) -> 'Deletion':
+    def create_random_mutation(cls, program: TokenSequence) -> 'Deletion':
         """
         Creates a random deletion for the given program.
         """
@@ -252,14 +252,14 @@ class Substitution(Edit):
                             original_token=self.token,
                             replacement=self.original_token)
 
-    def apply(self, program: Program) -> Program:
+    def apply(self, program: TokenSequence) -> TokenSequence:
         return program.with_substitution(self.index, self.token)
 
     def serialize_components(self) -> PartialSerialization:
         return (self.index, self.token, self.original_token)
 
     @classmethod
-    def create_random_mutation(cls, program: Program) -> 'Substitution':
+    def create_random_mutation(cls, program: TokenSequence) -> 'Substitution':
         """
         Creates a random substitution for the given program.
 

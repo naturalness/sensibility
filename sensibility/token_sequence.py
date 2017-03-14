@@ -24,46 +24,30 @@ from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any, List
 from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
 
-"""
-TODO:
-class SourceFile(source):
-    sources: Corpus
-    vectors: Vectors
-
-    @property
-    def vectors(self) -> Program: ...
-
-    @property
-    def source(self) -> Sequence[SourceToken]: ...
-
-    def line_of_token(self, index: int) -> int: ...
-"""
 
 # TODO: make this a Sequence[Vind]? Maybe not...
-class Program(Sized, Iterable[Vind]):
+class TokenSequence(Sized, Iterable[Vind]):
     """
     A source code program, with a file hash, and a token stream.
     """
 
-    def __init__(self, filehash: str, tokens: Sequence[Vind]) -> None:
+    def __init__(self, tokens: Sequence[Vind]) -> None:
         assert len(tokens) > 0
         self.tokens = tokens
-        # TODO: factor out filehash?
-        self.filehash = filehash
 
     def __eq__(self, other: Any) -> bool:
         """
         True when both programs are token for token equivalent.
 
-        >>> a = Program('<a>', [23, 48, 70])
-        >>> b = Program('<b>', [23, 48, 70])
+        >>> a = TokenSequence([23, 48, 70])
+        >>> b = TokenSequence([23, 48, 70])
         >>> a == b
         True
-        >>> c = Program('<a>', [23, 48])
+        >>> c = TokenSequence([23, 48])
         >>> a == c
         False
         """
-        if isinstance(other, Program):
+        if isinstance(other, TokenSequence):
             return all(a == b for a, b in zip_longest(self, other))
         else:
             return False
@@ -80,7 +64,7 @@ class Program(Sized, Iterable[Vind]):
     def __repr__(self) -> str:
         clsname = type(self).__name__
         tokens = ', '.join(repr(token) for token in self)
-        return f"{clsname}({self.filehash!r}, [{tokens}])"
+        return f"{clsname}([{tokens}])"
 
     def print(self, file: IO[str]=sys.stdout) -> None:
         """
@@ -105,7 +89,7 @@ class Program(Sized, Iterable[Vind]):
         """
         return random.randint(0, len(self))
 
-    def with_substitution(self, index: int, token: Vind) -> 'Program':
+    def with_substitution(self, index: int, token: Vind) -> 'TokenSequence':
         """
         Return a new program, swapping out the token at index with the given
         token.
@@ -114,18 +98,18 @@ class Program(Sized, Iterable[Vind]):
         sequence.extend(self.tokens[:index])
         sequence.append(token)
         sequence.extend(self.tokens[index + 1:])
-        return Program(self.filehash, sequence)
+        return TokenSequence(sequence)
 
-    def with_token_removed(self, index: int) -> 'Program':
+    def with_token_removed(self, index: int) -> 'TokenSequence':
         """
         Return a new program with the token at the given index removed.
         """
         sequence: List[Vind] = []
         sequence.extend(self.tokens[:index])
         sequence.extend(self.tokens[index + 1:])
-        return Program(self.filehash, sequence)
+        return TokenSequence(sequence)
 
-    def with_token_inserted(self, index: int, token: Vind) -> 'Program':
+    def with_token_inserted(self, index: int, token: Vind) -> 'TokenSequence':
         """
         Return a new program with the token at the given index removed.
         """
@@ -134,7 +118,7 @@ class Program(Sized, Iterable[Vind]):
         sequence.extend(self.tokens[:index])
         sequence.append(token)
         sequence.extend(self.tokens[index:])
-        return Program(self.filehash, sequence)
+        return TokenSequence(sequence)
 
 
 # TODO: O(1) applying edits

@@ -17,15 +17,17 @@
 
 from hypothesis.strategies import lists, integers, composite
 
-from sensibility import Program, vocabulary
+from sensibility import TokenSequence, vocabulary
 
 
 @composite
 def programs(draw):
     """
-    Generate Program instances with random token sequences.
+    Generate TokenSequence instances with random token sequences.
+
+    TODO: rename to token_sequences()? Ew, kinda gross.
     """
     tokens = integers(min_value=vocabulary.start_token_index + 1,
                       max_value=vocabulary.end_token_index - 1)
     vectors = draw(lists(tokens, min_size=1))
-    return Program('<test>', vectors)
+    return TokenSequence(vectors)
