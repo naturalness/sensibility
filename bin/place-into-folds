@@ -200,6 +200,9 @@ def main():
 
         # Add every file in the project...
         for file_hash, tokens in appropriate_files(project):
+            # Skip empty files --- they exist! But are pointless!
+            if len(tokens) < 1:
+                continue
             n_tokens += len(tokens)
             vectors.add_to_fold(file_hash, fold_no)
 
