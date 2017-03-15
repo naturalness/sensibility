@@ -15,6 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+A TokenSequence is a sequence of Vind (vocabulary indices) that all allows for
+mutations.
+"""
 
 import sys
 import random
@@ -25,7 +29,6 @@ from .vocabulary import vocabulary, Vind
 from .vectorize_tokens import SourceVector
 
 
-# TODO: make this a Sequence[Vind]? Maybe not...
 class TokenSequence(Sized, Iterable[Vind]):
     """
     A source code program, with a file hash, and a token stream.
@@ -104,6 +107,7 @@ class TokenSequence(Sized, Iterable[Vind]):
         """
         Return a new program with the token at the given index removed.
         """
+        assert 0 <= index < len(self)
         sequence: List[Vind] = []
         sequence.extend(self.tokens[:index])
         sequence.extend(self.tokens[index + 1:])
