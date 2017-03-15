@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Iterable, Sequence
 
 from sensibility import  Vectors, LoopBatchesEndlessly, vocabulary
+from sensibility.utils import symlink_within_dir
 
 # Based on emprical findings: this one gets to min loss pretty quickly,
 # and is usable.
@@ -109,6 +110,10 @@ class ModelDescription:
             self.name + '-{epoch:02d}-{val_loss:.4f}.hdf5'
         )
 
+    @property
+    def interrupted_path(self) -> Path:
+        return self.base_dir / (self.name + '.interrupted.hdf5')
+
     def train(self) -> None:
         self.ensure_fold_exists()
 
@@ -137,11 +142,13 @@ class ModelDescription:
                         save_weights_only=False
                     ),
                     CSVLogger(str(self.log_path), append=True),
-                    EarlyStopping(patience=5)
+                    EarlyStopping(patience=3)
                 ],
                 verbose=1,
                 pickle_safe=True,
             )
+        except KeyboardInterrupt:
+            model.save(str(self.interrupted_path))
         finally:
             self.update_symlink()
 
@@ -216,7 +223,7 @@ class ModelDescription:
             print(model.to_json(), file=summary_file)  # type: ignore
 
     def update_symlink(self) -> None:
-        pattern = self.base_dir / f"{self.name}.*-*.hdf5"
+        pattern = self.base_dir / f"{self.name}-*-*.hdf5"
         existing_models = glob.glob(str(pattern))
         if len(existing_models) == 0:
             warnings.warn(f"No models found matching pattern: {pattern}")
@@ -225,7 +232,9 @@ class ModelDescription:
         # Get the model with the lowest validation loss.
         best_model = min(existing_models, key=validation_loss_by_filename)
         # Make the symlink!
-        os.symlink(best_model, str(self.model_path))
+        symlink_within_dir(directory=self.base_dir,
+                           source=best_model,
+                           target=self.model_path)
 
 
 def validation_loss_by_filename(filename: str) -> float:
