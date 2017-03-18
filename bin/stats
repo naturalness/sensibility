@@ -97,8 +97,8 @@ SQL
     query-vectors "$query"
 }
 
-verify '33d28b2ddbaaff71625e8924750177d4b67fc20102ea4ab3e54503ba462ed1fd' "$CORPUS"
-verify '31379189c9ec5f4ca3abd92a45a4a2b6c137fe68b0db800384ea7ff30d3c7cc5' "$VECTORS"
+#verify '33d28b2ddbaaff71625e8924750177d4b67fc20102ea4ab3e54503ba462ed1fd' "$CORPUS"
+#verify '31379189c9ec5f4ca3abd92a45a4a2b6c137fe68b0db800384ea7ff30d3c7cc5' "$VECTORS"
 
 minified-files
 # 14354

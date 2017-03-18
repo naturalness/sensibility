@@ -232,9 +232,16 @@ class ModelDescription:
         # Get the model with the lowest validation loss.
         best_model = min(existing_models, key=validation_loss_by_filename)
         # Make the symlink!
-        symlink_within_dir(directory=self.base_dir,
-                           source=best_model,
-                           target=self.model_path)
+        try:
+            symlink_within_dir(directory=self.base_dir,
+                               source=Path(best_model).name,
+                               target=Path(self.model_path).name)
+        except Exception as error:
+            warnings.warn(
+                f"Could not link {self.model_path} to {best_model}: {type(error)}: {error}"
+            )
+        finally:
+            print(f"The best model is {best_model}")
 
 
 def validation_loss_by_filename(filename: str) -> float:
