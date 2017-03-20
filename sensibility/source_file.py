@@ -49,10 +49,10 @@ class SourceFile:
         # Fetch the vector.
         _, tokens = self.vectors[self.filehash]
         self._token_vector = TokenSequence(tokens)
-        return self.vector
+        return self._token_vector
 
     @property
-    def source(self) -> Sequence[Token]:
+    def source_tokens(self) -> Sequence[Token]:
         if self._source_tokens is not None:
             return self._source_tokens
         if self.corpus is None:
@@ -60,6 +60,6 @@ class SourceFile:
         # Fetch the source tokens.
         source = self.corpus.get_source(self.filehash)
         self._source_tokens = tokenize(source.decode('UTF-8'))
-        return self.source
+        return self._source_tokens
 
     def line_of_token(self, index: int) -> int: ...

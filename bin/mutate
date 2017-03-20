@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
 # Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
@@ -40,17 +40,18 @@ import io
 import random
 import sqlite3
 import sys
-import tempfile
+from tempfile import NamedTemporaryFile
 
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Iterable, Optional, Sequence, Set, Sized, Tuple, Type
 
 from tqdm import tqdm
+import numpy as np
 
 from sensibility import (
     Vectors, Corpus, Vind, vocabulary,
     SourceFile,
-    Edit, Insertion, Deletion, Substitution
+    Edit, Insertion, Deletion, Substitution,
 )
 from sensibility.model import Model
 from sensibility._paths import (
@@ -58,6 +59,8 @@ from sensibility._paths import (
     VECTORS_PATH, SOURCES_PATH,
     PREDICTIONS_PATH, MUTATIONS_PATH
 )
+from sensibility.abram import at_most
+from sensibility.tokenize_js import check_syntax_file
 
 # According to Campbell et al. 2014
 MAX_MUTATIONS = 120
@@ -116,6 +119,7 @@ class Predictions:
                                     backwards=True)
         # XXX: Hard code the context length!
         self.context_length = 20
+        self._conn = sqlite3.connect(':memory:')
 
         def _predict(model_recipe, model, tuple_context):
             """
@@ -184,120 +188,20 @@ class Predictions:
                                    backwards=True)
         return zip(sent_forwards, chop_prefix(sent_backwards))
 
-    @staticmethod
-    def is_okay(filename):
-        """
-        Check if the syntax is okay.
-        """
-        with open(filename, 'rb') as source_file:
-            return check_syntax_file(source_file)
-
-
-def serialize_context(context: Sequence[Vind]) -> array.array:
-    """
-    Convert context to an unsigned 8-bit array.array.
-
-    >>> serialize_context([32, 67, 23, 99])
-    array('B', [32, 67, 23, 99])
-    """
-    return array.array('B', context)
-
-
-class Mutations:
-    """
-    Persist every mutation, and enough data to reconstruct every single
-    prediction.
-    """
-
-    def __init__(self, database=MUTATIONS_PATH):
-        self._program = None
-        self._dbname = database
-        self._conn = None
-
-    def __len__(self):
-        assert self._conn
-        return self._conn.execute(r'''
-            SELECT COUNT(*) FROM mutant
-        ''').fetchall()[0][0]
-
-    def __iter__(self):
-        assert self._conn
-        cur = self._conn.execute(r'''
-            SELECT hash, type, location, token FROM mutant
-        ''')
-        for file_hash, _type, location, token in cur:
-            mutation = constructor[_type](int(location), int(token) if token else token)
-            yield file_hash, mutation
-
-    @property
-    def program(self):
-        """
-        SourceCode object that is currently being mutated.
-        """
-        return self._program
-
-    @program.setter
-    def program(self, new_program):
-        assert isinstance(new_program, SourceCode)
-        self._program = new_program
-
-    @property
-    def current_source_hash(self):
-        """
-        hash of the current source file being mutated.
-        """
-        return self._program.hash
-
-    def add_mutant(self, mutation):
-        """
-        Register a new complete mutation.
-        """
-        return self._add_mutant(mutation, usable_mutation=True)
-
-    def add_correct_file(self, mutation):
-        """
-        Records that a mutation created a syntactically-correct file.
-        """
-        return self._add_mutant(mutation, usable_mutation=False)
-
-    def _add_mutant(self, mutation, *, usable_mutation=None):
-        assert self._conn
-        assert isinstance(mutation, Mutation)
-
-        if usable_mutation:
-            sql = r'''
-                INSERT INTO mutant(hash, type, location, token)
-                     VALUES (:hash, :type, :location, :token)
-            '''
-        else:
-            sql = r'''
-                INSERT INTO correct_mutant(hash, type, location, token)
-                     VALUES (:hash, :type, :location, :token)
-            '''
-
-        with self._conn:
-            self._conn.execute(sql, dict(hash=self.current_source_hash,
-                                         type=mutation.name,
-                                         location=mutation.location,
-                                         token=mutation.token))
-
-    def add_prediction(self, *, model_recipe=None, context=None,
-                       prediction=None):
+    def add_prediction(self, *, context: Sequence[Vind],
+                       prediction: np.ndarray) -> None:
         """
         Add the prediction (model, context) -> prediction
         """
         assert self._conn
-        assert isinstance(model_recipe, ModelRecipe)
-        assert isinstance(prediction, np.ndarray)
 
         with self._conn:
             self._conn.execute('BEGIN')
             self._conn.execute(r'''
                 INSERT INTO prediction(model, context, data)
                 VALUES (:model, :context, :data)
-            ''', dict(model=model_recipe.identifier,
-                      context=serialize_context(context),
-                      data=to_blob(prediction)))
+            ''', dict(context=serialize_context(context),
+                      data=prediction))
 
     def get_prediction(self, *, model_recipe=None, context=None):
         """
@@ -322,18 +226,135 @@ class Mutations:
             # Return the precomputed prediction.
             return unblob(result[0][0])
 
-    def __enter__(self):
+
+def syntax_ok(filename):
+    """
+    Check if the syntax is okay.
+    """
+    with open(filename, 'rb') as source_file:
+        return check_syntax_file(source_file)
+
+
+def serialize_context(context: Sequence[Vind]) -> array.array:
+    """
+    Convert context to an unsigned 8-bit array.array.
+
+    >>> serialize_context([32, 67, 23, 99])
+    array('B', [32, 67, 23, 99])
+    """
+    return array.array('B', context)
+
+
+class Mutations(Sized, Iterable[Tuple[SourceFile, Edit]]):
+    """
+    Persist every mutation, and enough data to reconstruct every single
+    prediction.
+    """
+
+    SCHEMA = r"""
+    PRAGMA encoding = "UTF-8";
+
+    CREATE TABLE IF NOT EXISTS mutant_with_status (
+        hash            TEXT NOT NULL,      -- file hash
+        type            TEXT NOT NULL,      -- 'i', 'x', or 's'
+        location        INTEGER NOT NULL,   -- location in the file (0-indexed)
+        new_token       INTEGER,
+        original_token  INTEGER,
+
+        correct         BOOLEAN NOT NULL,  -- Whether the result is valid.
+
+        PRIMARY KEY (hash, type, location, new_token, original_token)
+    );
+
+    -- Only syntactically-incorrect mutants.
+    CREATE VIEW IF NOT EXISTS mutant
+    AS SELECT hash, type, location, original_token, new_token
+    WHERE correct = false;
+
+    -- Only syntacticall-correct mutants.
+    CREATE VIEW IF NOT EXISTS correct_mutant
+    AS SELECT hash, type, location, original_token, new_token
+    WHERE correct = true;
+    """
+
+    def __init__(self, database: Path=MUTATIONS_PATH,
+                 read_only: bool = False) -> None:
+        self.program: Optional[SourceFile] = None
+        self._dbname = database
+        self._conn: Optional[sqlite3.Connection] = None
+        self.read_only = read_only
+
+    def __len__(self) -> int:
+        assert self._conn
+        return self._conn.execute(r'''
+            SELECT COUNT(*) FROM mutant
+        ''').fetchall()[0][0]
+
+    def __iter__(self) -> Iterator[Tuple[SourceFile, Edit]]:
+        assert self._conn
+        cur = self._conn.execute(r'''
+            SELECT hash, type, location, new_token, original_token
+            FROM mutant
+        ''')
+        for file_hash, code, location, new_token, original_token in cur:
+            mutation = Edit.deserialize(code, location, new_token,
+                                        original_token)
+            yield SourceFile(file_hash), mutation
+
+    @property
+    def current_source_hash(self) -> str:
+        """
+        hash of the current source file being mutated.
+        """
+        if self.program:
+            return self.program.filehash
+        else:
+            raise ValueError('program not set')
+
+    def add_mutant(self, mutation: Edit) -> None:
+        """
+        Register a new complete mutation.
+        """
+        return self._add_mutant(mutation, correct=False)
+
+    def add_correct_file(self, mutation: Edit) -> None:
+        """
+        Records that a mutation created a syntactically-correct file.
+        """
+        return self._add_mutant(mutation, correct=True)
+
+    def _add_mutant(self, mutation: Edit, *, correct: bool) -> None:
+        assert self._conn
+
+        sql = r'''
+            INSERT INTO mutant(
+                hash, type, location, new_token, original_token, correct
+            ) VALUES (:hash, :type, :location, :new, :original, :correct)
+        '''
+
+        code, location, new_token, original_token = mutation.serialize()
+
+        args = dict(hash=self.current_source_hash,
+                    type=code, location=location,
+                    new=new_token, original_token=original_token,
+                    correct=correct)
+
+        with self._conn:
+            self._conn.execute(sql, args)
+
+    def __enter__(self) -> 'Mutations':
         # Connect to the database
         conn = self._conn = sqlite3.connect(str(self._dbname))
         # Initialize the database.
-        with conn:
-            conn.executescript(SCHEMA)
-            # Some speed optimizations:
-            # http://codificar.com.br/blog/sqlite-optimization-faq/
-            conn.executescript(r'''
-                PRAGMA journal_mode = WAL;
-                PRAGMA synchronous = normal;
-            ''')
+        if not self.read_only:
+            with conn:
+                conn.executescript(self.SCHEMA)
+                # Some speed optimizations:
+                # http://codificar.com.br/blog/sqlite-optimization-faq/
+                conn.executescript(r'''
+                    PRAGMA journal_mode = WAL;
+                    PRAGMA synchronous = normal;
+                ''')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -396,10 +417,6 @@ def main() -> None:
     # Requires: corpus, model data (backwards and forwards)
     args = parser.parse_args()
 
-    CONTEXT_LENGTH = 20
-    SENTENCE_LENGTH = CONTEXT_LENGTH + 1
-    MIN_LENGTH = SENTENCE_LENGTH * 2
-
     test_set_filename: Path = args.test_set
     limit: int = args.limit
     offset: int = args.offset
@@ -408,7 +425,7 @@ def main() -> None:
     SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
 
     # Loads the parallel models.
-    sensibility = Predictions(args.fold)
+    predictions = Predictions(args.fold)
 
     # Load the test set. Assume the file hashes are already in random order.
     with open(str(test_set_filename)) as test_set_file:
@@ -421,61 +438,77 @@ def main() -> None:
 
     print(f"Considering {len(test_set)} test files to mutate...")
 
+    # Mutate each file in the test set.
     with Mutations() as persist:
-        # Mutate each file in the test set.
         for file_hash in tqdm(test_set):
-            # Get the file
             program = SourceFile(file_hash)
+            mutate_file(program, persist, predictions, args.mutations)
 
-            # Ignore files that are too short.
-            if len(program.vector) < 42:
+CONTEXT_LENGTH = 20
+SENTENCE_LENGTH = CONTEXT_LENGTH + 1
+MIN_LENGTH = SENTENCE_LENGTH * 2
+
+mutation_kinds: Sequence[Type[Edit]] = (Insertion, Deletion, Substitution)
+
+
+def mutate_file(program: SourceFile,
+                persist: Mutations,
+                sensibility: Predictions,
+                max_mutations_global: int):
+    usable_length = len(program.vector) - MIN_LENGTH
+
+    # Ignore files that are too short.
+    if usable_length > 0:
+        return
+
+    persist.program = program
+
+    progress = tqdm(total=max_mutations_global * len(mutation_kinds),
+                    leave=False)
+    for mutation_kind in mutation_kinds:
+        failures = 0
+        mutations_seen: Set[Edit] = set()
+
+        # Clamp down the maximum number of mutations.
+        max_mutations = at_most(max_mutations_global, usable_length)
+        max_failures = max_mutations
+
+        while failures < max_failures and len(mutations_seen) < max_mutations:
+            vector = program.vector
+            mutation: Edit = mutation_kind.create_random_mutation(vector)
+            if mutation in mutations_seen:
+                failures += 1
                 continue
+            mutations_seen.add(mutation)
+            mutant = mutation.apply(vector)
 
-            persist.program = program
-            progress = tqdm(total=args.mutations * 3, leave=False)
+            # Write out the mutated file.
+            with NamedTemporaryFile(mode='w+', encoding='UTF-8') as mutant_file:
+                # Apply the mutatation and write it to disk.
+                mutant.print(file=mutant_file)
+                mutant_file.flush()
 
-            for mutation_kind in Insertion, Deletion, Substitution:
-                failures = 0
-                mutations_seen = set()
+                # Try the file, reject if it compiles.
+                if syntax_ok(mutant_file):
+                    persist.add_correct_file(mutation)
+                    failures += 1
+                    continue
 
-                # Clamp down the maximum number of mutations.
-                max_mutations = min(args.mutations, program.usable_length)
-                max_failures = max_mutations
+                # Do it!
+                sensibility.predict(mutant_file.name)
 
-                while failures < max_failures and len(mutations_seen) < max_mutations:
-                    mutation = mutation_kind.create_random_mutation(program)
-                    if mutation in mutations_seen:
-                        failures += 1
-                        continue
-                    mutations_seen.add(mutation)
+            persist.add_mutant(mutation)
+            progress.update(1)
 
-                    # Write out the mutated file.
-                    with tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8') as mutated_file:
-                        # Apply the mutatation and write it to disk.
-                        mutation.format(program, mutated_file)
-                        mutated_file.flush()
+            # Update the description.
+            progress.set_description(
+                f'{mutation_kind.code} {len(mutations_seen):d}({failures})'
+            )
 
-                        # Try the file, reject if it compiles.
-                        if sensibility.is_okay(mutated_file.name):
-                            persist.add_correct_file(mutation)
-                            failures += 1
-                            continue
-
-                        # Do it!
-                        sensibility.predict(mutated_file.name)
-
-                    persist.add_mutant(mutation)
-                    progress.update(1)
-
-                    # Update the description.
-                    progress.set_description(
-                        f'{mutation_kind.code} {len(mutations_seen):d}({failures})'
-                    )
-
-            # Close the tqdm progress bar.
-            progress.close()
-            # Clear the LRU cache for the new file.
-            sensibility.clear_cache()
+    # Close the tqdm progress bar.
+    progress.close()
+    # Clear the LRU cache for the new file.
+    sensibility.clear_cache()
 
 
 if __name__ == '__main__':
