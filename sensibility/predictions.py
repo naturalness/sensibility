@@ -113,7 +113,7 @@ class Predictions:
         """
         assert self._conn
 
-        vector = array.array('f', prediction)
+        vector: bytes = array.array('f', prediction).tobytes()
         with self._conn:
             self._conn.execute('BEGIN')
             self._conn.execute(r'''
