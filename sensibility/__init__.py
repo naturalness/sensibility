@@ -26,4 +26,5 @@ from .token_sequence import TokenSequence
 from .token_utils import Token, Location, Position
 from .vectorize_tokens import vectorize_tokens, serialize_tokens
 from .vectors import Vectors
-from .vocabulary import vocabulary, Vind
+from .vocabulary import Vind, vocabulary
+from .sentences import Sentence, forward_sentences, backward_sentences

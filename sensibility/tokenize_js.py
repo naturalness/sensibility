@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Sequence, TextIO, cast
 
 from .token_utils import Token
-from .vocabulary import vocabulary
+from .vocabulary import vocabulary, Vind
 
 
 THIS_DIRECTORY = Path(__file__).parent
@@ -113,8 +113,7 @@ def check_syntax_file(source_file: TextIO) -> bool:
     return status.returncode == 0
 
 
-# TODO: def id_to_token(token_id: VocabularyID) -> Token:
-def id_to_token(token_id):
+def id_to_token(token_id: Vind) -> Token:
     """
     Return a synthetic token for the given token ID.
 
@@ -129,6 +128,6 @@ def id_to_token(token_id):
     True
     """
     if token_id not in range(1, 101):
-        return None
+        raise ValueError(f'invalid vocabulary index: {token_id}')
     with synthetic_file(vocabulary.to_text(token_id)) as file_obj:
         return tokenize_file(file_obj)[0]
