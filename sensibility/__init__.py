@@ -21,8 +21,9 @@ Sensibility --- detect and fix syntax errors in source code.
 from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
 from .loop_batches import LoopBatchesEndlessly
+from .source_file import SourceFile
 from .token_sequence import TokenSequence
 from .token_utils import Token, Location, Position
 from .vectorize_tokens import vectorize_tokens, serialize_tokens
 from .vectors import Vectors
-from .vocabulary import vocabulary
+from .vocabulary import vocabulary, Vind

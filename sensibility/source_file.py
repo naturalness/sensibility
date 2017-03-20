@@ -57,7 +57,7 @@ class SourceFile:
             return self._source_tokens
         if self.corpus is None:
             raise Exception('forgot to assign SourceFile.corpus')
-        # Fetch the vector.
+        # Fetch the source tokens.
         source = self.corpus.get_source(self.filehash)
         self._source_tokens = tokenize(source.decode('UTF-8'))
         return self.source
