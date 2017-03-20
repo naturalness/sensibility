@@ -27,7 +27,7 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Sequence, TextIO, cast
+from typing import Optional, Sequence, TextIO, cast
 
 from .token_utils import Token
 from .vocabulary import vocabulary, Vind
@@ -113,7 +113,7 @@ def check_syntax_file(source_file: TextIO) -> bool:
     return status.returncode == 0
 
 
-def id_to_token(token_id: Vind) -> Token:
+def id_to_token(token_id: Vind) -> Optional[Token]:
     """
     Return a synthetic token for the given token ID.
 
@@ -128,6 +128,6 @@ def id_to_token(token_id: Vind) -> Token:
     True
     """
     if token_id not in range(1, 101):
-        raise ValueError(f'invalid vocabulary index: {token_id}')
+        return None
     with synthetic_file(vocabulary.to_text(token_id)) as file_obj:
         return tokenize_file(file_obj)[0]
