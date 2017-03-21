@@ -40,12 +40,14 @@ class Predictions:
 
     def __init__(self, fold: int, filename: Path=PREDICTIONS_PATH) -> None:
         assert 0 <= fold < 5
-        self.forwards_model = Model(MODEL_DIR / f"javascript-f{fold}.hdf5")
-        self.backwards_model = Model(MODEL_DIR / f"javascript-b{fold}.hdf5",
-                                     backwards=True)
+        forwards_path = MODEL_DIR / f"javascript-f{fold}.hdf5"
+        backwards_path = MODEL_DIR / f"javascript-b{fold}.hdf5"
+        self.forwards_model = Model.from_filename(forwards_path)
+        self.backwards_model = Model.from_filename(backwards_path,
+                                                   backwards=True)
         # XXX: Hard code the context length!
         self.context_length = 20
-        self._conn = sqlite3.connect(str(filename))
+        self._conn = self._connect(filename)
 
         forwards = f'f{fold}'
         backwards = f'b{fold}'
@@ -117,7 +119,7 @@ class Predictions:
         with self._conn:
             self._conn.execute('BEGIN')
             self._conn.execute(r'''
-                INSERT INTO prediction(model, context, data)
+                INSERT INTO prediction(model, context, vector)
                 VALUES (:model, :context, :vector)
             ''', dict(model=name, context=context, vector=vector))
 
@@ -129,7 +131,7 @@ class Predictions:
         """
         assert self._conn
         cur = self._conn.execute(r'''
-            SELECT data
+            SELECT vector
             FROM prediction
             WHERE model = :model AND context = :context
         ''', dict(model=name, context=context))

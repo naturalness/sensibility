@@ -51,21 +51,22 @@ class Model:
         return self.model.predict(x, batch_size=1)[0]
 
     @classmethod
-    def from_filenames(cls,
-                       path: Path,
-                       backwards: bool=False,
-                       **kwargs) -> 'Model':
+    def from_filename(cls,
+                      path: Path,
+                      backwards: bool=False,
+                      **kwargs) -> 'Model':
         from keras.models import load_model
         model = load_model(str(path))
 
         return cls(model, backwards=backwards, **kwargs)
 
 
-def xxtest():
+def test():
     """
     I'd write this test if I had a model...
     """
-    model = Model.from_filenames(Path())
+    from ._paths import MODEL_DIR
+    model = Model.from_filename(MODEL_DIR / 'javascript-f0.hdf5')
     comma = vocabulary.to_index(',')
     answer = model.predict([comma] * 20)
     assert len(answer) == len(vocabulary)

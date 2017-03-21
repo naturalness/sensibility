@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+from tempfile import NamedTemporaryFile
 from pathlib import Path
 
 import pytest
+
 from hypothesis import given, assume
 from hypothesis.strategies import (
-    composite,
-    integers,
-    lists,
-    random_module,
-    sampled_from,
+    composite, integers, lists, random_module, sampled_from
 )
 
 from sensibility import SourceFile, Insertion, Deletion, Substitution
@@ -58,21 +56,35 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
     Test source code mutations, and predictions.
     """
 
-    #predictions = Predictions(0, filename=Path(':memory:'))
     mutations = Mutations(Path(':memory:'))
+    test_predictions = False
 
     # Create a random mutation and apply it.
     source_vector = source_file.vector
     mutation = edit_class.create_random_mutation(source_vector)
 
+    # The in-memory database and all that's contained within
+    # will be destoyed after this with: statement
     with mutations:
         assert len(mutations) == 0
 
         mutations.program = source_file
         mutations.add_mutant(mutation)
 
+        if test_predictions:
+          predictions = Predictions(0, filename=Path(':memory:'))
+          # Predict on the mutated file, regardless of whether the file is
+          # syntactically okay or not.
+          with NamedTemporaryFile(mode='w+', encoding='UTF-8') as mutant_file:
+              mutation.apply(source_vector).print(file=mutant_file)
+              mutant_file.flush()
+              predictions.predict(mutant_file.name)
+
         assert len(mutations) == 1
         stored_source_file, stored_mutation = next(iter(mutations))
+
+        # Assert round-trip restores the original file, and the mutation
+        # can be applied again and get the same result.
         assert stored_mutation == mutation
         assert source_file.file_hash == stored_source_file.file_hash
         assert (stored_source_file.vector + stored_mutation ==
