@@ -91,7 +91,7 @@ class Mutations(Sized, Iterable[MutationInfo]):
         hash of the current source file being mutated.
         """
         if self.program:
-            return self.program.filehash
+            return self.program.file_hash
         else:
             raise ValueError('program not set')
 

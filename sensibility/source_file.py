@@ -33,17 +33,17 @@ class SourceFile:
     corpus: Optional[Corpus] = None
     vectors: Optional[Vectors] = None
 
-    __slots__ = ('filehash', '_token_vector', '_source_tokens')
+    __slots__ = ('file_hash', '_token_vector', '_source_tokens')
 
-    def __init__(self, filehash: str) -> None:
-        self.filehash = filehash
+    def __init__(self, file_hash: str) -> None:
+        self.file_hash = file_hash
         # I used confusing names... TokenSequence != Sequence[Token]...
         self._token_vector: Optional[TokenSequence] = None
         self._source_tokens: Optional[Sequence[Token]] = None
 
     def __repr__(self):
         clsname = type(self).__name__
-        return f"{clsname}({self.filehash!r})"
+        return f"{clsname}({self.file_hash!r})"
 
     @property
     def vector(self) -> TokenSequence:
@@ -52,7 +52,7 @@ class SourceFile:
         if self.vectors is None:
             raise Exception('forgot to assign SourceFile.vectors')
         # Fetch the vector.
-        _, tokens = self.vectors[self.filehash]
+        _, tokens = self.vectors[self.file_hash]
         self._token_vector = TokenSequence(tokens)
         return self._token_vector
 
@@ -63,7 +63,7 @@ class SourceFile:
         if self.corpus is None:
             raise Exception('forgot to assign SourceFile.corpus')
         # Fetch the source tokens.
-        source = self.corpus.get_source(self.filehash)
+        source = self.corpus.get_source(self.file_hash)
         self._source_tokens = tokenize(source.decode('UTF-8'))
         return self._source_tokens
 

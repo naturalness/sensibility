@@ -66,13 +66,15 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
     mutation = edit_class.create_random_mutation(source_vector)
 
     with mutations:
+        assert len(mutations) == 0
+
         mutations.program = source_file
         mutations.add_mutant(mutation)
 
         assert len(mutations) == 1
         stored_source_file, stored_mutation = next(iter(mutations))
         assert stored_mutation == mutation
-        assert source_file.filehash == stored_source_file.filehash
+        assert source_file.file_hash == stored_source_file.file_hash
         assert (stored_source_file.vector + stored_mutation ==
                 source_vector + mutation)
 
