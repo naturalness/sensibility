@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
 Mutate and predict on one fold.
 
@@ -25,7 +24,6 @@ This evaluation:
  - is intended to test the algorithm given a number of different scenarios
  - demonstrates theoretical efficacy
  - is not representative of "real-life" errors
-
 """
 
 import argparse
@@ -63,57 +61,6 @@ def syntax_ok(filename: str) -> bool:
     """
     with open(filename, 'rt') as source_file:
         return check_syntax_file(cast(TextIO, source_file))
-
-
-def test() -> None:
-    """
-    Test source code mutations.
-    """
-
-    # The token stream INCLUDES start and stop tokens.
-    # TODO: Fix these tests to make up for 20 token "margin"
-
-    """
-    program = SourceCode('DEADBEEF', [0, 86, 5, 31, 99])
-    a = Addition.create_random_mutation(program)
-    b = Addition.create_random_mutation(program)
-    c = Addition.create_random_mutation(program)
-    assert len({a, b, c, c, b, a, c, b}) == 3
-
-    d1 = Addition(1, 1)
-    d2 = Addition(1, 1)
-    s = Substitution(1, 1)
-    assert d1 == d2
-    assert s != d1
-
-    mutation = Addition.create_random_mutation(program)
-    mutation.format(program)
-
-    p = Persistence(database=':memory:')
-
-    original_model = ModelRecipe.from_string('python-f-310-5.4.5.h5')
-    alternate_model = ModelRecipe.from_string('python-b-310-5.4.5.h5')
-    sentence = (0, 10, 12, 67, 32)
-    context = np.array(sentence, np.uint8)
-    predictions = np.array([random.random() for _ in range(100)])
-
-    with p:
-        # Initially, it should return None.
-        pred = p.get_prediction(model_recipe=original_model, context=context)
-        assert pred is None
-
-        p.add_prediction(model_recipe=original_model, context=context,
-                         prediction=predictions)
-
-        # Get the new prediction.
-        result = p.get_prediction(model_recipe=original_model,
-                                  context=context)
-        assert result is not None
-        assert all(x == y for x, y in zip(predictions, result))
-        # Ensure the other context is not the same.
-        assert p.get_prediction(model_recipe=alternate_model,
-                                context=context) is None
-    """
 
 
 def main() -> None:

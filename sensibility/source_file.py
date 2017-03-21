@@ -18,6 +18,7 @@
 from typing import Sequence, Optional
 
 from .corpus import Corpus
+from .edit import Edit
 from .token_sequence import TokenSequence
 from .token_utils import Token
 from .vectors import Vectors
@@ -39,6 +40,10 @@ class SourceFile:
         # I used confusing names... TokenSequence != Sequence[Token]...
         self._token_vector: Optional[TokenSequence] = None
         self._source_tokens: Optional[Sequence[Token]] = None
+
+    def __repr__(self):
+        clsname = type(self).__name__
+        return f"{clsname}({self.filehash!r})"
 
     @property
     def vector(self) -> TokenSequence:
@@ -62,4 +67,5 @@ class SourceFile:
         self._source_tokens = tokenize(source.decode('UTF-8'))
         return self._source_tokens
 
-    def line_of_token(self, index: int) -> int: ...
+    def line_of_token(self, index: int, edit: Edit) -> int:
+        raise NotImplementedError

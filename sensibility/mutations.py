@@ -51,12 +51,14 @@ class Mutations(Sized, Iterable[MutationInfo]):
     -- Only syntactically-incorrect mutants.
     CREATE VIEW IF NOT EXISTS mutant
     AS SELECT hash, type, location, original_token, new_token
-    WHERE correct = false;
+         FROM mutant_with_status
+        WHERE correct = 0;
 
     -- Only syntacticall-correct mutants.
     CREATE VIEW IF NOT EXISTS correct_mutant
     AS SELECT hash, type, location, original_token, new_token
-    WHERE correct = true;
+         FROM mutant_with_status
+        WHERE correct = 1;
     """
 
     def __init__(self, database: Path=MUTATIONS_PATH,
@@ -109,7 +111,7 @@ class Mutations(Sized, Iterable[MutationInfo]):
         assert self._conn
 
         sql = r'''
-            INSERT INTO mutant(
+            INSERT INTO mutant_with_status (
                 hash, type, location, new_token, original_token, correct
             ) VALUES (:hash, :type, :location, :new, :original, :correct)
         '''
@@ -118,8 +120,8 @@ class Mutations(Sized, Iterable[MutationInfo]):
 
         args = dict(hash=self.current_source_hash,
                     type=code, location=location,
-                    new=new_token, original_token=original_token,
-                    correct=correct)
+                    new=new_token, original=original_token,
+                    correct=int(correct))
 
         with self._conn:
             self._conn.execute(sql, args)
