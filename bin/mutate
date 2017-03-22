@@ -119,6 +119,9 @@ def mutate_file(program: SourceFile,
 
     persist.program = program
 
+    # Clear the LRU cache for the new file.
+    sensibility.clear_cache()
+
     progress = tqdm(total=max_mutations_global * len(mutation_kinds),
                     leave=False)
     for mutation_kind in mutation_kinds:
@@ -163,8 +166,6 @@ def mutate_file(program: SourceFile,
 
     # Close the tqdm progress bar.
     progress.close()
-    # Clear the LRU cache for the new file.
-    sensibility.clear_cache()
 
 
 if __name__ == '__main__':

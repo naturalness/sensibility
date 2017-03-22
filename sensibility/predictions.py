@@ -66,12 +66,17 @@ class Predictions:
                 self.add_prediction(name, context, prediction)
                 return prediction
 
-        # Create cached prediction functions.
-        @functools.lru_cache(maxsize=2**16)
+        # > SELECT MAX(n_tokens) FROM vectorized_source;
+        # 1809948
+        # ceil(log(1809948, 2)) -- this will be like... 2 GiB PER CACHE.
+        cache_size = 2**21
+
+        # Create prediction functions with in-memory caching.
+        @functools.lru_cache(maxsize=cache_size)
         def predict_forwards(prefix: Tuple[Vind, ...]) -> None:
             _predict(forwards, self.forwards_model, prefix)
 
-        @functools.lru_cache(maxsize=2**16)
+        @functools.lru_cache(maxsize=cache_size)
         def predict_backwards(suffix: Tuple[Vind, ...]) -> None:
             _predict(backwards, self.backwards_model, suffix)
 
