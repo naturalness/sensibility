@@ -19,8 +19,13 @@
 Utilites designed to maintain Dr. Hindle's sanity.
 """
 
+from typing import Union, TypeVar
 
-def at_least(clamp: float, number: float) -> float:
+
+Number = TypeVar('Number', int, float, complex)
+
+
+def at_least(clamp: Number, number: Number) -> Number:
     """
     Return **at least** the clamp_value, else the number.
 
@@ -32,7 +37,7 @@ def at_least(clamp: float, number: float) -> float:
     return max(clamp, number)
 
 
-def at_most(clamp: float, number: float) -> float:
+def at_most(clamp: Number, number: Number) -> Number:
     """
     Return **at most** the clamp value, else the number
 

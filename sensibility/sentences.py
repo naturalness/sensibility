@@ -19,7 +19,7 @@
 Yields contexts in both forwards and backwards directions.
 """
 
-from itertools import chain, repeat, islice
+from itertools import chain, repeat
 from typing import Sequence, TypeVar, Iterable, Tuple
 
 from .vocabulary import vocabulary
@@ -40,6 +40,7 @@ def forward_sentences(
     Yield "sentences" which consist of a context, and the token immediately to
     the RIGHT of the context (c.f., backward_sentences()).
     """
+    from .abram import at_least
     if context is None:
         context = sentence - adjacent
 
@@ -47,7 +48,10 @@ def forward_sentences(
 
     # Generate a sentence for each element in the vector.
     for i, element in enumerate(vector):
-        real_context = islice(vector, max(0, i - context), i)
+        # Ensure the beginning of the slice is AT LEAST 0 (or else the slice
+        # will start from THE END of the vector!)
+        beginning = at_least(0, i - context)
+        real_context = vector[beginning:i]
         # Need to add padding when i is less than the context size.
         if i < context:
             padding = repeat(padding_token, context - i)
@@ -71,14 +75,15 @@ def backward_sentences(
         context = sentence - adjacent
 
     padding_token = vocabulary.end_token_index
+    vector_length = len(vector)
 
     # Generate a sentence for each element in the vector.
     for c_start, element in enumerate(vector, start=1):
         c_end = c_start + context
-        real_context = islice(vector, c_start, c_end)
+        real_context = vector[c_start:c_end]
         # Must add padding when the context goes over the size of the vector.
-        if c_end >= len(vector):
-            padding = repeat(padding_token, c_end - len(vector))
+        if c_end >= vector_length:
+            padding = repeat(padding_token, c_end - vector_length)
             yield tuple(chain(real_context, padding)), element
         else:
             # All tokens come from the vector
