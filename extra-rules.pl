@@ -30,6 +30,11 @@ sub model_filename {
     return "\$(MODEL_DIR)/\$(CORPUS)-$dir$fold.hdf5";
 }
 
+sub mutations_filename {
+    my ($fold) = @_;
+    return "\$(DATA_DIR)/\$(CORPUS)-mutations.$fold.sqlite3";
+}
+
 # Create a phony rule for models.
 print "models:";
 foreach my $fold (0 .. $max_fold) {
@@ -55,18 +60,25 @@ print "\n";
 # Create a phony rule for mutations.
 print "mutations:";
 foreach my $fold (0 .. $max_fold) {
-    print " \$(CORPUS)-mutations.$fold.sqlite3";
+    print " @{[mutations_filename($fold)]}";
 }
 print "\n";
 
 # Create rules for mutations.
 foreach my $fold (0 .. $max_fold) {
-    print "\$(CORPUS)-mutations.$fold.sqlite3:";
+    my $filename = mutations_filename($fold);
+
+    # Target
+    print "$filename:";
+    # Dependencies (both models)
     print " @{[model_filename 'f', $fold]}";
     print " @{[model_filename 'b', $fold]}";
     print " \$(TEST_SET).$fold";
     print "\n";
-    print "\tbin/mutate --limit $max_files $fold  \n";
+
+    # Recipe (symlink to mark it as complete)
+    print "\tbin/mutate --limit $max_files $fold\n";
+    print "\tln -s \$(CORPUS)-mutations.sqlite3 $filename\n";
 }
 print "\n";
 
