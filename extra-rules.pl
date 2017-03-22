@@ -55,18 +55,18 @@ print "\n";
 # Create a phony rule for mutations.
 print "mutations:";
 foreach my $fold (0 .. $max_fold) {
-    print " \$(CORPUS).$fold.cookie";
+    print " \$(CORPUS)-mutations.$fold.sqlite3";
 }
 print "\n";
 
 # Create rules for mutations.
 foreach my $fold (0 .. $max_fold) {
-    print "\$(CORPUS).$fold.cookie:";
-    print " \$(CORPUS)-f$fold.hdf5";
-    print " \$(CORPUS)-b$fold.hdf5";
+    print "\$(CORPUS)-mutations.$fold.sqlite3:";
+    print " @{[model_filename 'f', $fold]}";
+    print " @{[model_filename 'b', $fold]}";
     print " \$(TEST_SET).$fold";
     print "\n";
-    print "\t./mutate.py -n $max_files \$(ASSIGNED_VECTORS) \$< \$(TEST_SET).$fold\n";
+    print "\tbin/mutate --limit $max_files $fold  \n";
 }
 print "\n";
 
