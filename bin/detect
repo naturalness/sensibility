@@ -55,26 +55,6 @@ Common = namedtuple('Common',
                     'filename')
 
 
-@total_ordering
-class Agreement(namedtuple('BaseAgreement', 'probability index')):
-    def __lt__(self, other):
-        return self.probability < other.probability
-
-    def __eq__(self, other):
-        return self.probability == other.probability
-
-    def __rmatmul__(self, other):
-        return other[self.index]
-
-    def prefix(self, other, k=5):
-        i = self.index
-        return other[i - k:i]
-
-    def suffix(self, other, k=5):
-        i = self.index
-        return other[i + 1:i + 1 +k]
-
-
 class Model:
     """
     >>> model = Model.from_filenames(architecture='model-architecture.json',

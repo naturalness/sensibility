@@ -63,17 +63,12 @@ def squared_error_agreement(prefix_pred, suffix_pred):
 
 
 class SensibilityForEvaluation:
-    sentence_length = 20
+    context_length = 20
 
-    def __init__(self, fold_no):
-        name = 'javascript-{dir}-300-20.{fold}.5.h5'
-        forwards = ModelRecipe.from_string(name.format(dir='f', fold=fold_no))
-        backwards = ModelRecipe.from_string(name.format(dir='b', fold=fold_no))
-        db = mutations
-        self.forwards_predict = lambda prefix: db.get_prediction(model_recipe=forwards, context=prefix)
-        self.backwards_predict = lambda suffix: db.get_prediction(model_recipe=backwards, context=suffix)
+    def __init__(self, fold: int) -> None:
+        self.predictions = Predictions(fold)
 
-    def rank_and_fix(self, filename, k=3):
+    def rank_and_fix(self, filename: str, k: int=4):
         """
         Rank the syntax error location (in token number) and returns a possible
         fix for the given filename.
@@ -166,7 +161,7 @@ class SensibilityForEvaluation:
         return zip(sent_forwards, chop_prefix(sent_backwards))
 
     @staticmethod
-    def is_okay(filename):
+    def is_okay(filename: str) -> None:
         """
         Check if the syntax is okay.
         """
