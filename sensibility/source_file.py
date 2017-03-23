@@ -19,7 +19,7 @@ from typing import Sequence, Optional
 
 from .corpus import Corpus
 from .edit import Edit
-from .token_sequence import TokenSequence
+from .source_vector import SourceVector
 from .token_utils import Token
 from .vectors import Vectors
 from .tokenize_js import tokenize
@@ -37,8 +37,7 @@ class SourceFile:
 
     def __init__(self, file_hash: str) -> None:
         self.file_hash = file_hash
-        # I used confusing names... TokenSequence != Sequence[Token]...
-        self._token_vector: Optional[TokenSequence] = None
+        self._token_vector: Optional[SourceVector] = None
         self._source_tokens: Optional[Sequence[Token]] = None
 
     def __repr__(self):
@@ -46,7 +45,7 @@ class SourceFile:
         return f"{clsname}({self.file_hash!r})"
 
     @property
-    def vector(self) -> TokenSequence:
+    def vector(self) -> SourceVector:
         """
         A vector representation of the file composed of vocabulary indicies.
         """
@@ -56,7 +55,7 @@ class SourceFile:
             raise Exception('forgot to assign SourceFile.vectors')
         # Fetch the vector.
         _, tokens = self.vectors[self.file_hash]
-        self._token_vector = TokenSequence(tokens)
+        self._token_vector = SourceVector(tokens)
         return self._token_vector
 
     @property

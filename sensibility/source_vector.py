@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-A TokenSequence is a sequence of Vind (vocabulary indices) that all allows for
+A SourceVector is a sequence of Vind (vocabulary indices) that all allows for
 mutations.
 
 TODO: rename to SourceVector --- it's less confusing that way.
@@ -28,10 +28,9 @@ from itertools import zip_longest
 from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any, List
 
 from .vocabulary import vocabulary, Vind
-from .vectorize_tokens import SourceVector
 
 
-class TokenSequence(Sized, Iterable[Vind]):
+class SourceVector(Sized, Iterable[Vind]):
     """
     A source code program, with a file hash, and a token stream.
     """
@@ -44,15 +43,15 @@ class TokenSequence(Sized, Iterable[Vind]):
         """
         True when both programs are token for token equivalent.
 
-        >>> a = TokenSequence([23, 48, 70])
-        >>> b = TokenSequence([23, 48, 70])
+        >>> a = SourceVector([23, 48, 70])
+        >>> b = SourceVector([23, 48, 70])
         >>> a == b
         True
-        >>> c = TokenSequence([23, 48])
+        >>> c = SourceVector([23, 48])
         >>> a == c
         False
         """
-        if isinstance(other, TokenSequence):
+        if isinstance(other, SourceVector):
             return all(a == b for a, b in zip_longest(self, other))
         else:
             return False
@@ -94,66 +93,37 @@ class TokenSequence(Sized, Iterable[Vind]):
         """
         return random.randint(0, len(self))
 
-    def with_substitution(self, index: int, token: Vind) -> 'TokenSequence':
+    def with_substitution(self, index: int, token: Vind) -> 'SourceVector':
         """
         Return a new program, swapping out the token at index with the given
         token.
         """
+        # TODO: O(1) applying edits
         sequence: List[Vind] = []
         sequence.extend(self.tokens[:index])
         sequence.append(token)
         sequence.extend(self.tokens[index + 1:])
-        return TokenSequence(sequence)
+        return SourceVector(sequence)
 
-    def with_token_removed(self, index: int) -> 'TokenSequence':
+    def with_token_removed(self, index: int) -> 'SourceVector':
         """
         Return a new program with the token at the given index removed.
         """
+        # TODO: O(1) applying edits
         assert 0 <= index < len(self)
         sequence: List[Vind] = []
         sequence.extend(self.tokens[:index])
         sequence.extend(self.tokens[index + 1:])
-        return TokenSequence(sequence)
+        return SourceVector(sequence)
 
-    def with_token_inserted(self, index: int, token: Vind) -> 'TokenSequence':
+    def with_token_inserted(self, index: int, token: Vind) -> 'SourceVector':
         """
         Return a new program with the token at the given index removed.
         """
+        # TODO: O(1) applying edits
         assert 0 <= index <= len(self)
         sequence: List[Vind] = []
         sequence.extend(self.tokens[:index])
         sequence.append(token)
         sequence.extend(self.tokens[index:])
-        return TokenSequence(sequence)
-
-
-# TODO: O(1) applying edits
-
-T = TypeVar('T')
-
-
-class ReadOnlySlice(Sequence[T]):
-    """
-    A read-only slice from a sequence (say a list) without copying the entire
-    list.
-
-    Derived From: http://stackoverflow.com/a/3485490/6626414
-    Originally written by: Alex Martelli
-        <https://stackoverflow.com/users/95810/alex-martelli>
-    """
-
-    def __init__(self, alist: Sequence[T], start: int, alen: int) -> None:
-        self.alist = alist
-        self.start = start
-        self.alen = alen
-
-    def __len__(self) -> int:
-        return self.alen
-
-    def adj(self, i: int) -> int:
-        if i < 0:
-            i += self.alen
-        return i + self.start
-
-    def __getitem__(self, i):
-        return self.alist[self.adj(i)]
+        return SourceVector(sequence)

@@ -17,17 +17,17 @@
 
 from hypothesis.strategies import lists, integers, composite
 
-from sensibility import TokenSequence, vocabulary
+from sensibility import SourceVector, vocabulary
 
 
 @composite
 def programs(draw):
     """
-    Generate TokenSequence instances with random token sequences.
+    Generate SourceVector instances with random sequences of vectors.
 
-    TODO: rename to token_sequences()? Ew, kinda gross.
+    TODO: rename to source_vectors()? Ew, kinda gross.
     """
     tokens = integers(min_value=vocabulary.start_token_index + 1,
                       max_value=vocabulary.end_token_index - 1)
     vectors = draw(lists(tokens, min_size=1))
-    return TokenSequence(vectors)
+    return SourceVector(vectors)

@@ -22,7 +22,7 @@ from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
 from .loop_batches import LoopBatchesEndlessly
 from .source_file import SourceFile
-from .token_sequence import TokenSequence
+from .source_vector import SourceVector
 from .token_utils import Token, Location, Position
 from .vectorize_tokens import vectorize_tokens, serialize_tokens
 from .vectors import Vectors
