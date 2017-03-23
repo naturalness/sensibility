@@ -15,54 +15,69 @@ import math
 import sys
 import json
 from pathlib import Path
-from typing import Optional, TextIO, List, Sequence, cast
+from typing import Optional, TextIO, List, Sequence, Iterable, Iterator, cast
 
 from tqdm import tqdm
 
 from sensibility import (
     SourceFile,
     Edit, Insertion, Deletion, Substitution,
+    SourceVector,
     Corpus, Vectors,
     Agreement, Vind,
     vectorize_tokens, vocabulary,
 )
-from sensibility.tokenize_js import tokenize_file, check_syntax
+from sensibility.tokenize_js import tokenize_file, check_syntax_file
 from sensibility.mutations import Mutations
 from sensibility.predictions import Predictions
 from sensibility._paths import VECTORS_PATH, SOURCES_PATH
 
 
+def temporary_program(program: SourceVector) -> TextIO:
+    """
+    Returns a temporary file that with the contents of the file written to it.
+    """
+    raw_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
+    mutated_file = cast(TextIO, raw_file)
+    try:
+        program.print(file=mutated_file)
+        mutated_file.flush()
+        mutated_file.seek(0)
+    except IOError as error:
+        raw_file.close()
+        raise error
+    return mutated_file
+
+
 # TODO: Move this to a different file, probably
-class Fixes:
-    def __init__(self, tokens: SourceVector):
-        self.tokens = tokens
+class Fixes(Iterable[Edit]):
+    def __init__(self, vector: SourceVector) -> None:
+        self.vector = vector
         self.fixes: List[Edit] = []
 
     def try_insert(self, index: int, token: Vind) -> None:
-        pos = index
-        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
-        if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Insert(new_token, pos, self.tokens))
+        self._try_edit(Insertion.create_mutation(self.vector, index, token))
 
     def try_delete(self, index: int) -> None:
-        edit = Deletion(index, self.tokens[index])
-        suggestion = self.tokens[:index] + self.tokens[index + 1:]
-        if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Remove(pos, self.tokens))
-
+        self._try_edit(Deletion.create_mutation(self.vector, index))
 
     def try_substitute(self, index: int, token: Vind) -> None:
-        pos = index
-        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos + 1:]
-        if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Substitute(new_token, pos, self.tokens))
+        edit = Substitution.create_mutation(self.vector, index, token)
+        self._try_edit(edit)
+
+    def _try_edit(self, edit: Edit) -> None:
+        """
+        Actually apply the edit to the file. Add it to the fixes if it works.
+        """
+        with temporary_program(edit.apply(self.vector)) as mutant_file:
+            if check_syntax_file(mutant_file):
+                self.fixes.append(edit)
 
     def __bool__(self) -> bool:
         return len(self.fixes) > 0
 
     def __iter__(self) -> Iterator[Edit]:
         return iter(self.fixes)
-
 
 
 def fix_zeros(preds, epsilon=sys.float_info.epsilon):
@@ -99,6 +114,11 @@ def squared_error_agreement(prefix_pred, suffix_pred):
     return -entropy
 
 
+def index_of_max(seq: Iterable) -> int:
+    return max(enumerate(seq), key=lambda t: t[1])[0]
+
+
+
 class SensibilityForEvaluation:
     context_length = 20
 
@@ -114,12 +134,12 @@ class SensibilityForEvaluation:
         # Get file vector for the incorrect file.
         with cast(TextIO, open(filename, 'rt', encoding='UTF-8')) as script:
             tokens = tokenize_file(script)
-        file_vector = vectorize_tokens(tokens)
+        file_vector = SourceVector(vectorize_tokens(tokens))
 
         padding = self.context_length
 
         # Holds the lowest agreement at each point in the file.
-        least_agreements: Sequence[Agreement] = []
+        least_agreements: List[Agreement] = []
 
         # These will hold the TOP predictions at a given point.
         forwards_predictions = [None] * padding
@@ -156,7 +176,7 @@ class SensibilityForEvaluation:
         if not least_agreements:
             return [], None
 
-        fixes = Fixes(tokens)
+        fixes = Fixes(file_vector)
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
@@ -166,8 +186,8 @@ class SensibilityForEvaluation:
             # Assume an addition. Let's try removing some tokens.
             fixes.try_delete(pos)
 
-            likely_next = id_to_token(forwards_predictions[pos])
-            likely_prev = id_to_token(backwards_predictions[pos])
+            likely_next: Vind = forwards_predictions[pos]
+            likely_prev: Vind = backwards_predictions[pos]
 
             # Assume a deletion. Let's try inserting some tokens.
             if likely_next is not None:
@@ -197,12 +217,12 @@ class SensibilityForEvaluation:
         return zip(sent_forwards, chop_prefix(sent_backwards))
 
     @staticmethod
-    def is_okay(filename: str) -> None:
+    def is_okay(filename: str) -> bool:
         """
         Check if the syntax is okay.
         """
-        with open(filename, 'rb') as source_file:
-            return check_syntax_file(source_file)
+        with open(filename, 'rt') as source_file:
+            return check_syntax_file(cast(TextIO, source_file))
 
 
 def to_text(token: Optional[Vind]) -> Optional[str]:
@@ -292,7 +312,8 @@ class Evaluation:
         correct_line = program.line_of_token(mutation.index)
 
         # Apply the original mutation.
-        with apply_mutation(mutation, program) as mutated_file:
+        mutant = mutation.apply(program.vector)
+        with temporary_program(mutant) as mutated_file:
             # Do the (canned) prediction...
             ranked_locations, fix = rank_and_fix(fold, mutated_file)
 
@@ -312,14 +333,6 @@ class Evaluation:
                    fix=fix,
                    line_of_top_rank=line_of_top_location,
                    rank_correct_line=rank_correct_line)
-
-
-def apply_mutation(mutation: Edit, program: SourceFile):
-    mutated_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
-    # Apply the mutatation and write it to disk.
-    mutation.apply(program).print(file=mutated_file)
-    mutated_file.flush()
-    return mutated_file
 
 
 def rank_and_fix(fold: int, mutated_file: TextIO):

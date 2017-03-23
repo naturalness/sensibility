@@ -34,4 +34,4 @@ class Agreement:
     def suffix(self, other, k=5):
         warnings.warn("Using untyped method: Agreement.suffix(Any)")
         i = self.index
-        return other[i + 1:i + 1 +k]
+        return other[i + 1:i + 1 + k]

@@ -179,9 +179,6 @@ def chop_prefix(sequence, prefix=SENTENCE_LENGTH):
     return islice(sequence, prefix, len(sequence))
 
 
-def index_of_max(seq):
-    return max(enumerate(seq), key=lambda t: t[1])[0]
-
 def tokens_to_source_code(tokens):
     return ' '.join(token.value for token in tokens)
 
@@ -330,39 +327,6 @@ class Substitute(Fix):
 
     def __str__(self):
         raise NotImplementedError
-
-
-class Fixes:
-    def __init__(self, tokens, offset=0):
-        self.tokens = tokens
-        self.offset = offset
-        self.fixes = []
-
-    def try_remove(self, index):
-        pos = index + self.offset
-        suggestion = self.tokens[:pos] + self.tokens[pos + 1:]
-        if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Remove(pos, self.tokens))
-
-    def try_insert(self, index, new_token):
-        assert isinstance(new_token, Token)
-        pos = index + self.offset
-        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
-        if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Insert(new_token, pos, self.tokens))
-
-    def try_substitute(self, index, new_token):
-        assert isinstance(new_token, Token)
-        pos = index + self.offset
-        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos + 1:]
-        if check_syntax(tokens_to_source_code(suggestion)):
-            self.fixes.append(Substitute(new_token, pos, self.tokens))
-
-    def __bool__(self):
-        return len(self.fixes) > 0
-
-    def __iter__(self):
-        return iter(self.fixes)
 
 
 # TODO: use tokenize_js

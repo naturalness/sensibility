@@ -186,6 +186,11 @@ class Insertion(Edit):
     def serialize_components(self) -> PartialSerialization:
         return (self.index, self.token, None)
 
+    @staticmethod
+    def create_mutation(program: SourceVector,
+                        index: int, token: Vind) -> 'Insertion':
+        return Insertion(index, token)
+
     @classmethod
     def create_random_mutation(cls, program: SourceVector) -> 'Insertion':
         """
@@ -221,6 +226,10 @@ class Deletion(Edit):
 
     def serialize_components(self) -> PartialSerialization:
         return (self.index, None, self.original_token)
+
+    @staticmethod
+    def create_mutation(program: SourceVector, index: int) -> 'Deletion':
+        return Deletion(program[index], index)
 
     @classmethod
     def create_random_mutation(cls, program: SourceVector) -> 'Deletion':
@@ -261,6 +270,13 @@ class Substitution(Edit):
 
     def serialize_components(self) -> PartialSerialization:
         return (self.index, self.token, self.original_token)
+
+    @staticmethod
+    def create_mutation(program: SourceVector,
+                        index: int, token: Vind) -> 'Substitution':
+        return Substitution(index,
+                            original_token=program[index],
+                            replacement=token)
 
     @classmethod
     def create_random_mutation(cls, program: SourceVector) -> 'Substitution':
