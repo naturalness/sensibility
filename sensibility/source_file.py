@@ -47,6 +47,9 @@ class SourceFile:
 
     @property
     def vector(self) -> TokenSequence:
+        """
+        A vector representation of the file composed of vocabulary indicies.
+        """
         if self._token_vector is not None:
             return self._token_vector
         if self.vectors is None:
@@ -58,6 +61,9 @@ class SourceFile:
 
     @property
     def source_tokens(self) -> Sequence[Token]:
+        """
+        Original, parsed tokens, with position information (line and column).
+        """
         if self._source_tokens is not None:
             return self._source_tokens
         if self.corpus is None:
@@ -67,5 +73,19 @@ class SourceFile:
         self._source_tokens = tokenize(source.decode('UTF-8'))
         return self._source_tokens
 
-    def line_of_token(self, index: int, edit: Edit) -> int:
+    # TODO: TEST!
+    @property
+    def sloc(self):
+        """
+        Source lines of code, or how many lines of code there are.
+        """
+        last_token = self.source_tokens[-1]
+        return last_token.line
+
+    # TODO: TEST!
+    def line_of_token(self, index: int, edit: Edit=None) -> int:
+        """
+        Finds the line number of the token at the given index. Applies the
+        Edit to the file.
+        """
         raise NotImplementedError

@@ -5,28 +5,27 @@
 Evaluates the performance of the fixer thing.
 """
 
+# TODO: make a big EvaluationResult object -> allow it to be encoded as JSON.
+# TODO: try cosine distance      -,
+# TODO: try indexing and adding  -'
+
 import csv
 import tempfile
 import math
 import sys
-from itertools import islice
+import json
 from pathlib import Path
+from typing import Optional, TextIO, Sequence
 
 from tqdm import tqdm
 
-from vocabulary import vocabulary
-from mutate import Persistence as Mutations
-from mutate import SourceCode
-from corpus import Corpus
-from condensed_corpus import CondensedCorpus
-from training_utils import Sentences, one_hot_batch
-from detect import (
-    check_syntax_file, tokenize_file, chop_prefix,
-    harmonic_mean, index_of_max, rank,
-    Fixes, Agreement, id_to_token
+from sensibility import (
+    SourceFile, Edit, Corpus, Vectors, Agreement, Vind,
+    vectorize_tokens, vocabulary,
 )
-from vectorize_tokens import vectorize_tokens
-from model_recipe import ModelRecipe
+from sensibility.mutations import Mutations
+from sensibility.predictions import Predictions
+from sensibility._paths import VECTORS_PATH, SOURCES_PATH
 
 
 def fix_zeros(preds, epsilon=sys.float_info.epsilon):
@@ -37,8 +36,6 @@ def fix_zeros(preds, epsilon=sys.float_info.epsilon):
         if math.isclose(pred, 0.0):
             preds[i] = epsilon
 
-
-# TODO: can create tests to check the value of agreement...
 
 def harmonic_mean_agreement(prefix_pred, suffix_pred):
     # Avoid NaNs
@@ -177,7 +174,11 @@ class SensibilityForEvaluation:
             return check_syntax_file(source_file)
 
 
-class Results:
+def to_text(token: Optional[Vind]) -> Optional[str]:
+    return None if token is None else vocabulary.to_text(token)
+
+
+class Evaluation:
     FIELDS = '''
         fold filehash n.lines n.tokens
         m.kind m.loc m.token m.old
@@ -186,71 +187,100 @@ class Results:
         f.kind f.loc f.token f.old
     '''.split()
 
-    def __init__(self, part):
-        self._filename = 'results.%d.csv' % part
+    def __init__(self, fold: int) -> None:
+        assert 0 <= fold < 5
+        self.fold = fold
+        self._filename = f'results.{fold}.csv'
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self._file = open(self._filename, 'w')
         self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
         self._writer.writeheader()
-        return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info) -> None:
         self._file.close()
 
-    def write(self,
-              fold: int,  # fold
+    def write(self, *,
               program: SourceFile,  # filehash, n.lines, n.tokens
               mutation: Edit,  # m.kind m.pos m.token m.old
               fix: Optional[Edit], # fixed true.fix f.kind f.pos f.token f.fold
-              line_top_rank: int,
+              line_of_top_rank: int,
               rank_correct_line: int) -> None:
 
         kind, loc, new_tok, old_tok = mutation.serialize()
         row = {
             "fold": fold,
-            "filehash": program.filehash,
-            "n.lines": program.n_lines,  # not implemented!
-            "n.tokens": len(program.tokens),
+            "filehash": program.file_hash,
+            "n.lines": program.sloc,
+            "n.tokens": len(program.source_tokens),
             "m.kind": kind,
             "m.loc": loc,
-            "m.token": vocabulary.to_text(new_tok),
-            "m.old": vocabulary.to_text(old_tok),
+            "m.token": to_text(new_tok),
+            "m.old": to_text(old_tok),
         }
 
-        if fix:
+        if fix is None:
+            row.update({
+                "fixed": False,
+                "true.fix": None,
+                "f.kind": None,
+                "f.loc": None,
+                "f.token": None,
+                "f.old": None,
+            })
+        else:
             kind, loc, new_tok, old_tok = fix.serialize()
             row.update({
                 "fixed": True,
                 "true.fix": fix == mutation.additive_inverse(),
                 "f.kind": kind,
                 "f.loc": loc,
-                "f.token": vocabulary.to_text(new_tok),
-                "f.old": vocabulary.to_text(old_tok),
-            })
-        else:
-            row.update({
-                "fixed": False,
-                "true.fix": False,
-                "f.loc": None,
-                "f.token": None,
-                "f.old": None,
+                "f.token": to_text(new_tok),
+                "f.old": to_text(old_tok),
             })
 
         self._writer.writerow(row)
         self._file.flush()
 
+    def run(self) -> None:
+        """
+        Run the evaluation.
+        """
+        SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
+        SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
 
-FOLDS = {}
+        with self, Mutations() as mutations:
+            for program, mutation in tqdm(mutations.for_fold(self.fold)):
+                self.evaluate_mutant(program, mutation)
 
-def populate_folds():
-    """
-    Create a mapping between a file hash and the fold it came from.
-    """
-    for fold in 0, 1, 2, 3, 4:
-        with open('test_set_hashes.' + str(fold)) as hash_file:
-            for file_hash in hash_file:
-                FOLDS[file_hash.strip()] = fold
+    def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
+        """
+        Evaluate one particular mutant.
+        """
+        # Figure out the line of the mutation in the original file.
+        correct_line = program.line_of_token(mutation.index)
+
+        # Apply the original mutation.
+        with apply_mutation(mutation, program) as mutated_file:
+            # Do the (canned) prediction...
+            ranked_locations, fix = rank_and_fix(fold, mutated_file)
+
+        if not ranked_locations:
+            # rank_and_fix() can occasional return a zero-sized list.
+            # In which case, return early.
+            return
+
+        # Figure out the rank of the actual mutation.
+        top_error_index = ranked_locations[0].index
+        line_of_top_location = program.source_tokens[top_error_index].line
+        rank_correct_line = first_with_line_no(ranked_locations, mutation,
+                                               correct_line, program)
+
+        self.write(program=program,
+                   mutation=mutation,
+                   fix=fix,
+                   line_of_top_rank=line_of_top_location,
+                   rank_correct_line=rank_correct_line)
 
 
 def apply_mutation(mutation, program):
@@ -261,144 +291,22 @@ def apply_mutation(mutation, program):
     return mutated_file
 
 
-def rank_and_fix(fold_no, mutated_file):
-    sensibility = SensibilityForEvaluation(fold_no)
+def rank_and_fix(fold: int, mutated_file: TextIO):
+    sensibility = SensibilityForEvaluation(fold)
     return sensibility.rank_and_fix(mutated_file.name)
 
 
-def first_with_line_no(disagreements, correct_line, tokens):
-    for rank, disagreement in enumerate(disagreements, start=1):
-        if tokens[disagreement.index].line == correct_line:
+def first_with_line_no(ranked_locations: Sequence[Agreement],
+                       mutation: Edit,
+                       correct_line: int,
+                       program: SourceFile) -> int:
+    for rank, location in enumerate(ranked_locations, start=1):
+        if program.line_of_token(location.index, mutation) == correct_line:
             return rank
-    # TODO: debug this!
-    #import pdb; pdb.set_trace()
+    raise ValueError(f'Could not find any location on {correct_line}')
 
-
-def location_of_vectors():
-    shared_memory = Path('/dev/shm/javascript.sqlite3')
-    current_dir = Path('./javascript.sqlite3')
-    return str(
-        shared_memory if shared_memory.exists() else current_dir
-    )
-
-def print_tokens(tokens, marker='{token} \033[38;5;236m{index}\033[m'):
-    current_line = 0
-    col = 0
-    for index, token in enumerate(tokens, start=1):
-        while token.line > current_line:
-            print()
-            current_line += 1
-            print('{:4d}: '.format(current_line), end='')
-            col = 0
-
-        column_difference =  token.loc.end.column - col
-        if column_difference > 0:
-            col += column_difference
-            print(' ' * column_difference, end='')
-        col += len(str(token))
-        print(marker.format(token=token, index=index), end=' ')
-    print()
-
-
-class fraction:
-    """
-    Yield a fraction of the items from the given sequence.
-
-    >>> list(fraction([1, 2, 3, 4], 4, 4))
-    [4]
-    >>> list(fraction(list(range(1, 11)), 4, 4))
-    [7, 8, 9, 10]
-    """
-    def __init__(self, seq, part, total):
-        if not ( 1 <= part <= total):
-            raise ValueError(
-                "cannot make part {part}/{total}".format_map(vars())
-            )
-        self.part = part - 1
-        self._len = len(seq) // total
-
-        # Place the remainder in the last part.
-        self._remainder = len(seq) % total if part == total else 0
-
-        self._seq = seq
-
-    @property
-    def start(self):
-        return self._len * self.part
-
-    @property
-    def end(self):
-        return self._len * (self.part + 1) + self._remainder
-
-    def __iter__(self):
-        return islice(self._seq, self.start, self.end)
-
-    def __len__(self):
-        return self._len + self._remainder
-
-
-def evaluate_mutant(file_hash, mutation):
-    # Figure out what fold it's in.
-    fold_no = FOLDS[file_hash]
-
-    # Get the original vector to get the mutated file.
-    _, vector = vectors[file_hash]
-    assert vector[0] == 0, 'not start token'
-    assert vector[-1] == 99, 'not end token'
-    program = SourceCode(file_hash, vector)
-
-    # Get the actual file's tokens, including line numbers!
-    tokens = corpus.get_tokens(file_hash)
-    # Ensure that both files use the same indices!
-    tokens = ('/*start*/',) + tokens + ('/*end*/',)
-    assert len(program) == len(tokens)
-
-    # Figure out the line of the mutation in the original file.
-    correct_line = tokens[mutation.location].line
-
-    # Apply the original mutation.
-    with apply_mutation(mutation, program) as mutated_file:
-        # Do the (canned) prediction...
-        ranked_locations, fix = rank_and_fix(fold_no, mutated_file)
-
-    if not ranked_locations:
-        # rank_and_fix() can occasional return a zero-sized list.
-        # In which case, return early.
-        return
-
-    # Figure out the rank of the actual mutation.
-    top_error_index = ranked_locations[0].index
-    line_of_top_location = tokens[top_error_index].line
-    rank_correct_line = first_with_line_no(ranked_locations,
-                                           correct_line, tokens)
-
-    results.write(
-        fold=fold_no,
-        file=file_hash,
-        mkind=mutation.name,
-        # TODO: return the token as it is in the vocabulary.
-        mtoken=mutation.token,
-        mpos=mutation.location,
-        correct_line=correct_line,
-        line_of_top_rank=line_of_top_location,
-        rank_correct_line=rank_correct_line,
-        fixed=bool(fix),
-        fkind=fix.name if fix else None,
-        fpos=fix.location if fix else None,
-        ftoken=fix.token if fix else None,
-        same_fix=None
-    )
 
 
 if __name__ == '__main__':
-    corpus = Corpus.connect_to('javascript-sources.sqlite3')
-    vectors = CondensedCorpus.connect_to(location_of_vectors())
-    populate_folds()
-
-    _, part = sys.argv
-    part = int(part)
-    TOTAL_PARTS = 8
-
-    with Mutations() as mutations, Results(part) as results:
-        for file_hash, mutation in tqdm(fraction(mutations, part, TOTAL_PARTS)):
-            evaluate_mutant(file_hash, mutation)
+    fold = int(sys.argv[1])
+    Evaluation(fold).run()

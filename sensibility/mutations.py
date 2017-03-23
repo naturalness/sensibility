@@ -85,6 +85,18 @@ class Mutations(Sized, Iterable[MutationInfo]):
                                         original_token)
             yield SourceFile(file_hash), mutation
 
+    def for_fold(self, fold: int) -> Iterator[Tuple[SourceFile, Edit]]:
+        assert self._conn
+        cur = self._conn.execute(r'''
+            SELECT hash, type, location, new_token, original_token
+              FROM mutant
+             WHERE fold = :fold
+        ''', dict(fold=fold))
+        for file_hash, code, location, new_token, original_token in cur:
+            mutation = Edit.deserialize(code, location, new_token,
+                                        original_token)
+            yield SourceFile(file_hash), mutation
+
     @property
     def current_source_hash(self) -> str:
         """

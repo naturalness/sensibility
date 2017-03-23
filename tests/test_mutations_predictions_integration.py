@@ -64,7 +64,7 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
     mutation = edit_class.create_random_mutation(source_vector)
 
     # The in-memory database and all that's contained within
-    # will be destoyed after this with: statement
+    # will be destoyed after this with-statement
     with mutations:
         assert len(mutations) == 0
 
@@ -83,16 +83,19 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
         assert len(mutations) == 1
         stored_source_file, stored_mutation = next(iter(mutations))
 
-        # Assert round-trip restores the original file, and the mutation
-        # can be applied again and get the same result.
-        assert stored_mutation == mutation
-        assert source_file.file_hash == stored_source_file.file_hash
-        assert (stored_source_file.vector + stored_mutation ==
-                source_vector + mutation)
+    # Assert round-trip restores the original file, and the mutation
+    # can be applied again and get the same result.
+    assert stored_mutation == mutation
+    assert source_file.file_hash == stored_source_file.file_hash
+    assert (stored_source_file.vector + stored_mutation ==
+            source_vector + mutation)
+
+    # Ensure the vector has as many tokens as the original token stream.
+    assert len(source_file.vector) == len(source_file.source_tokens)
 
 
 def setup_module():
-    SourceFile.sources = Corpus.connect_to(SOURCES_PATH)
+    SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
     SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
 
 

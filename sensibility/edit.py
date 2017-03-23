@@ -50,6 +50,7 @@ class Edit(metaclass=ABCMeta):
     """
 
     code: str
+    index: int
     _subclasses: Dict[str, Type['Edit']] = {}
 
     def __init_subclass__(cls) -> None:
@@ -80,6 +81,9 @@ class Edit(metaclass=ABCMeta):
         """
         Applies the edit to a program.
         """
+
+    # TODO: need a token location to say THIS IS WHERE THE EDIT IS IN THE
+    # ORIGINAL FILE.
 
     @abstractmethod
     def serialize_components(self) -> PartialSerialization:
