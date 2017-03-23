@@ -2,12 +2,9 @@
 # -*- coding: UTF-8 -*-
 
 """
-Evaluates the performance of the fixer thing.
+Evaluates the performance of the detecting and fixing syntax errors.
 """
 
-# TODO: make a big EvaluationResult object -> allow it to be encoded as JSON.
-# TODO: try cosine distance      -,
-# TODO: try indexing and adding  -'
 
 import csv
 import tempfile
@@ -15,7 +12,10 @@ import math
 import sys
 import json
 from pathlib import Path
-from typing import Optional, TextIO, List, Sequence, Iterable, Iterator, cast
+from typing import (
+    Iterable, Iterator, List, NamedTuple, Optional, Sequence, TextIO, Tuple,
+    cast
+)
 
 from tqdm import tqdm
 
@@ -29,8 +29,237 @@ from sensibility import (
 )
 from sensibility.tokenize_js import tokenize_file, check_syntax_file
 from sensibility.mutations import Mutations
-from sensibility.predictions import Predictions
+from sensibility.predictions import Predictions, Contexts
 from sensibility._paths import VECTORS_PATH, SOURCES_PATH
+
+# TODO: make a big FixResult object -> allow it to be encoded as JSON.
+# TODO: make an IndexResult object including:
+#   - cosine distance
+#   - harmonic mean
+#   - sum
+#   - Euclidean distance
+#   - indexed sum
+#   - cosine distance + indexed sum
+#   - rank?
+# TODO: try cosine distance      -,
+# TODO: try indexing and adding  -'
+
+
+class SensibilityForEvaluation:
+    """
+    Detects and fixes syntax errors in JavaScript files.
+    """
+    context_length = 20
+
+    def __init__(self, fold: int) -> None:
+        self.predictions = Predictions(fold)
+
+    def rank_and_fix(self, filename: str, k: int=4) -> 'FixResult':
+        """
+        Rank the syntax error location (in token number) and returns a possible
+        fix for the given filename.
+        """
+
+        # Get file vector for the incorrect file.
+        with cast(TextIO, open(filename, 'rt', encoding='UTF-8')) as script:
+            tokens = tokenize_file(script)
+        file_vector = SourceVector(vectorize_tokens(tokens))
+        assert len(file_vector) > 0
+
+        padding = self.context_length
+
+        # Holds the lowest agreement at each point in the file.
+        least_agreements: List[Agreement] = []
+
+        # These will hold the TOP predictions at a given point.
+        forwards_predictions: List[Agreement] = []
+        backwards_predictions: List[Agreement] = []
+        contexts = enumerate(self.contexts(file_vector))
+
+        for index, ((prefix, token), (suffix, _)) in contexts:
+            assert token == file_vector[index], (
+                str(token) + ' ' + str(file_vector[index])
+            )
+
+            # Fetch predictions.
+            prefix_pred = self.predictions.predict_forwards(prefix)
+            suffix_pred = self.predictions.predict_backwards(suffix)
+
+            # It should be a categorical distribution.
+            assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)  # type: ignore
+            assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)  # type: ignore
+
+            # Store the TOP prediction from both models.
+            top_next_prediction = index_of_max(prefix_pred)
+            forwards_predictions.append(top_next_prediction)
+            top_prev_prediction = index_of_max(suffix_pred)
+            backwards_predictions.append(top_prev_prediction)
+            assert top_next_prediction == forwards_predictions[index]
+
+            agreement = Agreement(
+                squared_error_agreement(prefix_pred, suffix_pred),
+                index
+            )
+            least_agreements.append(agreement)
+
+        fixes = Fixes(file_vector)
+
+        # For the top disagreements, synthesize fixes.
+        least_agreements.sort()
+        for disagreement in least_agreements[:k]:
+            pos = disagreement.index
+
+            # Assume an addition. Let's try removing some tokens.
+            fixes.try_delete(pos)
+
+            likely_next: Vind = forwards_predictions[pos]
+            likely_prev: Vind = backwards_predictions[pos]
+
+            # Assume a deletion. Let's try inserting some tokens.
+            if likely_next is not None:
+                fixes.try_insert(pos, likely_next)
+            if likely_prev is not None:
+                fixes.try_insert(pos, likely_prev)
+
+            # Assume it's a substitution. Let's try swapping the token.
+            if likely_next is not None:
+                fixes.try_substitute(pos, likely_next)
+            if likely_prev is not None:
+                fixes.try_substitute(pos, likely_prev)
+
+        return FixResult(
+            ranks=least_agreements,
+            fixes=[] if not fixes else tuple(fixes)
+        )
+
+    def contexts(self, file_vector: SourceVector) -> Contexts:
+        """
+        Yield every context (prefix, suffix) in the given file vector.
+        """
+        return self.predictions.contexts(cast(Sequence[Vind], file_vector))
+
+    @staticmethod
+    def is_okay(filename: str) -> bool:
+        """
+        Check if the syntax is okay.
+        """
+        with open(filename, 'rt') as source_file:
+            return check_syntax_file(cast(TextIO, source_file))
+
+
+class FixResult(NamedTuple):
+    # The results of detecting and fixing syntax errors.
+    ranks: Sequence[Agreement]
+    fixes: Sequence[Edit]
+
+
+def to_text(token: Optional[Vind]) -> Optional[str]:
+    return None if token is None else vocabulary.to_text(token)
+
+
+class Evaluation:
+    FIELDS = '''
+        fold filehash n.lines n.tokens
+        m.kind m.loc m.token m.old
+        correct.line line.top.rank rank.correct.line
+        fixed true.fix
+        f.kind f.loc f.token f.old
+    '''.split()
+
+    def __init__(self, fold: int) -> None:
+        assert 0 <= fold < 5
+        self.fold = fold
+        self._filename = f'results.{fold}.csv'
+
+    def __enter__(self) -> None:
+        self._file = open(self._filename, 'w')
+        self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
+        self._writer.writeheader()
+
+    def __exit__(self, *exc_info) -> None:
+        self._file.close()
+
+    def write(self, *,
+              program: SourceFile,
+              mutation: Edit,
+              fix: Optional[Edit],
+              line_of_top_rank: int,
+              rank_correct_line: int) -> None:
+
+        kind, loc, new_tok, old_tok = mutation.serialize()
+        row = {
+            "fold": fold,
+            "filehash": program.file_hash,
+            "n.lines": program.sloc,
+            "n.tokens": len(program.source_tokens),
+            "m.kind": kind,
+            "m.loc": loc,
+            "m.token": to_text(new_tok),
+            "m.old": to_text(old_tok),
+        }
+
+        if fix is None:
+            row.update({
+                "fixed": False,
+                "true.fix": None,
+                "f.kind": None,
+                "f.loc": None,
+                "f.token": None,
+                "f.old": None,
+            })
+        else:
+            kind, loc, new_tok, old_tok = fix.serialize()
+            row.update({
+                "fixed": True,
+                "true.fix": fix == mutation.additive_inverse(),
+                "f.kind": kind,
+                "f.loc": loc,
+                "f.token": to_text(new_tok),
+                "f.old": to_text(old_tok),
+            })
+
+        self._writer.writerow(row)
+        self._file.flush()
+
+    def run(self) -> None:
+        """
+        Run the evaluation.
+        """
+        SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
+        SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
+
+        with self, Mutations() as mutations:
+            for program, mutation in tqdm(mutations.for_fold(self.fold)):
+                self.evaluate_mutant(program, mutation)
+
+    def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
+        """
+        Evaluate one particular mutant.
+        """
+        # Figure out the line of the mutation in the original file.
+        correct_line = program.line_of_token(mutation.index)
+
+        # Apply the original mutation.
+        mutant = mutation.apply(program.vector)
+        with temporary_program(mutant) as mutated_file:
+            # Do the (canned) prediction...
+            ranked_locations, fix = rank_and_fix(fold, mutated_file)
+
+        if not ranked_locations:
+            # rank_and_fix() can occasional return a zero-sized list.
+            # In which case, return early.
+            return
+
+        # Figure out the rank of the actual mutation.
+        top_error_index = ranked_locations[0].index
+        line_of_top_location = program.source_tokens[top_error_index].line
+        rank_correct_line = first_with_line_no(ranked_locations, mutation,
+                                               correct_line, program)
+
+        self.write(program=program,
+                   mutation=mutation, fix=fix,
+                   line_of_top_rank=line_of_top_location,
+                   rank_correct_line=rank_correct_line)
 
 
 def temporary_program(program: SourceVector) -> TextIO:
@@ -118,237 +347,22 @@ def index_of_max(seq: Iterable) -> int:
     return max(enumerate(seq), key=lambda t: t[1])[0]
 
 
-
-class SensibilityForEvaluation:
-    context_length = 20
-
-    def __init__(self, fold: int) -> None:
-        self.predictions = Predictions(fold)
-
-    def rank_and_fix(self, filename: str, k: int=4):
-        """
-        Rank the syntax error location (in token number) and returns a possible
-        fix for the given filename.
-        """
-
-        # Get file vector for the incorrect file.
-        with cast(TextIO, open(filename, 'rt', encoding='UTF-8')) as script:
-            tokens = tokenize_file(script)
-        file_vector = SourceVector(vectorize_tokens(tokens))
-
-        padding = self.context_length
-
-        # Holds the lowest agreement at each point in the file.
-        least_agreements: List[Agreement] = []
-
-        # These will hold the TOP predictions at a given point.
-        forwards_predictions = [None] * padding
-        backwards_predictions = [None] * padding
-        contexts = enumerate(self.contexts(file_vector), start=padding)
-
-        for index, ((prefix, token), (suffix, _)) in contexts:
-            assert token == file_vector[index], (
-                str(token) + ' ' + str(file_vector[index])
-            )
-
-            # Fetch predictions.
-            prefix_pred = self.predictions.predict_forwards(prefix)
-            suffix_pred = self.predictions.predict_backwards(suffix)
-
-            # It should be a categorical distribution.
-            assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)  # type: ignore
-            assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)  # type: ignore
-
-            # Store the TOP prediction from both models.
-            top_next_prediction = index_of_max(prefix_pred)
-            forwards_predictions.append(top_next_prediction)
-            top_prev_prediction = index_of_max(suffix_pred)
-            backwards_predictions.append(top_prev_prediction)
-            assert top_next_prediction == forwards_predictions[index]
-
-            agreement = Agreement(
-                squared_error_agreement(prefix_pred, suffix_pred),
-                index
-            )
-            least_agreements.append(agreement)
-
-        # The loop may not have executed at all -- return empty.
-        if not least_agreements:
-            return [], None
-
-        fixes = Fixes(file_vector)
-
-        # For the top disagreements, synthesize fixes.
-        least_agreements.sort()
-        for disagreement in least_agreements[:k]:
-            pos = disagreement.index
-
-            # Assume an addition. Let's try removing some tokens.
-            fixes.try_delete(pos)
-
-            likely_next: Vind = forwards_predictions[pos]
-            likely_prev: Vind = backwards_predictions[pos]
-
-            # Assume a deletion. Let's try inserting some tokens.
-            if likely_next is not None:
-                fixes.try_insert(pos, likely_next)
-            if likely_prev is not None:
-                fixes.try_insert(pos, likely_prev)
-
-            # Assume it's a substitution. Let's try swapping the token.
-            if likely_next is not None:
-                fixes.try_substitute(pos, likely_next)
-            if likely_prev is not None:
-                fixes.try_substitute(pos, likely_prev)
-
-        fix = None if not fixes else tuple(fixes)[0]
-        return least_agreements, fix
-
-    def contexts(self, file_vector):
-        """
-        Yield every context (prefix, suffix) in the given file vector.
-        """
-        sent_forwards = Sentences(file_vector,
-                                  size=self.sentence_length,
-                                  backwards=False)
-        sent_backwards = Sentences(file_vector,
-                                   size=self.sentence_length,
-                                   backwards=True)
-        return zip(sent_forwards, chop_prefix(sent_backwards))
-
-    @staticmethod
-    def is_okay(filename: str) -> bool:
-        """
-        Check if the syntax is okay.
-        """
-        with open(filename, 'rt') as source_file:
-            return check_syntax_file(cast(TextIO, source_file))
-
-
-def to_text(token: Optional[Vind]) -> Optional[str]:
-    return None if token is None else vocabulary.to_text(token)
-
-
-class Evaluation:
-    FIELDS = '''
-        fold filehash n.lines n.tokens
-        m.kind m.loc m.token m.old
-        correct.line line.top.rank rank.correct.line
-        fixed true.fix
-        f.kind f.loc f.token f.old
-    '''.split()
-
-    def __init__(self, fold: int) -> None:
-        assert 0 <= fold < 5
-        self.fold = fold
-        self._filename = f'results.{fold}.csv'
-
-    def __enter__(self) -> None:
-        self._file = open(self._filename, 'w')
-        self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
-        self._writer.writeheader()
-
-    def __exit__(self, *exc_info) -> None:
-        self._file.close()
-
-    def write(self, *,
-              program: SourceFile,  # filehash, n.lines, n.tokens
-              mutation: Edit,  # m.kind m.pos m.token m.old
-              fix: Optional[Edit], # fixed true.fix f.kind f.pos f.token f.fold
-              line_of_top_rank: int,
-              rank_correct_line: int) -> None:
-
-        kind, loc, new_tok, old_tok = mutation.serialize()
-        row = {
-            "fold": fold,
-            "filehash": program.file_hash,
-            "n.lines": program.sloc,
-            "n.tokens": len(program.source_tokens),
-            "m.kind": kind,
-            "m.loc": loc,
-            "m.token": to_text(new_tok),
-            "m.old": to_text(old_tok),
-        }
-
-        if fix is None:
-            row.update({
-                "fixed": False,
-                "true.fix": None,
-                "f.kind": None,
-                "f.loc": None,
-                "f.token": None,
-                "f.old": None,
-            })
-        else:
-            kind, loc, new_tok, old_tok = fix.serialize()
-            row.update({
-                "fixed": True,
-                "true.fix": fix == mutation.additive_inverse(),
-                "f.kind": kind,
-                "f.loc": loc,
-                "f.token": to_text(new_tok),
-                "f.old": to_text(old_tok),
-            })
-
-        self._writer.writerow(row)
-        self._file.flush()
-
-    def run(self) -> None:
-        """
-        Run the evaluation.
-        """
-        SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
-        SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
-
-        with self, Mutations() as mutations:
-            for program, mutation in tqdm(mutations.for_fold(self.fold)):
-                self.evaluate_mutant(program, mutation)
-
-    def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
-        """
-        Evaluate one particular mutant.
-        """
-        # Figure out the line of the mutation in the original file.
-        correct_line = program.line_of_token(mutation.index)
-
-        # Apply the original mutation.
-        mutant = mutation.apply(program.vector)
-        with temporary_program(mutant) as mutated_file:
-            # Do the (canned) prediction...
-            ranked_locations, fix = rank_and_fix(fold, mutated_file)
-
-        if not ranked_locations:
-            # rank_and_fix() can occasional return a zero-sized list.
-            # In which case, return early.
-            return
-
-        # Figure out the rank of the actual mutation.
-        top_error_index = ranked_locations[0].index
-        line_of_top_location = program.source_tokens[top_error_index].line
-        rank_correct_line = first_with_line_no(ranked_locations, mutation,
-                                               correct_line, program)
-
-        self.write(program=program,
-                   mutation=mutation,
-                   fix=fix,
-                   line_of_top_rank=line_of_top_location,
-                   rank_correct_line=rank_correct_line)
-
-
 def rank_and_fix(fold: int, mutated_file: TextIO):
     sensibility = SensibilityForEvaluation(fold)
     return sensibility.rank_and_fix(mutated_file.name)
 
 
-def first_with_line_no(ranked_locations: Sequence[Agreement],
+def first_with_line_no(ranked_locations: List[Agreement],
                        mutation: Edit,
                        correct_line: int,
                        program: SourceFile) -> int:
+    """
+    Return the first result with the given coorect line number.
+    """
     for rank, location in enumerate(ranked_locations, start=1):
         if program.line_of_token(location.index, mutation) == correct_line:
             return rank
     raise ValueError(f'Could not find any location on {correct_line}')
-
 
 
 if __name__ == '__main__':

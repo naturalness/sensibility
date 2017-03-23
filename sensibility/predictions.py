@@ -18,7 +18,7 @@ from .vectorize_tokens import vectorize_tokens
 
 
 # A type that neatly summarizes the double contexts.
-Contexts = Iterable[Tuple[Sentence[T], Sentence[T]]]
+Contexts = Iterable[Tuple[Sentence[Vind], Sentence[Vind]]]
 
 
 class Predictions:
