@@ -73,12 +73,12 @@ class Predictions:
 
         # Create prediction functions with in-memory caching.
         @functools.lru_cache(maxsize=cache_size)
-        def predict_forwards(prefix: Tuple[Vind, ...]) -> None:
-            _predict(forwards, self.forwards_model, prefix)
+        def predict_forwards(prefix: Tuple[Vind, ...]) -> array.array:
+            return _predict(forwards, self.forwards_model, prefix)
 
         @functools.lru_cache(maxsize=cache_size)
-        def predict_backwards(suffix: Tuple[Vind, ...]) -> None:
-            _predict(backwards, self.backwards_model, suffix)
+        def predict_backwards(suffix: Tuple[Vind, ...]) -> array.array:
+            return _predict(backwards, self.backwards_model, suffix)
 
         self.predict_forwards = predict_forwards
         self.predict_backwards = predict_backwards

@@ -15,17 +15,54 @@ import math
 import sys
 import json
 from pathlib import Path
-from typing import Optional, TextIO, Sequence
+from typing import Optional, TextIO, List, Sequence, cast
 
 from tqdm import tqdm
 
 from sensibility import (
-    SourceFile, Edit, Corpus, Vectors, Agreement, Vind,
+    SourceFile,
+    Edit, Insertion, Deletion, Substitution,
+    Corpus, Vectors,
+    Agreement, Vind,
     vectorize_tokens, vocabulary,
 )
+from sensibility.tokenize_js import tokenize_file, check_syntax
 from sensibility.mutations import Mutations
 from sensibility.predictions import Predictions
 from sensibility._paths import VECTORS_PATH, SOURCES_PATH
+
+
+# TODO: Move this to a different file, probably
+class Fixes:
+    def __init__(self, tokens: SourceVector):
+        self.tokens = tokens
+        self.fixes: List[Edit] = []
+
+    def try_insert(self, index: int, token: Vind) -> None:
+        pos = index
+        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos:]
+        if check_syntax(tokens_to_source_code(suggestion)):
+            self.fixes.append(Insert(new_token, pos, self.tokens))
+
+    def try_delete(self, index: int) -> None:
+        edit = Deletion(index, self.tokens[index])
+        suggestion = self.tokens[:index] + self.tokens[index + 1:]
+        if check_syntax(tokens_to_source_code(suggestion)):
+            self.fixes.append(Remove(pos, self.tokens))
+
+
+    def try_substitute(self, index: int, token: Vind) -> None:
+        pos = index
+        suggestion = self.tokens[:pos] + [new_token] + self.tokens[pos + 1:]
+        if check_syntax(tokens_to_source_code(suggestion)):
+            self.fixes.append(Substitute(new_token, pos, self.tokens))
+
+    def __bool__(self) -> bool:
+        return len(self.fixes) > 0
+
+    def __iter__(self) -> Iterator[Edit]:
+        return iter(self.fixes)
+
 
 
 def fix_zeros(preds, epsilon=sys.float_info.epsilon):
@@ -75,16 +112,14 @@ class SensibilityForEvaluation:
         """
 
         # Get file vector for the incorrect file.
-        with open(str(filename), 'rt', encoding='UTF-8') as script:
-            # NOTE! INDICIES IN tokens ARE OFFSET BY ONE (- 1 from other
-            # mentions of "index")
+        with cast(TextIO, open(filename, 'rt', encoding='UTF-8')) as script:
             tokens = tokenize_file(script)
         file_vector = vectorize_tokens(tokens)
 
-        padding = self.sentence_length
+        padding = self.context_length
 
         # Holds the lowest agreement at each point in the file.
-        least_agreements = []
+        least_agreements: Sequence[Agreement] = []
 
         # These will hold the TOP predictions at a given point.
         forwards_predictions = [None] * padding
@@ -97,11 +132,12 @@ class SensibilityForEvaluation:
             )
 
             # Fetch predictions.
-            prefix_pred = self.forwards_predict(prefix)
-            suffix_pred = self.backwards_predict(suffix)
+            prefix_pred = self.predictions.predict_forwards(prefix)
+            suffix_pred = self.predictions.predict_backwards(suffix)
 
-            assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)
-            assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)
+            # It should be a categorical distribution.
+            assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)  # type: ignore
+            assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)  # type: ignore
 
             # Store the TOP prediction from both models.
             top_next_prediction = index_of_max(prefix_pred)
@@ -120,7 +156,7 @@ class SensibilityForEvaluation:
         if not least_agreements:
             return [], None
 
-        fixes = Fixes(tokens, offset=-1)
+        fixes = Fixes(tokens)
 
         # For the top disagreements, synthesize fixes.
         least_agreements.sort()
@@ -128,7 +164,7 @@ class SensibilityForEvaluation:
             pos = disagreement.index
 
             # Assume an addition. Let's try removing some tokens.
-            fixes.try_remove(pos)
+            fixes.try_delete(pos)
 
             likely_next = id_to_token(forwards_predictions[pos])
             likely_prev = id_to_token(backwards_predictions[pos])
@@ -278,10 +314,10 @@ class Evaluation:
                    rank_correct_line=rank_correct_line)
 
 
-def apply_mutation(mutation, program):
+def apply_mutation(mutation: Edit, program: SourceFile):
     mutated_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
     # Apply the mutatation and write it to disk.
-    mutation.format(program, mutated_file)
+    mutation.apply(program).print(file=mutated_file)
     mutated_file.flush()
     return mutated_file
 
