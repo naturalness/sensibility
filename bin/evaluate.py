@@ -28,7 +28,7 @@ from sensibility import (
     SourceVector,
     Corpus, Vectors,
     Vind,
-    vectorize_tokens, vocabulary,
+    serialize_tokens, vocabulary,
 )
 from sensibility.tokenize_js import tokenize_file, check_syntax_file
 from sensibility.mutations import Mutations
@@ -108,10 +108,8 @@ class SensibilityForEvaluation:
         # Get file vector for the incorrect file.
         with cast(TextIO, open(filename, 'rt', encoding='UTF-8')) as script:
             tokens = tokenize_file(script)
-        file_vector = SourceVector(vectorize_tokens(tokens))
+        file_vector = serialize_tokens(tokens)
         assert len(file_vector) > 0
-
-        padding = self.context_length
 
         # Holds the lowest agreement at each point in the file.
         results: List[IndexResult] = []
@@ -135,9 +133,11 @@ class SensibilityForEvaluation:
 
             # Store the TOP prediction from each model.
             # TODO: document corner cases!
-            top_next_prediction = prefix_pred[prefix_pred.argmax()]
+            top_next_prediction = prefix_pred.argmax()
+            assert 0 < top_next_prediction < 100
             forwards_predictions.append(cast(Vind, top_next_prediction))
-            top_prev_prediction = suffix_pred[suffix_pred.argmax()]
+            top_prev_prediction = suffix_pred.argmax()
+            assert 0 < top_prev_prediction < 100
             backwards_predictions.append(cast(Vind, top_prev_prediction))
             assert top_next_prediction == forwards_predictions[index]
 
@@ -278,7 +278,7 @@ class Evaluation:
         SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
         SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
 
-        with open(DATA_DIR / 'test_set_hashes.{self.fold}') as f:
+        with open(DATA_DIR / f'test_set_hashes.{self.fold}') as f:
             hashes = frozenset(s.strip() for s in f.readlines() if len(s) > 2)
 
         with self, Mutations(read_only=True) as all_mutations:
