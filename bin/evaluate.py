@@ -45,20 +45,6 @@ from sensibility._paths import VECTORS_PATH, SOURCES_PATH
 #   - rank?
 
 
-def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
-    """
-    Returns whether the vector is normalized
-
-    >>> is_normalized_vector(np.array([ 0.,  0.,  1.]))
-    True
-    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]))
-    False
-    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]), p=1)
-    True
-    """
-    return math.isclose(norm(x, p), 1.0, rel_tol=tolerance)
-
-
 class IndexResult(SupportsFloat):
     """
     Provides results for EACH INDIVIDUAL INDEX in a file.
@@ -101,6 +87,12 @@ class IndexResult(SupportsFloat):
         return λ * self.indexed_sum / 2.0 + (1.0 - λ) * self.cosine_similarity
 
 
+class FixResult(NamedTuple):
+    # The results of detecting and fixing syntax errors.
+    ranks: Sequence[IndexResult]
+    fixes: Sequence[Edit]
+
+
 class SensibilityForEvaluation:
     """
     Detects and fixes syntax errors in JavaScript files.
@@ -110,7 +102,7 @@ class SensibilityForEvaluation:
     def __init__(self, fold: int) -> None:
         self.predictions = Predictions(fold)
 
-    def rank_and_fix(self, filename: str, k: int=4) -> 'FixResult':
+    def rank_and_fix(self, filename: str, k: int=4) -> FixResult:
         """
         Rank the syntax error location (in token number) and returns a possible
         fix for the given filename.
@@ -197,17 +189,18 @@ class SensibilityForEvaluation:
             return check_syntax_file(cast(TextIO, source_file))
 
 
-class FixResult(NamedTuple):
-    # The results of detecting and fixing syntax errors.
-    ranks: Sequence[IndexResult]
-    fixes: Sequence[Edit]
-
-
-def to_text(token: Optional[Vind]) -> Optional[str]:
+def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
     """
-    Converts the token to its textual representation, if it exists.
+    Returns whether the vector is normalized
+
+    >>> is_normalized_vector(np.array([ 0.,  0.,  1.]))
+    True
+    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]))
+    False
+    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]), p=1)
+    True
     """
-    return None if token is None else vocabulary.to_text(token)
+    return math.isclose(norm(x, p), 1.0, rel_tol=tolerance)
 
 
 class Evaluation:
@@ -235,23 +228,32 @@ class Evaluation:
     def write(self, *,
               program: SourceFile,
               mutation: Edit,
-              fix: Optional[Edit],
+              fixes: Sequence[Edit],
+              correct_line: int,
               line_of_top_rank: int,
-              rank_correct_line: int) -> None:
+              rank_of_correct_line: int) -> None:
 
         kind, loc, new_tok, old_tok = mutation.serialize()
         row = {
+            # Meta information
             "fold": fold,
             "filehash": program.file_hash,
             "n.lines": program.sloc,
-            "n.tokens": len(program.source_tokens),
+            "n.tokens": len(program.vector),
+            # Mutation information
             "m.kind": kind,
             "m.loc": loc,
             "m.token": to_text(new_tok),
             "m.old": to_text(old_tok),
+
+            # Fault locatization information.
+            "line.top.rank": line_of_top_rank,
+            "correct.line": correct_line,
+            "rank.correct.line": rank_of_correct_line,
         }
 
-        if fix is None:
+        # Information about the fix (if at least one exists).
+        if len(fixes) == 0:
             row.update({
                 "fixed": False,
                 "true.fix": None,
@@ -261,6 +263,7 @@ class Evaluation:
                 "f.old": None,
             })
         else:
+            fix = fixes[0]
             kind, loc, new_tok, old_tok = fix.serialize()
             row.update({
                 "fixed": True,
@@ -290,29 +293,26 @@ class Evaluation:
         Evaluate one particular mutant.
         """
         # Figure out the line of the mutation in the original file.
-        correct_line = program.line_of_token(mutation.index)
+        correct_line = program.line_of_index(mutation.index, mutation)
 
         # Apply the original mutation.
         mutant = mutation.apply(program.vector)
         with temporary_program(mutant) as mutated_file:
             # Do the (canned) prediction...
-            ranked_locations, fix = rank_and_fix(fold, mutated_file)
-
-        if not ranked_locations:
-            # rank_and_fix() can occasional return a zero-sized list.
-            # In which case, return early.
-            return
+            ranked_locations, fixes = rank_and_fix(fold, mutated_file)
+        assert len(ranked_locations) > 0
 
         # Figure out the rank of the actual mutation.
         top_error_index = ranked_locations[0].index
-        line_of_top_location = program.source_tokens[top_error_index].line
-        rank_correct_line = first_with_line_no(ranked_locations, mutation,
-                                               correct_line, program)
+        line_of_top_rank = program.source_tokens[top_error_index].line
+        rank_of_correct_line = first_with_line_no(ranked_locations, mutation,
+                                                  correct_line, program)
 
         self.write(program=program,
-                   mutation=mutation, fix=fix,
-                   line_of_top_rank=line_of_top_location,
-                   rank_correct_line=rank_correct_line)
+                   mutation=mutation, fixes=fixes,
+                   correct_line=correct_line,
+                   line_of_top_rank=line_of_top_rank,
+                   rank_of_correct_line=rank_of_correct_line)
 
 
 def temporary_program(program: SourceVector) -> TextIO:
@@ -329,6 +329,13 @@ def temporary_program(program: SourceVector) -> TextIO:
         raw_file.close()
         raise error
     return mutated_file
+
+
+def to_text(token: Optional[Vind]) -> Optional[str]:
+    """
+    Converts the token to its textual representation, if it exists.
+    """
+    return None if token is None else vocabulary.to_text(token)
 
 
 # TODO: Move this to a different file, probably
@@ -385,7 +392,7 @@ def harmonic_mean_agreement(prefix_pred, suffix_pred):
     return min_prob
 
 
-def rank_and_fix(fold: int, mutated_file: TextIO):
+def rank_and_fix(fold: int, mutated_file: TextIO) -> FixResult:
     sensibility = SensibilityForEvaluation(fold)
     return sensibility.rank_and_fix(mutated_file.name)
 
@@ -395,10 +402,10 @@ def first_with_line_no(ranked_locations: Sequence[IndexResult],
                        correct_line: int,
                        program: SourceFile) -> int:
     """
-    Return the first result with the given coorect line number.
+    Return the first result with the given correct line number.
     """
     for rank, location in enumerate(ranked_locations, start=1):
-        if program.line_of_token(location.index, mutation) == correct_line:
+        if program.line_of_index(location.index, mutation) == correct_line:
             return rank
     raise ValueError(f'Could not find any location on {correct_line}')
 

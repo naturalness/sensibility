@@ -18,7 +18,7 @@
 from typing import Sequence, Optional
 
 from .corpus import Corpus
-from .edit import Edit
+from .edit import Edit, Insertion, Deletion, Substitution
 from .source_vector import SourceVector
 from .token_utils import Token
 from .vectors import Vectors
@@ -82,9 +82,18 @@ class SourceFile:
         return last_token.line
 
     # TODO: TEST!
-    def line_of_token(self, index: int, edit: Edit=None) -> int:
+    def line_of_index(self, index: int, edit: Edit=None) -> int:
         """
         Finds the line number of the token at the given index. Applies the
         Edit to the file.
         """
-        raise NotImplementedError
+        if edit is None or isinstance(edit, Substitution):
+            # The line is constant if no edit was applied, or if the
+            # substitution edit is applied.
+            return self.source_tokens[index].line
+        elif isinstance(edit, Deletion):
+            raise NotImplementedError
+        elif isinstance(edit, Insertion):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
