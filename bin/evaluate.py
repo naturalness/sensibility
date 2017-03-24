@@ -5,7 +5,6 @@
 Evaluates the performance of the detecting and fixing syntax errors.
 """
 
-
 import csv
 import tempfile
 import math
@@ -13,10 +12,14 @@ import sys
 import json
 from pathlib import Path
 from typing import (
-    Iterable, Iterator, List, NamedTuple, Optional, Sequence, TextIO, Tuple,
-    cast
+    Iterable, Iterator, SupportsFloat, Sequence,
+    List, Optional,
+    NamedTuple, Tuple,
+    TextIO, cast,
 )
 
+import numpy as np
+from numpy.linalg import norm
 from tqdm import tqdm
 
 from sensibility import (
@@ -24,7 +27,7 @@ from sensibility import (
     Edit, Insertion, Deletion, Substitution,
     SourceVector,
     Corpus, Vectors,
-    Agreement, Vind,
+    Vind,
     vectorize_tokens, vocabulary,
 )
 from sensibility.tokenize_js import tokenize_file, check_syntax_file
@@ -32,7 +35,6 @@ from sensibility.mutations import Mutations
 from sensibility.predictions import Predictions, Contexts
 from sensibility._paths import VECTORS_PATH, SOURCES_PATH
 
-# TODO: make a big FixResult object -> allow it to be encoded as JSON.
 # TODO: make an IndexResult object including:
 #   - cosine distance
 #   - harmonic mean
@@ -41,8 +43,62 @@ from sensibility._paths import VECTORS_PATH, SOURCES_PATH
 #   - indexed sum
 #   - cosine distance + indexed sum
 #   - rank?
-# TODO: try cosine distance      -,
-# TODO: try indexing and adding  -'
+
+
+def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
+    """
+    Returns whether the vector is normalized
+
+    >>> is_normalized_vector(np.array([ 0.,  0.,  1.]))
+    True
+    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]))
+    False
+    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]), p=1)
+    True
+    """
+    return math.isclose(norm(x, p), 1.0, rel_tol=tolerance)
+
+
+class IndexResult(SupportsFloat):
+    """
+    Provides results for EACH INDIVIDUAL INDEX in a file.
+    """
+    __slots__ = (
+        'index',
+        'cosine_similarity', 'squared_euclidean_distance',
+        'harmonic_mean', 'indexed_sum'
+    )
+
+    def __init__(self, index: int, program: SourceVector,
+                 a: np.ndarray, b: np.ndarray) -> None:
+        assert 0 <= index < len(program)
+        self.index = index
+
+        # Categorical distributions MUST have |x|_1 == 1.0
+        assert is_normalized_vector(a, p=1) and is_normalized_vector(b, p=1)
+
+        self.harmonic_mean = ...
+        self.squared_euclidean_distance = ((a - b) ** 2).sum()
+
+        # How probable is the token at this position?
+        # 2.0 == both models absoultely think this token should be here.
+        # 1.0 == lukewarm---possibly one model thinks this token should be here
+        # 0.0 == both models are perplexed by this token.
+        self.indexed_sum = a[program[index]] + b[program[index]]
+
+        # How similar are the two vectors?
+        self.cosine_similarity = (a @ b) / (norm(a) * norm(b))
+
+    def __float__(self) -> float:
+        """
+        Returns the similariy between the two elements.
+        """
+        # We can tweak λ to weigh local and global factors differently,
+        # but for now, weigh them equally.
+        # TODO: use sklearn's Lasso regression to find this coefficient?
+        # TODO:                 `-> fit_intercept=False
+        λ = 0.5
+        return λ * self.indexed_sum / 2.0 + (1.0 - λ) * self.cosine_similarity
 
 
 class SensibilityForEvaluation:
@@ -69,11 +125,11 @@ class SensibilityForEvaluation:
         padding = self.context_length
 
         # Holds the lowest agreement at each point in the file.
-        least_agreements: List[Agreement] = []
+        results: List[IndexResult] = []
 
         # These will hold the TOP predictions at a given point.
-        forwards_predictions: List[Agreement] = []
-        backwards_predictions: List[Agreement] = []
+        forwards_predictions: List[Vind] = []
+        backwards_predictions: List[Vind] = []
         contexts = enumerate(self.contexts(file_vector))
 
         for index, ((prefix, token), (suffix, _)) in contexts:
@@ -82,44 +138,38 @@ class SensibilityForEvaluation:
             )
 
             # Fetch predictions.
-            prefix_pred = self.predictions.predict_forwards(prefix)
-            suffix_pred = self.predictions.predict_backwards(suffix)
+            prefix_pred = np.array(self.predictions.predict_forwards(prefix))
+            suffix_pred = np.array(self.predictions.predict_backwards(suffix))
 
-            # It should be a categorical distribution.
-            assert math.isclose(sum(prefix_pred), 1.0, rel_tol=0.01)  # type: ignore
-            assert math.isclose(sum(suffix_pred), 1.0, rel_tol=0.01)  # type: ignore
+            result = IndexResult(index, file_vector, prefix_pred, suffix_pred)
+            results.append(result)
 
-            # Store the TOP prediction from both models.
-            top_next_prediction = index_of_max(prefix_pred)
-            forwards_predictions.append(top_next_prediction)
-            top_prev_prediction = index_of_max(suffix_pred)
-            backwards_predictions.append(top_prev_prediction)
+            # Store the TOP prediction from each model.
+            # TODO: document corner cases!
+            top_next_prediction = prefix_pred[prefix_pred.argmax()]
+            forwards_predictions.append(cast(Vind, top_next_prediction))
+            top_prev_prediction = suffix_pred[suffix_pred.argmax()]
+            backwards_predictions.append(cast(Vind, top_prev_prediction))
             assert top_next_prediction == forwards_predictions[index]
 
-            agreement = Agreement(
-                squared_error_agreement(prefix_pred, suffix_pred),
-                index
-            )
-            least_agreements.append(agreement)
-
-        fixes = Fixes(file_vector)
+        # Rank the results by some metric of similarity defined by IndexResult
+        # (the top rank will be LEAST similar).
+        ranked_results = tuple(sorted(results, key=float))
 
         # For the top disagreements, synthesize fixes.
-        least_agreements.sort()
-        for disagreement in least_agreements[:k]:
+        fixes = Fixes(file_vector)
+        for disagreement in ranked_results[:k]:
             pos = disagreement.index
 
-            # Assume an addition. Let's try removing some tokens.
+            # Assume an addition. Let's try removing the offensive token.
             fixes.try_delete(pos)
 
             likely_next: Vind = forwards_predictions[pos]
             likely_prev: Vind = backwards_predictions[pos]
 
             # Assume a deletion. Let's try inserting some tokens.
-            if likely_next is not None:
-                fixes.try_insert(pos, likely_next)
-            if likely_prev is not None:
-                fixes.try_insert(pos, likely_prev)
+            fixes.try_insert(pos, likely_next)
+            fixes.try_insert(pos, likely_prev)
 
             # Assume it's a substitution. Let's try swapping the token.
             if likely_next is not None:
@@ -128,7 +178,7 @@ class SensibilityForEvaluation:
                 fixes.try_substitute(pos, likely_prev)
 
         return FixResult(
-            ranks=least_agreements,
+            ranks=ranked_results,
             fixes=[] if not fixes else tuple(fixes)
         )
 
@@ -149,11 +199,14 @@ class SensibilityForEvaluation:
 
 class FixResult(NamedTuple):
     # The results of detecting and fixing syntax errors.
-    ranks: Sequence[Agreement]
+    ranks: Sequence[IndexResult]
     fixes: Sequence[Edit]
 
 
 def to_text(token: Optional[Vind]) -> Optional[str]:
+    """
+    Converts the token to its textual representation, if it exists.
+    """
     return None if token is None else vocabulary.to_text(token)
 
 
@@ -332,27 +385,12 @@ def harmonic_mean_agreement(prefix_pred, suffix_pred):
     return min_prob
 
 
-def squared_error_agreement(prefix_pred, suffix_pred):
-    """
-    Return the agreement (probability) of this token using sum of squared
-    errors.
-    """
-    # Pretend the sum of squared error is like the cross-entropy of
-    # prefix and suffix.
-    entropy = ((prefix_pred - suffix_pred) ** 2).sum()
-    return -entropy
-
-
-def index_of_max(seq: Iterable) -> int:
-    return max(enumerate(seq), key=lambda t: t[1])[0]
-
-
 def rank_and_fix(fold: int, mutated_file: TextIO):
     sensibility = SensibilityForEvaluation(fold)
     return sensibility.rank_and_fix(mutated_file.name)
 
 
-def first_with_line_no(ranked_locations: List[Agreement],
+def first_with_line_no(ranked_locations: Sequence[IndexResult],
                        mutation: Edit,
                        correct_line: int,
                        program: SourceFile) -> int:
