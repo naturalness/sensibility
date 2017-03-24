@@ -24,16 +24,18 @@ TODO: rename to SourceVector --- it's less confusing that way.
 
 import sys
 import random
+import array
 from itertools import zip_longest
-from typing import IO, Iterable, Iterator, Sequence, Sized, TypeVar, Any, List
+from typing import IO, Iterator, Sequence, Any, List, cast
 
 from .vocabulary import vocabulary, Vind
 
 
-class SourceVector(Sized, Iterable[Vind]):
+class SourceVector(Sequence[Vind]):
     """
-    A source code program, with a file hash, and a token stream.
+    A sequence of vocabulary indices.
     """
+    __slots__ = ('tokens',)
 
     def __init__(self, tokens: Sequence[Vind]) -> None:
         assert len(tokens) > 0
@@ -59,7 +61,8 @@ class SourceVector(Sized, Iterable[Vind]):
     def __iter__(self) -> Iterator[Vind]:
         return iter(self.tokens)
 
-    def __getitem__(self, index: int) -> Vind:
+    # XXX: intentionally leave __getitem__ untyped, because it's annoying.
+    def __getitem__(self, index):
         return self.tokens[index]
 
     def __len__(self) -> int:
@@ -67,8 +70,7 @@ class SourceVector(Sized, Iterable[Vind]):
 
     def __repr__(self) -> str:
         clsname = type(self).__name__
-        tokens = ', '.join(repr(token) for token in self)
-        return f"{clsname}([{tokens}])"
+        return f"{clsname}([{', '.join(str(x) for x in self)}])"
 
     def print(self, file: IO[str]=sys.stdout) -> None:
         """
@@ -127,3 +129,27 @@ class SourceVector(Sized, Iterable[Vind]):
         sequence.append(token)
         sequence.extend(self.tokens[index:])
         return SourceVector(sequence)
+
+    def to_array(self) -> array.array:
+        """
+        Convert to a dense array.array, suitable for compact serialization.
+        """
+        return array.array('B', self.tokens)
+
+    def to_bytes(self) -> bytes:
+        """
+        Convert to bytes, for serialization.
+        """
+        return self.to_array().tobytes()
+
+    @classmethod
+    def from_bytes(self, byte_string: bytes):
+        """
+        Return an array of vocabulary entries given a byte string produced by
+        serialize_token().tobytes()
+
+        >>> SourceVector.from_bytes(b'VZD')
+        SourceVector([86, 90, 68])
+        """
+        as_array = array.array('B', byte_string)
+        return SourceVector(tuple(cast(Sequence[Vind], as_array)))

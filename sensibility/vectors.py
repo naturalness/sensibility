@@ -24,9 +24,8 @@ from pathlib import Path
 from typing import Union, Tuple, Sequence, Iterable
 
 from .token_utils import Token
-from .vectorize_tokens import (
-    SourceVector, serialize_tokens, deserialize_tokens
-)
+from .source_vector import SourceVector
+from .vectorize_tokens import serialize_tokens
 from .vocabulary import vocabulary
 
 
@@ -146,7 +145,7 @@ class Vectors:
             WHERE hash = ?
         """, (file_hash,))
         blob, = cur.fetchone()
-        return file_hash, deserialize_tokens(blob)
+        return file_hash, SourceVector.from_bytes(blob)
 
     def get_result_by_rowid(self, rowid: int) -> Result:
         assert isinstance(rowid, int)
@@ -156,7 +155,7 @@ class Vectors:
             WHERE rowid = ?
         """, (rowid,))
         file_hash, blob = cur.fetchone()
-        return file_hash, deserialize_tokens(blob)
+        return file_hash, SourceVector.from_bytes(blob)
 
     @property
     def min_index(self) -> int:
@@ -221,7 +220,7 @@ class Vectors:
         """
         Insert tokens in the database of vectors.
         """
-        byte_string = serialize_tokens(tokens).tobytes()
+        byte_string = serialize_tokens(tokens).to_bytes()
         assert len(byte_string) == len(tokens)
 
         with self.conn:
