@@ -33,16 +33,11 @@ from sensibility import (
 from sensibility.tokenize_js import tokenize_file, check_syntax_file
 from sensibility.mutations import Mutations
 from sensibility.predictions import Predictions, Contexts
-from sensibility._paths import VECTORS_PATH, SOURCES_PATH
+from sensibility._paths import VECTORS_PATH, SOURCES_PATH, DATA_DIR
 
 # TODO: make an IndexResult object including:
-#   - cosine distance
 #   - harmonic mean
-#   - sum
-#   - Euclidean distance
-#   - indexed sum
-#   - cosine distance + indexed sum
-#   - rank?
+#   - sum (???)
 
 
 class IndexResult(SupportsFloat):
@@ -77,14 +72,16 @@ class IndexResult(SupportsFloat):
 
     def __float__(self) -> float:
         """
-        Returns the similariy between the two elements.
+        Returns the score between the two elements.
         """
         # We can tweak λ to weigh local and global factors differently,
         # but for now, weigh them equally.
         # TODO: use sklearn's Lasso regression to find this coefficient?
         # TODO:                 `-> fit_intercept=False
-        λ = 0.5
-        return λ * self.indexed_sum / 2.0 + (1.0 - λ) * self.cosine_similarity
+        λ = .5
+        score = λ * self.indexed_sum / 2. + (1. - λ) * self.cosine_similarity
+        assert 0. <= score <= 1.
+        return score
 
 
 class FixResult(NamedTuple):
@@ -169,10 +166,7 @@ class SensibilityForEvaluation:
             if likely_prev is not None:
                 fixes.try_substitute(pos, likely_prev)
 
-        return FixResult(
-            ranks=ranked_results,
-            fixes=[] if not fixes else tuple(fixes)
-        )
+        return FixResult(ranks=ranked_results, fixes=tuple(fixes))
 
     def contexts(self, file_vector: SourceVector) -> Contexts:
         """
@@ -284,8 +278,12 @@ class Evaluation:
         SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
         SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
 
-        with self, Mutations() as mutations:
-            for program, mutation in tqdm(mutations.for_fold(self.fold)):
+        with open(DATA_DIR / 'test_set_hashes.{self.fold}') as f:
+            hashes = frozenset(s.strip() for s in f.readlines() if len(s) > 2)
+
+        with self, Mutations(read_only=True) as all_mutations:
+            mutations = (m for m in all_mutations if m[0].file_hash in hashes)
+            for program, mutation in tqdm(mutations):
                 self.evaluate_mutant(program, mutation)
 
     def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:

@@ -50,13 +50,13 @@ class Mutations(Sized, Iterable[MutationInfo]):
 
     -- Only syntactically-incorrect mutants.
     CREATE VIEW IF NOT EXISTS mutant
-    AS SELECT hash, type, location, original_token, new_token
+    AS SELECT hash, type, location, new_token, original_token
          FROM mutant_with_status
         WHERE correct = 0;
 
     -- Only syntacticall-correct mutants.
     CREATE VIEW IF NOT EXISTS correct_mutant
-    AS SELECT hash, type, location, original_token, new_token
+    AS SELECT hash, type, location, new_token, original_token
          FROM mutant_with_status
         WHERE correct = 1;
     """
@@ -85,22 +85,10 @@ class Mutations(Sized, Iterable[MutationInfo]):
                                         original_token)
             yield SourceFile(file_hash), mutation
 
-    def for_fold(self, fold: int) -> Iterator[Tuple[SourceFile, Edit]]:
-        assert self._conn
-        cur = self._conn.execute(r'''
-            SELECT hash, type, location, new_token, original_token
-              FROM mutant
-             WHERE fold = :fold
-        ''', dict(fold=fold))
-        for file_hash, code, location, new_token, original_token in cur:
-            mutation = Edit.deserialize(code, location, new_token,
-                                        original_token)
-            yield SourceFile(file_hash), mutation
-
     @property
     def current_source_hash(self) -> str:
         """
-        hash of the current source file being mutated.
+        Hash of the current source file being mutated.
         """
         if self.program:
             return self.program.file_hash
