@@ -24,6 +24,7 @@ from .vocabulary import vocabulary, Vind, START_TOKEN, END_TOKEN
 from .stringify_token import stringify_token
 
 
+# TODO: Combine this with .source_vector...
 class SourceVector(Sequence[Vind]):
     """
     A sequence of vocabulary indices with MAXIMUM STORAGE EFFICENCY.
@@ -48,24 +49,6 @@ class SourceVector(Sequence[Vind]):
 
     def tobytes(self) -> bytes:
         return self._array.tobytes()
-
-
-def vectorize_tokens(tokens):
-    """
-    Turns a file into a vector of indices (not a one-hot vector per token!).
-    Automatically inserts start and end tokens.
-
-    >>> vectorize_tokens([Token(value='var', type='Keyword', loc=None)])
-    (0, 86, 99)
-    """
-    warnings.warn('Use serialize_token() instead', DeprecationWarning)
-
-    def generate():
-        yield vocabulary.to_index(START_TOKEN)
-        yield from generated_vector(tokens)
-        yield vocabulary.to_index(END_TOKEN)
-
-    return tuple(generate())
 
 
 def generated_vector(tokens):

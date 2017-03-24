@@ -14,7 +14,7 @@ from ._paths import PREDICTIONS_PATH, MODEL_DIR
 from .sentences import Sentence, T, forward_sentences, backward_sentences
 from .tokenize_js import tokenize_file
 from .vocabulary import Vind
-from .vectorize_tokens import vectorize_tokens
+from .vectorize_tokens import serialize_tokens
 
 
 # A type that neatly summarizes the double contexts.
@@ -92,7 +92,8 @@ class Predictions:
         # Get file vector for this (incorrect) file.
         with open(str(filename), 'rt', encoding='UTF-8') as script:
             tokens = tokenize_file(cast(TextIO, script))
-        file_vector = vectorize_tokens(tokens)
+        file_vector = serialize_tokens(tokens)
+        assert len(file_vector) == len(tokens)
 
         # Calculate and store predictions.
         for (prefix, _), (suffix, _) in self.contexts(file_vector):
