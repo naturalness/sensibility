@@ -149,7 +149,7 @@ class Edit(metaclass=ABCMeta):
             assert original_token is None
             return Insertion(location, not_none(token))
         elif subclass is Deletion:
-            return Deletion(not_none(original_token), location)
+            return Deletion(location, not_none(original_token))
         else:
             assert subclass is Substitution
             return Substitution(
@@ -177,8 +177,12 @@ class Insertion(Edit):
         self.token = token
         self.index = index
 
+    def __repr__(self):
+        text_token = vocabulary.to_text(self.token)
+        return f'Insertion({self.index}, {self.token} or {text_token})'
+
     def additive_inverse(self) -> Edit:
-        return Deletion(self.token, self.index)
+        return Deletion(self.index, self.token)
 
     def apply(self, program: SourceVector) -> SourceVector:
         return program.with_token_inserted(self.index, self.token)
@@ -213,9 +217,13 @@ class Deletion(Edit):
 
     code = 'x'
 
-    def __init__(self, original_token: Vind, index: int) -> None:
+    def __init__(self, index: int, original_token: Vind) -> None:
         self.index = index
         self.original_token = original_token
+
+    def __repr__(self):
+        as_text = vocabulary.to_text(self.token)
+        return f'Deletion({self.index}, {self.original_token} or {as_text})'
 
     def additive_inverse(self) -> Edit:
         # Insert the deleted token back again
@@ -229,7 +237,7 @@ class Deletion(Edit):
 
     @staticmethod
     def create_mutation(program: SourceVector, index: int) -> 'Deletion':
-        return Deletion(program[index], index)
+        return Deletion(index, program[index])
 
     @classmethod
     def create_random_mutation(cls, program: SourceVector) -> 'Deletion':
@@ -237,7 +245,7 @@ class Deletion(Edit):
         Creates a random deletion for the given program.
         """
         index = program.random_token_index()
-        return Deletion(program[index], index)
+        return Deletion(index, program[index])
 
 
 class Substitution(Edit):
@@ -258,6 +266,15 @@ class Substitution(Edit):
         self.token = replacement
         self.original_token = original_token
         self.index = index
+
+    def __repr__(self):
+        new_text = vocabulary.to_text(self.token)
+        old_text = vocabulary.to_text(self.original_token)
+        return (
+            f'Substitution({self.index}, '
+            f'original_token={self.orignal_token} or {old_text}, '
+            f'new_token={self.token} or {new_text})'
+        )
 
     def additive_inverse(self) -> 'Substitution':
         # Simply swap the tokens again.
