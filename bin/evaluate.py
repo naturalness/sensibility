@@ -371,7 +371,7 @@ class Fixes(Iterable[Edit]):
 
 def fix_zeros(preds, epsilon=sys.float_info.epsilon):
     """
-    Replace zeros with really small values..
+    Replace zeros with really small values...
     """
     for i, pred in enumerate(preds):
         if math.isclose(pred, 0.0):

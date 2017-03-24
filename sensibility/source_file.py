@@ -84,16 +84,21 @@ class SourceFile:
     # TODO: TEST!
     def line_of_index(self, index: int, edit: Edit=None) -> int:
         """
-        Finds the line number of the token at the given index. Applies the
-        Edit to the file.
+        Finds the line number of the token at the given index.
+        If given a mutation, assumes the index belongs to the token stream
+        AFTER mutation has been applied. That is, it's an index into in the
+        file after mutation.  However, self MUST be the file PRIOR to
+        mutation!
         """
         if edit is None or isinstance(edit, Substitution):
-            # The line is constant if no edit was applied, or if the
-            # substitution edit is applied.
+            # The line is constant if no edit was applied; or,
+            # when the substitution edit is applied (no change in index).
             return self.source_tokens[index].line
         elif isinstance(edit, Deletion):
-            raise NotImplementedError
+            fixed_index = index + 1 if index >= edit.index else index
+            return self.source_tokens[fixed_index].line
         elif isinstance(edit, Insertion):
-            raise NotImplementedError
+            fixed_index = index - 1 if index >= edit.index else index
+            return self.source_tokens[fixed_index].line
         else:
             raise NotImplementedError
