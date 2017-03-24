@@ -53,7 +53,7 @@ include extra-rules.mk
 .PHONY: results
 results: results.csv
 results.%.csv:
-	./evaluate.py $*
+	bin/evaluate.py $*
 
 .PHONY: test-sets
 test-sets: $(TEST_SET).0 $(TEST_SET).1 $(TEST_SET).2 $(TEST_SET).3 $(TEST_SET).4
