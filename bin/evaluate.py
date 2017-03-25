@@ -234,6 +234,7 @@ class Evaluation:
             "filehash": program.file_hash,
             "n.lines": program.sloc,
             "n.tokens": len(program.vector),
+
             # Mutation information
             "m.kind": kind,
             "m.loc": loc,
@@ -288,8 +289,8 @@ class Evaluation:
         with open('failures.txt', 'at') as failures:
             line = '=' * 78
             failures.write(f"{line}\n")
+            failures.write(f"Error evaluating {mutation!r} on {program!r}\n")
             traceback.print_exc(file=failures)
-            failures.write(f"Error evaluating {mutation!r} on {program!r}")
             failures.write(f"{line}\n\n")
 
     def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
@@ -415,7 +416,7 @@ def first_with_line_no(ranked_locations: Sequence[IndexResult],
     for rank, location in enumerate(ranked_locations, start=1):
         if program.line_of_index(location.index, mutation) == correct_line:
             return rank
-    raise ValueError(f'Could not find any location on {correct_line}')
+    raise ValueError(f'Could not find any token on {correct_line}')
 
 
 if __name__ == '__main__':
