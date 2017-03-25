@@ -128,10 +128,6 @@ class SensibilityForEvaluation:
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))
             suffix_pred = np.array(self.predictions.predict_backwards(suffix))
 
-            import random
-            if random.randint(0, 99) == 0:
-                raise ValueError('Just because')
-
             result = IndexResult(index, file_vector, prefix_pred, suffix_pred)
             results.append(result)
 

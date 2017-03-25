@@ -179,7 +179,7 @@ class Insertion(Edit):
 
     def __repr__(self):
         text_token = vocabulary.to_text(self.token)
-        return f'Insertion({self.index}, {self.token} or {text_token})'
+        return f'Insertion({self.index}, {self.token} or {text_token!r})'
 
     def additive_inverse(self) -> Edit:
         return Deletion(self.index, self.token)
@@ -223,7 +223,7 @@ class Deletion(Edit):
 
     def __repr__(self):
         as_text = vocabulary.to_text(self.token)
-        return f'Deletion({self.index}, {self.original_token} or {as_text})'
+        return f'Deletion({self.index}, {self.original_token} or {as_text!r})'
 
     def additive_inverse(self) -> Edit:
         # Insert the deleted token back again
@@ -272,8 +272,8 @@ class Substitution(Edit):
         old_text = vocabulary.to_text(self.original_token)
         return (
             f'Substitution({self.index}, '
-            f'original_token={self.orignal_token} or {old_text}, '
-            f'new_token={self.token} or {new_text})'
+            f'original_token={self.orignal_token} or {old_text!r}, '
+            f'new_token={self.token} or {new_text!r})'
         )
 
     def additive_inverse(self) -> 'Substitution':
