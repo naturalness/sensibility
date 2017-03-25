@@ -249,19 +249,14 @@ class Evaluation:
         # Information about the fix (if at least one exists).
         if len(fixes) == 0:
             row.update({
-                "fixed": False,
-                "true.fix": None,
-                "f.kind": None,
-                "f.loc": None,
-                "f.token": None,
-                "f.old": None,
+                "fixed": piratize(False),
             })
         else:
             fix = fixes[0]
             kind, loc, new_tok, old_tok = fix.serialize()
             row.update({
-                "fixed": True,
-                "true.fix": fix == mutation.additive_inverse(),
+                "fixed": piratize(True),
+                "true.fix": piratize(fix == mutation.additive_inverse()),
                 "f.kind": kind,
                 "f.loc": loc,
                 "f.token": to_text(new_tok),
@@ -334,6 +329,10 @@ def to_text(token: Optional[Vind]) -> Optional[str]:
     Converts the token to its textual representation, if it exists.
     """
     return None if token is None else vocabulary.to_text(token)
+
+
+def piratize(value: bool) -> str:
+    return 'TRUE' if value else 'FALSE'
 
 
 # TODO: Move this to a different file, probably
