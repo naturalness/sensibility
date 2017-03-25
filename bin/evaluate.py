@@ -6,10 +6,10 @@ Evaluates the performance of the detecting and fixing syntax errors.
 """
 
 import csv
-import tempfile
 import math
 import sys
-import json
+import tempfile
+import traceback
 from pathlib import Path
 from typing import (
     Iterable, Iterator, SupportsFloat, Sequence,
@@ -127,6 +127,10 @@ class SensibilityForEvaluation:
             # Fetch predictions.
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))
             suffix_pred = np.array(self.predictions.predict_backwards(suffix))
+
+            import random
+            if random.randint(0, 99) == 0:
+                raise ValueError('Just because')
 
             result = IndexResult(index, file_vector, prefix_pred, suffix_pred)
             results.append(result)
@@ -279,7 +283,18 @@ class Evaluation:
         with self, Mutations(read_only=True) as all_mutations:
             mutations = (m for m in all_mutations if m[0].file_hash in hashes)
             for program, mutation in tqdm(mutations):
-                self.evaluate_mutant(program, mutation)
+                try:
+                    self.evaluate_mutant(program, mutation)
+                except Exception:
+                    self.log_exception(program, mutation)
+
+    def log_exception(self, program: SourceFile, mutation: Edit) -> None:
+        with open('failures.txt', 'at') as failures:
+            line = '=' * 78
+            failures.write(f"{line}\n")
+            traceback.print_exc(file=failures)
+            failures.write(f"Error evaluating {mutation!r} on {program!r}")
+            failures.write(f"{line}\n\n")
 
     def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
         """
