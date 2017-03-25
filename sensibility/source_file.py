@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Sequence, Optional
+from typing import Sequence, Sized, Optional
 
 from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
@@ -25,7 +25,7 @@ from .vectors import Vectors
 from .tokenize_js import tokenize
 
 
-class SourceFile:
+class SourceFile(Sized):
     """
     A source file from the corpus. Easy access to both the token sequence, and
     the source tokens themselves.
@@ -43,6 +43,10 @@ class SourceFile:
     def __repr__(self):
         clsname = type(self).__name__
         return f"{clsname}({self.file_hash!r})"
+
+    def __len__(self):
+        assert len(self.vector) == len(self.source_tokens)
+        return len(self.vector)
 
     @property
     def vector(self) -> SourceVector:
@@ -90,14 +94,20 @@ class SourceFile:
         file after mutation.  However, self MUST be the file PRIOR to
         mutation!
         """
-        if edit is None or isinstance(edit, Substitution):
-            # The line is constant if no edit was applied; or,
-            # when the substitution edit is applied (no change in index).
+        if edit is None:
+            # The line is constant if no edit was applied
+            return self.source_tokens[index].line
+        elif isinstance(edit, Substitution):
+            assert len(self) == len(self.vector + edit)
+            # The line is constant if the substitution edit is applied (no
+            # change in index).
             return self.source_tokens[index].line
         elif isinstance(edit, Deletion):
+            assert len(self) == len(self.vector + edit) - 1
             fixed_index = index + 1 if index >= edit.index else index
             return self.source_tokens[fixed_index].line
         elif isinstance(edit, Insertion):
+            assert len(self) == len(self.vector + edit) + 1
             fixed_index = index - 1 if index >= edit.index else index
             return self.source_tokens[fixed_index].line
         else:

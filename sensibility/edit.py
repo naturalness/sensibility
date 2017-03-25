@@ -222,7 +222,7 @@ class Deletion(Edit):
         self.original_token = original_token
 
     def __repr__(self):
-        as_text = vocabulary.to_text(self.token)
+        as_text = vocabulary.to_text(self.original_token)
         return f'Deletion({self.index}, {self.original_token} or {as_text!r})'
 
     def additive_inverse(self) -> Edit:
@@ -318,7 +318,7 @@ class Substitution(Edit):
 
 def random_vocabulary_entry() -> Vind:
     """
-    Returns a random vocabulary index.
+    Returns a random vocabulary index. Excludes the start and end tokens.
     """
     return Vind(random.randint(vocabulary.start_token_index + 1,
                                vocabulary.end_token_index - 1))
