@@ -97,18 +97,18 @@ class SourceFile(Sized):
         if edit is None:
             # The line is constant if no edit was applied
             return self.source_tokens[index].line
+        elif isinstance(edit, Insertion):
+            assert len(self.vector + edit) == len(self) + 1
+            fixed_index = index - 1 if index >= edit.index else index
+            return self.source_tokens[fixed_index].line
+        elif isinstance(edit, Deletion):
+            assert len(self.vector + edit) == len(self) - 1
+            fixed_index = index + 1 if index >= edit.index else index
+            return self.source_tokens[fixed_index].line
         elif isinstance(edit, Substitution):
             assert len(self) == len(self.vector + edit)
             # The line is constant if the substitution edit is applied (no
             # change in index).
             return self.source_tokens[index].line
-        elif isinstance(edit, Deletion):
-            assert len(self) == len(self.vector + edit) - 1
-            fixed_index = index + 1 if index >= edit.index else index
-            return self.source_tokens[fixed_index].line
-        elif isinstance(edit, Insertion):
-            assert len(self) == len(self.vector + edit) + 1
-            fixed_index = index - 1 if index >= edit.index else index
-            return self.source_tokens[fixed_index].line
         else:
             raise NotImplementedError

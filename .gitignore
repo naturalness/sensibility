@@ -75,7 +75,10 @@ ENV/
 *.sqlite3
 
 # Log files
-*.log
+failures.txt
+
+# Results files
+results.*.csv
 
 # Created by extra-rules.pl
 extra-rules.mk

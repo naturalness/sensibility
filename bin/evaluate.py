@@ -285,14 +285,6 @@ class Evaluation:
                 except Exception:
                     self.log_exception(program, mutation)
 
-    def log_exception(self, program: SourceFile, mutation: Edit) -> None:
-        with open('failures.txt', 'at') as failures:
-            line = '=' * 78
-            failures.write(f"{line}\n")
-            failures.write(f"Error evaluating {mutation!r} on {program!r}\n")
-            traceback.print_exc(file=failures)
-            failures.write(f"{line}\n\n")
-
     def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
         """
         Evaluate one particular mutant.
@@ -318,6 +310,14 @@ class Evaluation:
                    correct_line=correct_line,
                    line_of_top_rank=line_of_top_rank,
                    rank_of_correct_line=rank_of_correct_line)
+
+    def log_exception(self, program: SourceFile, mutation: Edit) -> None:
+        with open('failures.txt', 'at') as failures:
+            line = '=' * 78
+            failures.write(f"{line}\n")
+            failures.write(f"Error evaluating {mutation!r} on {program!r}\n")
+            traceback.print_exc(file=failures)
+            failures.write(f"{line}\n\n")
 
 
 def temporary_program(program: SourceVector) -> TextIO:
