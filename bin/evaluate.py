@@ -240,19 +240,36 @@ class Evaluation:
         SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
         SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
 
+        with self:
+            mutations = self.filter_mutations()
+            for program, mutation in tqdm(mutations):
+                self.evaluate_mutant(program, mutation)
+
+    def filter_mutations(self) -> Iterator[Tuple[SourceFile, Edit]]:
+        """
+        Filter only the relevant mutations.
+        """
+
         # Figure out which hashes are acceptable.
         with open(DATA_DIR / f'test_set_hashes.{self.fold}') as f:
-            hashes = frozenset(s.strip() for s in f.readlines() if len(s) > 2)
+            hashes = frozenset(s.strip() for s in f.readlines()
+                               if len(s) > 2)
 
-        with self, Mutations(read_only=True) as all_mutations:
-            mutations = (m for m in all_mutations if m[0].file_hash in hashes)
-            for program, mutation in tqdm(mutations):
-                try:
-                    self.evaluate_mutant(program, mutation)
-                except Exception:
-                    self.log_exception(program, mutation)
+        with Mutations(read_only=True) as all_mutations:
+            i = 0
+            for entry in all_mutations:
+                program, mutation = entry
+                if program.file_hash not in hashes:
+                    continue
+                yield entry
 
     def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
+        try:
+            self._evaluate_mutant(program, mutation)
+        except Exception:
+            self.log_exception(program, mutation)
+
+    def _evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
         """
         Evaluate one particular mutant.
         """
