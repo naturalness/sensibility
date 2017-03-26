@@ -35,10 +35,6 @@ from sensibility.mutations import Mutations
 from sensibility.predictions import Predictions, Contexts
 from sensibility._paths import VECTORS_PATH, SOURCES_PATH, DATA_DIR
 
-# TODO: make an IndexResult object including:
-#   - harmonic mean
-#   - sum (???)
-
 
 class IndexResult(SupportsFloat):
     """
@@ -183,18 +179,35 @@ class SensibilityForEvaluation:
             return check_syntax_file(cast(TextIO, source_file))
 
 
-def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
-    """
-    Returns whether the vector is normalized
+# TODO: Move this to a different file, probably
+class Fixes(Iterable[Edit]):
+    def __init__(self, vector: SourceVector) -> None:
+        self.vector = vector
+        self.fixes: List[Edit] = []
 
-    >>> is_normalized_vector(np.array([ 0.,  0.,  1.]))
-    True
-    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]))
-    False
-    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]), p=1)
-    True
-    """
-    return math.isclose(norm(x, p), 1.0, rel_tol=tolerance)
+    def try_insert(self, index: int, token: Vind) -> None:
+        self._try_edit(Insertion.create_mutation(self.vector, index, token))
+
+    def try_delete(self, index: int) -> None:
+        self._try_edit(Deletion.create_mutation(self.vector, index))
+
+    def try_substitute(self, index: int, token: Vind) -> None:
+        edit = Substitution.create_mutation(self.vector, index, token)
+        self._try_edit(edit)
+
+    def _try_edit(self, edit: Edit) -> None:
+        """
+        Actually apply the edit to the file. Add it to the fixes if it works.
+        """
+        with temporary_program(edit.apply(self.vector)) as mutant_file:
+            if check_syntax_file(mutant_file):
+                self.fixes.append(edit)
+
+    def __bool__(self) -> bool:
+        return len(self.fixes) > 0
+
+    def __iter__(self) -> Iterator[Edit]:
+        return iter(self.fixes)
 
 
 class Evaluation:
@@ -210,6 +223,7 @@ class Evaluation:
         assert 0 <= fold < 5
         self.fold = fold
         self._filename = f'results.{fold}.csv'
+        self.sensibility = SensibilityForEvaluation(fold)
 
     def __enter__(self) -> None:
         self._file = open(self._filename, 'w')
@@ -218,6 +232,57 @@ class Evaluation:
 
     def __exit__(self, *exc_info) -> None:
         self._file.close()
+
+    def run(self) -> None:
+        """
+        Run the evaluation.
+        """
+        SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
+        SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
+
+        # Figure out which hashes are acceptable.
+        with open(DATA_DIR / f'test_set_hashes.{self.fold}') as f:
+            hashes = frozenset(s.strip() for s in f.readlines() if len(s) > 2)
+
+        with self, Mutations(read_only=True) as all_mutations:
+            mutations = (m for m in all_mutations if m[0].file_hash in hashes)
+            for program, mutation in tqdm(mutations):
+                try:
+                    self.evaluate_mutant(program, mutation)
+                except Exception:
+                    self.log_exception(program, mutation)
+
+    def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
+        """
+        Evaluate one particular mutant.
+        """
+        # Figure out the line of the mutation in the original file.
+        correct_line = program.line_of_index(mutation.index, mutation)
+
+        # Apply the original mutation.
+        mutant = mutation.apply(program.vector)
+        with temporary_program(mutant) as mutated_file:
+            # Do the (canned) prediction...
+            ranked_locations, fixes = self.rank_and_fix(mutated_file)
+        assert len(ranked_locations) > 0
+
+        # Figure out the rank of the actual mutation.
+        top_error_index = ranked_locations[0].index
+        line_of_top_rank = program.source_tokens[top_error_index].line
+        rank_of_correct_line = first_with_line_no(ranked_locations, mutation,
+                                                  correct_line, program)
+
+        self.write(program=program,
+                   mutation=mutation, fixes=fixes,
+                   correct_line=correct_line,
+                   line_of_top_rank=line_of_top_rank,
+                   rank_of_correct_line=rank_of_correct_line)
+
+    def rank_and_fix(self, mutated_file: TextIO) -> FixResult:
+        """
+        Try to fix the given source file and return the results.
+        """
+        return self.sensibility.rank_and_fix(mutated_file.name)
 
     def write(self, *,
               program: SourceFile,
@@ -267,50 +332,6 @@ class Evaluation:
         self._writer.writerow(row)
         self._file.flush()
 
-    def run(self) -> None:
-        """
-        Run the evaluation.
-        """
-        SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
-        SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
-
-        with open(DATA_DIR / f'test_set_hashes.{self.fold}') as f:
-            hashes = frozenset(s.strip() for s in f.readlines() if len(s) > 2)
-
-        with self, Mutations(read_only=True) as all_mutations:
-            mutations = (m for m in all_mutations if m[0].file_hash in hashes)
-            for program, mutation in tqdm(mutations):
-                try:
-                    self.evaluate_mutant(program, mutation)
-                except Exception:
-                    self.log_exception(program, mutation)
-
-    def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
-        """
-        Evaluate one particular mutant.
-        """
-        # Figure out the line of the mutation in the original file.
-        correct_line = program.line_of_index(mutation.index, mutation)
-
-        # Apply the original mutation.
-        mutant = mutation.apply(program.vector)
-        with temporary_program(mutant) as mutated_file:
-            # Do the (canned) prediction...
-            ranked_locations, fixes = rank_and_fix(fold, mutated_file)
-        assert len(ranked_locations) > 0
-
-        # Figure out the rank of the actual mutation.
-        top_error_index = ranked_locations[0].index
-        line_of_top_rank = program.source_tokens[top_error_index].line
-        rank_of_correct_line = first_with_line_no(ranked_locations, mutation,
-                                                  correct_line, program)
-
-        self.write(program=program,
-                   mutation=mutation, fixes=fixes,
-                   correct_line=correct_line,
-                   line_of_top_rank=line_of_top_rank,
-                   rank_of_correct_line=rank_of_correct_line)
-
     def log_exception(self, program: SourceFile, mutation: Edit) -> None:
         with open('failures.txt', 'at') as failures:
             line = '=' * 78
@@ -344,47 +365,24 @@ def to_text(token: Optional[Vind]) -> Optional[str]:
 
 
 def piratize(value: bool) -> str:
+    """
+    Convert a Python `bool` into an R `logical`.
+    """
     return 'TRUE' if value else 'FALSE'
 
 
-# TODO: Move this to a different file, probably
-class Fixes(Iterable[Edit]):
-    def __init__(self, vector: SourceVector) -> None:
-        self.vector = vector
-        self.fixes: List[Edit] = []
-
-    def try_insert(self, index: int, token: Vind) -> None:
-        self._try_edit(Insertion.create_mutation(self.vector, index, token))
-
-    def try_delete(self, index: int) -> None:
-        self._try_edit(Deletion.create_mutation(self.vector, index))
-
-    def try_substitute(self, index: int, token: Vind) -> None:
-        edit = Substitution.create_mutation(self.vector, index, token)
-        self._try_edit(edit)
-
-    def _try_edit(self, edit: Edit) -> None:
-        """
-        Actually apply the edit to the file. Add it to the fixes if it works.
-        """
-        with temporary_program(edit.apply(self.vector)) as mutant_file:
-            if check_syntax_file(mutant_file):
-                self.fixes.append(edit)
-
-    def __bool__(self) -> bool:
-        return len(self.fixes) > 0
-
-    def __iter__(self) -> Iterator[Edit]:
-        return iter(self.fixes)
-
-
-def fix_zeros(preds, epsilon=sys.float_info.epsilon):
+def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
     """
-    Replace zeros with really small values...
+    Returns whether the vector is normalized.
+
+    >>> is_normalized_vector(np.array([ 0.,  0.,  1.]))
+    True
+    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]))
+    False
+    >>> is_normalized_vector(np.array([ 0.5 ,  0.25,  0.25]), p=1)
+    True
     """
-    for i, pred in enumerate(preds):
-        if math.isclose(pred, 0.0):
-            preds[i] = epsilon
+    return math.isclose(norm(x, p), 1.0, rel_tol=tolerance)
 
 
 def harmonic_mean_agreement(prefix_pred, suffix_pred):
@@ -401,9 +399,13 @@ def harmonic_mean_agreement(prefix_pred, suffix_pred):
     return min_prob
 
 
-def rank_and_fix(fold: int, mutated_file: TextIO) -> FixResult:
-    sensibility = SensibilityForEvaluation(fold)
-    return sensibility.rank_and_fix(mutated_file.name)
+def fix_zeros(preds, epsilon=sys.float_info.epsilon):
+    """
+    Replace zeros with very small values to avoid NaNing out.
+    """
+    for i, pred in enumerate(preds):
+        if math.isclose(pred, 0.0):
+            preds[i] = epsilon
 
 
 def first_with_line_no(ranked_locations: Sequence[IndexResult],
@@ -412,6 +414,8 @@ def first_with_line_no(ranked_locations: Sequence[IndexResult],
                        program: SourceFile) -> int:
     """
     Return the first result with the given correct line number.
+
+    Sometimes this fails and I'm not sure why!
     """
     for rank, location in enumerate(ranked_locations, start=1):
         if program.line_of_index(location.index, mutation) == correct_line:
