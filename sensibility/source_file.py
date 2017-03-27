@@ -86,6 +86,8 @@ class SourceFile(Sized):
         return last_token.line
 
     # TODO: TEST!
+    # XXX: THIS CAN ONLY WORK WITH ONE MUTATION PER FILE.
+    # TODO: Replace this ENTIRELY with a vector of line numbers.
     def line_of_index(self, index: int, edit: Edit=None) -> int:
         """
         Finds the line number of the token at the given index.
@@ -99,7 +101,7 @@ class SourceFile(Sized):
             return self.source_tokens[index].line
         elif isinstance(edit, Insertion):
             assert len(self.vector + edit) == len(self) + 1
-            fixed_index = index - 1 if index >= edit.index else index
+            fixed_index = index - 1 if index > edit.index else index
             return self.source_tokens[fixed_index].line
         elif isinstance(edit, Deletion):
             assert len(self.vector + edit) == len(self) - 1

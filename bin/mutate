@@ -149,6 +149,8 @@ def mutate_file(program: SourceFile,
 
                 # Try the file, reject if it compiles.
                 if syntax_ok(mutant_file.name):
+                    # TODO: Store a vector of LINE NUMBERS.
+                    # Hacky, but less error-prone than current solution.
                     persist.add_correct_file(mutation)
                     failures += 1
                     continue
