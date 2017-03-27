@@ -43,7 +43,7 @@ class IndexResult(SupportsFloat):
     __slots__ = (
         'index',
         'cosine_similarity', 'squared_euclidean_distance',
-        'harmonic_mean', 'indexed_sum'
+        'harmonic_mean', 'indexed_prob'
     )
 
     def __init__(self, index: int, program: SourceVector,
@@ -57,13 +57,15 @@ class IndexResult(SupportsFloat):
         self.harmonic_mean = ...
         self.squared_euclidean_distance = ((a - b) ** 2).sum()
 
-        # How probable is the token at this position?
-        # 2.0 == both models absoultely think this token should be here.
-        # 1.0 == lukewarm---possibly one model thinks this token should be here
-        # 0.0 == both models are perplexed by this token.
-        self.indexed_sum = a[program[index]] + b[program[index]]
+        # P(token | prefix AND token | suffix)
+        # 1.0 == both models completely agree the token should be here.
+        # .25 == lukewarm---models kind of think this token should be here
+        # 0.0 == at least one model finds this token absolutely unlikely
+        self.indexed_prob = a[program[index]] * b[program[index]]
 
-        # How similar are the two vectors?
+        # How similar are the two categorical distributions?
+        # 1.0 == Exactly similar -- pointing in the same direction
+        # 0.0 == Not similar --- pointing in orthogonal direction
         self.cosine_similarity = (a @ b) / (norm(a) * norm(b))
 
         # TODO: Store the forwards and backward predictions?
@@ -72,14 +74,19 @@ class IndexResult(SupportsFloat):
     def __float__(self) -> float:
         """
         Returns the score between the two elements.
+
+        0.0 means syntax error;
+        1.0 means valid, natural code.
+
+        Smaller value => more likely to be a syntax error.
         """
         # We can tweak λ to weigh local and global factors differently,
         # but for now, weigh them equally.
         # TODO: use sklearn's Lasso regression to find this coefficient?
         # TODO:                 `-> fit_intercept=False
         λ = .5
-        score = λ * self.indexed_sum / 2. + (1. - λ) * self.cosine_similarity
-        assert 0. <= score <= 1.
+        score = λ * self.indexed_prob + (1 - λ) * self.cosine_similarity
+        assert 0 <= score <= 1
         return score
 
 
