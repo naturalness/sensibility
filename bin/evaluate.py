@@ -66,6 +66,9 @@ class IndexResult(SupportsFloat):
         # How similar are the two vectors?
         self.cosine_similarity = (a @ b) / (norm(a) * norm(b))
 
+        # TODO: Store the forwards and backward predictions?
+        #   => useful for visual debugging later.
+
     def __float__(self) -> float:
         """
         Returns the score between the two elements.
@@ -141,26 +144,25 @@ class SensibilityForEvaluation:
         # (the top rank will be LEAST similar).
         ranked_results = tuple(sorted(results, key=float))
 
-        # For the top disagreements, synthesize fixes.
+        # For the top-k disagreements, synthesize fixes.
+        # NOTE: k should be determined by the MRR of finding the syntax error!
         fixes = Fixes(file_vector)
         for disagreement in ranked_results[:k]:
             pos = disagreement.index
 
-            # Assume an addition. Let's try removing the offensive token.
-            fixes.try_delete(pos)
-
             likely_next: Vind = forwards_predictions[pos]
             likely_prev: Vind = backwards_predictions[pos]
+
+            # Assume an addition. Let's try removing the offensive token.
+            fixes.try_delete(pos)
 
             # Assume a deletion. Let's try inserting some tokens.
             fixes.try_insert(pos, likely_next)
             fixes.try_insert(pos, likely_prev)
 
-            # Assume it's a substitution. Let's try swapping the token.
-            if likely_next is not None:
-                fixes.try_substitute(pos, likely_next)
-            if likely_prev is not None:
-                fixes.try_substitute(pos, likely_prev)
+            # Assume a substitution. Let's try swapping the token.
+            fixes.try_substitute(pos, likely_next)
+            fixes.try_substitute(pos, likely_prev)
 
         return FixResult(ranks=ranked_results, fixes=tuple(fixes))
 
