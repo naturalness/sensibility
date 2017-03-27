@@ -174,7 +174,7 @@ class Insertion(Edit):
         self.token = token
         self.index = index
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         text_token = vocabulary.to_text(self.token)
         return f'Insertion({self.index}, {self.token} or {text_token!r})'
 
@@ -218,7 +218,7 @@ class Deletion(Edit):
         self.index = index
         self.original_token = original_token
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         as_text = vocabulary.to_text(self.original_token)
         return f'Deletion({self.index}, {self.original_token} or {as_text!r})'
 
@@ -264,12 +264,12 @@ class Substitution(Edit):
         self.original_token = original_token
         self.index = index
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         new_text = vocabulary.to_text(self.token)
         old_text = vocabulary.to_text(self.original_token)
         return (
             f'Substitution({self.index}, '
-            f'original_token={self.orignal_token} or {old_text!r}, '
+            f'original_token={self.original_token} or {old_text!r}, '
             f'new_token={self.token} or {new_text!r})'
         )
 
