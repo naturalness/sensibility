@@ -38,7 +38,6 @@ class SourceVector(Sequence[Vind]):
     __slots__ = ('tokens',)
 
     def __init__(self, tokens: Sequence[Vind]) -> None:
-        assert len(tokens) > 0
         self.tokens = tokens
 
     def __eq__(self, other: Any) -> bool:
@@ -111,6 +110,7 @@ class SourceVector(Sequence[Vind]):
         """
         Return a new program with the token at the given index removed.
         """
+        assert len(self.tokens) > 0
         # TODO: O(1) applying edits
         assert 0 <= index < len(self)
         sequence: List[Vind] = []
