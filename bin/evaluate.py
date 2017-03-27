@@ -360,7 +360,7 @@ class Evaluation:
 
 def temporary_program(program: SourceVector) -> TextIO:
     """
-    Returns a temporary file that with the contents of the file written to it.
+    Returns a temporary file of the given program.
     """
     raw_file = tempfile.NamedTemporaryFile(mode='w+t', encoding='UTF-8')
     mutated_file = cast(TextIO, raw_file)
