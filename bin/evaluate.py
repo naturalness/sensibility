@@ -133,12 +133,13 @@ class SensibilityForEvaluation:
             # Store the TOP prediction from each model.
             # TODO: document corner cases!
             top_next_prediction = prefix_pred.argmax()
-            assert 0 < top_next_prediction < 100
-            forwards_predictions.append(cast(Vind, top_next_prediction))
             top_prev_prediction = suffix_pred.argmax()
-            assert 0 < top_prev_prediction < 100
+            assert 0 <= top_next_prediction <= len(vocabulary)
+            assert 0 <= top_prev_prediction <= len(vocabulary)
+            forwards_predictions.append(cast(Vind, top_next_prediction))
             backwards_predictions.append(cast(Vind, top_prev_prediction))
             assert top_next_prediction == forwards_predictions[index]
+            assert top_prev_prediction == backwards_predictions[index]
 
         # Rank the results by some metric of similarity defined by IndexResult
         # (the top rank will be LEAST similar).
