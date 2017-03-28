@@ -51,6 +51,7 @@ verify() {
 ################################################################################
 
 # How many minified files are in the corpus?
+# XXX: Files like underscore-min.js exist in the corpus :c
 minified-files() {
     local query
     read -r -d '' query <<'SQL'
