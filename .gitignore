@@ -79,6 +79,8 @@ failures.txt
 
 # Results files
 results.*.csv
+results.csv
+results.csv.xz
 
 # Created by extra-rules.pl
 extra-rules.mk
