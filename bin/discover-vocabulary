@@ -20,6 +20,7 @@ from pprint import pprint
 from tqdm import tqdm
 from blessings import Terminal
 
+# TODO: broken!
 from corpus import Corpus
 from stringify_token import stringify_token
 from vocabulary import START_TOKEN, END_TOKEN

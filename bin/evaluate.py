@@ -42,8 +42,8 @@ class IndexResult(SupportsFloat):
     """
     __slots__ = (
         'index',
-        'cosine_similarity', 'squared_euclidean_distance',
-        'harmonic_mean', 'indexed_prob'
+        'cosine_similarity', 'indexed_prob'
+        'mutual_info', 'total_variation'
     )
 
     def __init__(self, index: int, program: SourceVector,
@@ -53,9 +53,6 @@ class IndexResult(SupportsFloat):
 
         # Categorical distributions MUST have |x|_1 == 1.0
         assert is_normalized_vector(a, p=1) and is_normalized_vector(b, p=1)
-
-        self.harmonic_mean = ...
-        self.squared_euclidean_distance = ((a - b) ** 2).sum()
 
         # P(token | prefix AND token | suffix)
         # 1.0 == both models completely agree the token should be here.
@@ -68,8 +65,32 @@ class IndexResult(SupportsFloat):
         # 0.0 == Not similar --- pointing in orthogonal direction
         self.cosine_similarity = (a @ b) / (norm(a) * norm(b))
 
+        # Use averaged KL-divergence?
+        # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.332.4480&rep=rep1&type=pdf
+        # https://github.com/scikit-learn/scikit-learn/blob/14031f6/sklearn/metrics/cluster/supervised.py#L531
+
+        # Total variation distance:
+        # http://onlinelibrary.wiley.com/doi/10.1111/j.1751-5823.2002.tb00178.x/epdf
+        # https://en.wikipedia.org/wiki/Total_variation_distance_of_probability_measures
+        self.total_variation = .5 * norm(a - b, p=1)
+
         # TODO: Store the forwards and backward predictions?
         #   => useful for visual debugging later.
+
+    @property
+    def comp_total_variation(self):
+        """
+        The complement of the total variation.
+        Flips the semantics of total variation such that:
+
+         * 1.0 means the distribtions are similar.
+         * 0.0 means the distribtions are different.
+
+        As such, its meanings are the same as cosine similarity and
+        indexed_probability.
+        """
+        assert 0.0 <= self.total_variation <= 1.0
+        return 1.0 - self.total_variation
 
     def __float__(self) -> float:
         """
@@ -85,7 +106,7 @@ class IndexResult(SupportsFloat):
         # TODO: use sklearn's Lasso regression to find this coefficient?
         # TODO:                 `-> fit_intercept=False
         λ = .5
-        score = λ * self.indexed_prob + (1 - λ) * self.cosine_similarity
+        score = λ * self.indexed_prob + (1 - λ) * self.comp_total_variation
         assert 0 <= score <= 1
         return score
 
@@ -105,7 +126,7 @@ class SensibilityForEvaluation:
     def __init__(self, fold: int) -> None:
         self.predictions = Predictions(fold)
 
-    def rank_and_fix(self, filename: str, k: int=4) -> FixResult:
+    def rank_and_fix(self, filename: str, k: int=3) -> FixResult:
         """
         Rank the syntax error location (in token number) and returns a possible
         fix for the given filename.
