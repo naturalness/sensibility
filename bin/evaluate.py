@@ -42,7 +42,7 @@ class IndexResult(SupportsFloat):
     """
     __slots__ = (
         'index',
-        'cosine_similarity', 'indexed_prob'
+        'cosine_similarity', 'indexed_prob',
         'mutual_info', 'total_variation'
     )
 
