@@ -88,4 +88,4 @@ foreach my $fold (0 .. $max_fold) {
     print " results.$fold.csv";
 }
 print "\n";
-print "\t./concat-results.sh \$^ > \$@\n";
+print "\tbin/concat-results \$^ > \$@\n";

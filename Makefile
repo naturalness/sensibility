@@ -60,6 +60,7 @@ test-sets: $(TEST_SET).0 $(TEST_SET).1 $(TEST_SET).2 $(TEST_SET).3 $(TEST_SET).4
 # Create the entire test set.
 $(TEST_SET): $(VECTORS) $(SOURCES)
 	bin/print-test-set $(VECTORS) | $(SHUF) > $@
+
 # Split the giant test set into several files.
 # The pattern rule is a hack that allows one recipe to make several targets,
 # but does not run the recipe several times.
