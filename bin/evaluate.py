@@ -72,7 +72,7 @@ class IndexResult(SupportsFloat):
         # Total variation distance:
         # http://onlinelibrary.wiley.com/doi/10.1111/j.1751-5823.2002.tb00178.x/epdf
         # https://en.wikipedia.org/wiki/Total_variation_distance_of_probability_measures
-        self.total_variation = .5 * norm(a - b, p=1)
+        self.total_variation = .5 * norm(a - b, ord=1)
 
         # TODO: Store the forwards and backward predictions?
         #   => useful for visual debugging later.
