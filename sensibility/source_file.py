@@ -45,7 +45,6 @@ class SourceFile(Sized):
         return f"{clsname}({self.file_hash!r})"
 
     def __len__(self):
-        assert len(self.vector) == len(self.source_tokens)
         return len(self.vector)
 
     @property
@@ -53,13 +52,20 @@ class SourceFile(Sized):
         """
         A vector representation of the file composed of vocabulary indicies.
         """
+        # We already have it stored!
         if self._token_vector is not None:
             return self._token_vector
+
         if self.vectors is None:
             raise Exception('forgot to assign SourceFile.vectors')
         # Fetch the vector.
         _, tokens = self.vectors[self.file_hash]
         self._token_vector = SourceVector(tokens)
+
+        # Sanity check: the vector and source file length should be the same.
+        if self._source_tokens is not None:
+            assert len(self.vector) == len(self.source_tokens)
+
         return self._token_vector
 
     @property
@@ -67,13 +73,20 @@ class SourceFile(Sized):
         """
         Original, parsed tokens, with position information (line and column).
         """
+        # We already have it stored!
         if self._source_tokens is not None:
             return self._source_tokens
+
         if self.corpus is None:
             raise Exception('forgot to assign SourceFile.corpus')
         # Fetch the source tokens.
         source = self.corpus.get_source(self.file_hash)
         self._source_tokens = tokenize(source.decode('UTF-8'))
+
+        # Sanity check: the vector and source file length should be the same.
+        if self._token_vector is not None:
+            assert len(self.vector) == len(self.source_tokens)
+
         return self._source_tokens
 
     # TODO: TEST!
