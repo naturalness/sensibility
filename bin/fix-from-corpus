@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+import argparse
+from typing import Optional
+
+from sensibility import Sensibility, Edit, Corpus, Vectors, SourceFile, Vind
+from sensibility.fix import temporary_program
+from sensibility._paths import VECTORS_PATH, SOURCES_PATH
+
+
+def to_vind(text: str) -> Optional[Vind]:
+    if len(text) == 0:
+        return None
+    else:
+        return Vind(int(text))
+
+
+def deserialize_edit(text: str) -> Edit:
+    kind, location, new, original = text.split(',')
+    return Edit.deserialize(kind, int(location), to_vind(new), to_vind(original))
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('filehash', type=str)
+parser.add_argument('edit', type=deserialize_edit)
+
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    filehash: str  = args.filehash
+    edit: Edit = args.edit
+
+    SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
+    SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
+
+    original_file = SourceFile(filehash)
+    assert original_file.source_tokens
+
+    mutant = edit.apply(original_file.vector)
+
+    print(edit)
+
+    sensibility = Sensibility(0)
+    with temporary_program(mutant) as mutated_file:
+        print(mutated_file.name)
+        # Do the (canned) prediction...
+        ranked_locations, fixes = sensibility.rank_and_fix(mutated_file.name)
+
+    print(ranked_locations)
+    print(fixes)
