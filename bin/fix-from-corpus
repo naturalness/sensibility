@@ -17,9 +17,11 @@
 
 
 import argparse
-from typing import Optional
+from typing import Optional, Any
 
-from sensibility import Sensibility, Edit, Corpus, Vectors, SourceFile, Vind
+from sensibility import (
+    Sensibility, Edit, Corpus, Vectors, SourceFile, vocabulary, Vind
+)
 from sensibility.fix import temporary_program
 from sensibility._paths import VECTORS_PATH, SOURCES_PATH
 
@@ -28,23 +30,48 @@ def to_vind(text: str) -> Optional[Vind]:
     if len(text) == 0:
         return None
     else:
-        return Vind(int(text))
+        return vocabulary.to_index(text)
 
 
-def deserialize_edit(text: str) -> Edit:
-    kind, location, new, original = text.split(',')
-    return Edit.deserialize(kind, int(location), to_vind(new), to_vind(original))
+def get_edit(args: Any) -> Edit:
+    kind = args.kind
+    new = ''
+
+    if kind == 'i':
+        new = args.token
+    elif kind == 's':
+        new = args.token
+
+    new_token = to_vind(new)
+    return Edit.deserialize(kind, args.location, new_token, Vind(0))
 
 
 parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers()
+
+parser_ins = subparsers.add_parser('insert')
+parser_ins.add_argument('location', type=int)
+parser_ins.add_argument('token', type=str)
+parser_ins.set_defaults(kind='i')
+
+parser_del = subparsers.add_parser('delete')
+parser_del.add_argument('location', type=int)
+parser_del.set_defaults(kind='x')
+
+parser_sub = subparsers.add_parser('substitute')
+parser_sub.add_argument('location', type=int)
+parser_sub.add_argument('token', type=str)
+parser_sub.set_defaults(kind='s')
+
+
 parser.add_argument('filehash', type=str)
-parser.add_argument('edit', type=deserialize_edit)
+
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
     filehash: str  = args.filehash
-    edit: Edit = args.edit
+    edit = get_edit(args)
 
     SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
     SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
