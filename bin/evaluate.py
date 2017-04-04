@@ -126,7 +126,7 @@ class SensibilityForEvaluation:
     def __init__(self, fold: int) -> None:
         self.predictions = Predictions(fold)
 
-    def rank_and_fix(self, filename: str, k: int=3) -> FixResult:
+    def rank_and_fix(self, filename: str, k: int=4) -> FixResult:
         """
         Rank the syntax error location (in token number) and returns a possible
         fix for the given filename.
