@@ -22,7 +22,7 @@ goodness.
 
 import sqlite3
 from pathlib import Path
-from typing import Iterable, Tuple, Sized, Union
+from typing import Sequence, Iterable, Tuple, Sized, Union
 
 
 __all__ = ['Corpus']
@@ -72,7 +72,17 @@ class Corpus(Iterable[str], Sized):
         ''', dict(owner=owner, repo=repo))
         yield from cur
 
-    def file_info(self, file_hash):
+    def get_hashes_by_prefix(self, prefix: str) -> Sequence[str]:
+        assert '%' not in prefix and '_' not in prefix
+        cur = self.conn.cursor()
+        cur.execute('''
+            SELECT hash
+              FROM source_file
+             WHERE hash LIKE (:prefix || '%')
+        ''', dict(prefix=prefix))
+        return [fh for fh, in cur]
+
+    def file_info(self, file_hash) -> Tuple[str, str, str]:
         results = self.conn.execute('''
             SELECT repo, owner, path
               FROM source_file

@@ -58,6 +58,14 @@ def test_get_source():
     assert source == b'(name) => console.log(`Hello, ${name}!`);'
 
 
+def test_get_by_prefix():
+    corpus = Corpus(new_connection_for_testing())
+    fh = '86cc829b0a086a9f655b942278f6be5c9e5057c34459dafafa312dfdfa3a27d0'
+    hashes = corpus.get_hashes_by_prefix('86cc829')
+    assert len(hashes) == 1
+    assert hashes[0] == fh
+
+
 @slow
 def test_real_database():
     """

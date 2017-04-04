@@ -16,8 +16,11 @@
 # limitations under the License.
 
 
+import sys
 import argparse
 from typing import Optional, Any
+
+from blessings import Terminal
 
 from sensibility import (
     Sensibility, Edit, Corpus, Vectors, SourceFile, vocabulary, Vind
@@ -70,18 +73,34 @@ parser.add_argument('filehash', type=str)
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    filehash: str  = args.filehash
-    edit = get_edit(args)
+    query: str  = args.filehash
 
-    SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
-    SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
+    t = Terminal()
+
+    SourceFile.corpus = corpus = Corpus.connect_to(SOURCES_PATH)
+
+    hashes = corpus.get_hashes_by_prefix(query)
+    files = [(h,) + corpus.file_info(h) for h in hashes]
+
+    if len(files) == 0:
+        print(t.red(f"Could not find {query}"), file=sys.stderr)
+        exit(-1)
+    elif len(files) > 1:
+        print(t.red(f'Found too many files for {query}'), file=sys.stderr)
+        for info in files:
+            print(*info, file=sys.stderr)
+        exit(-1)
+
+    filehash, repo, owner, path = files[0]
+    edit = get_edit(args)
+    print(f"Applying {edit} to {filehash}")
+    print(f"{repo}/{owner} @ {path}")
 
     original_file = SourceFile(filehash)
     assert original_file.source_tokens
 
+    SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
     mutant = edit.apply(original_file.vector)
-
-    print(edit)
 
     sensibility = Sensibility(0)
     with temporary_program(mutant) as mutated_file:
