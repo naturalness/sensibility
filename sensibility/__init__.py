@@ -29,3 +29,5 @@ from .vectors import Vectors
 from .vocabulary import Vind, vocabulary
 from .sentences import Sentence, forward_sentences, backward_sentences
 from .agreement import Agreement
+
+from .fix import Sensibility, FixResult
