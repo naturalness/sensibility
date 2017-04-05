@@ -123,7 +123,7 @@ if __name__ == '__main__':
     edit = get_edit(args, original_file.vector)
 
     print(f"Applying {edit} to {filehash}")
-    print(f"https://github.com/{repo}/{owner}/blob/master/{path}")
+    print(f"https://github.com/{owner}/{repo}/blob/master/{path}")
 
 
     mutant = edit.apply(original_file.vector)
