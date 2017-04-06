@@ -153,5 +153,15 @@ if __name__ == '__main__':
                 print(f"{t.bold_red}{value}{t.normal}",
                       f"〘{t.bold}{result:.2f}{t.normal}〙",
                       end=' ')
+
             print(format_token(token, index), end=' ')
+
         print()
+
+    print()
+
+    k = 4
+    print(f"Top {k} syntax error locations:")
+    for res in ranked_locations[:k]:
+        score = float(res)
+        print(f"{res.index:5d}: {score:8g};\t tv={res.total_variation:8g};\tl={res.indexed_prob:8g}")
