@@ -184,12 +184,17 @@ class Sensibility:
             likely_next: Vind = forwards_predictions[pos]
             likely_prev: Vind = backwards_predictions[pos]
 
-            # Assume an addition. Let's try removing the offensive token.
-            fixes.try_delete(pos)
+            # Note: the order of these operations SHOULDN'T matter,
+            # but typically we only report the first fix that works.
+            # Because missing tokens are usually a bigger issue,
+            # we'll try to insert tokens first, THEN delete.
 
             # Assume a deletion. Let's try inserting some tokens.
             fixes.try_insert(pos, likely_next)
             fixes.try_insert(pos, likely_prev)
+
+            # Assume an addition. Let's try removing the offensive token.
+            fixes.try_delete(pos)
 
             # Assume a substitution. Let's try swapping the token.
             fixes.try_substitute(pos, likely_next)
