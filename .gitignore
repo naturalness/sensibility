@@ -6,3 +6,5 @@ dump.rdb
 *.log
 *.pyc
 venv/
+.mypy_cache
+.python-version
