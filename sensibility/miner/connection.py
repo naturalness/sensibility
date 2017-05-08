@@ -27,7 +27,7 @@ import redis
 import github3
 from lazy_object_proxy import Proxy
 
-from .language import language
+from ..language import language
 
 
 __all__ = ['redis_client', 'sqlite3_connection', 'github']

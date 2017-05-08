@@ -1,4 +1,4 @@
-from typing import Iterator
+from typing import Iterator, Dict
 
 class Repository:
     full_name: str
@@ -9,5 +9,6 @@ class RepositorySearchResult:
 
 class GitHub:
     def search_repositories(self, query: str, sort: str=None) -> Iterator[RepositorySearchResult]: ...
+    def rate_limit(self) -> Dict[str, Dict[str, Dict[str, int]]]: ...
 
 def login(token: str=None) -> GitHub: ...

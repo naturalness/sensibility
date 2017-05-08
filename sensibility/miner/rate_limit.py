@@ -16,11 +16,14 @@
 # limitations under the License.
 
 
+import datetime
 import logging
 import time
 
+from .connection import github
+
+
 logger = logging.getLogger(__name__)
-from .. import 
 
 
 def wait_for_rate_limit(resource='core') -> None:
@@ -40,3 +43,10 @@ def wait_for_rate_limit(resource='core') -> None:
         reset = limit_info['reset']
         logger.info('Exceded rate limit; waiting until %r', reset)
         time.sleep(seconds_until(reset) + 1)
+
+
+def seconds_until(timestamp: float) -> float:
+    now = datetime.datetime.now()
+    future = datetime.datetime.fromtimestamp(timestamp)
+    difference = future - now
+    return difference.seconds
