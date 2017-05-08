@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+ * Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,55 +13,55 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+PRAGMA encoding = "UTF-8";
+PRAGMA foreign_keys = ON;
 
 -- Represents a source code repository.
 CREATE TABLE repository (
-    owner       TEXT NOT NULL, -- the owner of the repository
-    repo        TEXT NOT NULL, -- the name of the repository
-    license     TEXT, -- License of the file
-    revision    TEXT, -- SHA of the latest revision
+    owner       TEXT NOT NULL,  -- the owner of the repository
+    name        TEXT NOT NULL,  -- the name of the repository
+    revision    TEXT NOT NULL,  -- SHA of the latest commit
+    commit_date DATETIME NOT NULL, -- Timestamp of last commit
+    license     TEXT,           -- License name of the file
 
-    PRIMARY KEY (repo, owner)
+    PRIMARY KEY (repo, owner, revision)
 );
 
--- A single source file from a repository.
+-- A source file from **any** repository.
 CREATE TABLE source_file (
-    hash    TEXT PRIMARY KEY NOT NULL, -- The SHA256 hash of the file
-    owner   TEXT,
-    repo    TEXT,
-    path    TEXT NOT NULL,
+    hash    TEXT NOT NULL, -- The SHA256 hash of the file
     source  BLOB NOT NULL, -- Stored as raw bytes; decode on use.
 
-    FOREIGN KEY (owner, repo) REFERENCES repository (owner, repo) ON DELETE CASCADE
+    PRIMARY KEY (hash)
 );
 
--- A file is inserted here if it has correct syntax, can be converted into an
--- AST and has a list of lexemes.
-CREATE TABLE parsed_source (
-    hash    TEXT PRIMARY KEY,
-    ast     JSON NOT NULL, -- JSON
-    tokens  JSON NOT NULL, -- JSON
+-- Relates a source file to repository.
+CREATE TABLE repository_source(
+    owner   TEXT NOT NULL,
+    name    TEXT NOT NULL,
+    hash    TEXT NOT NULL,
+    path    TEXT NOT NULL, -- Path of file within this repository.
 
-    FOREIGN KEY (hash) REFERENCES source_file (hash) ON DELETE CASCADE
+    FOREIGN KEY(owner, name) REFERENCES repository(hash)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY(hash) REFERENCES source_file(hash)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Files with valid syntax are inserted here and embued with useful metadata.
+CREATE TABLE source_summary (
+    hash    TEXT PRIMARY KEY,
+    sloc    INTEGER NOT NULL,   -- Source lines of code
+    n_tokens INTEGER NOT NULL,  -- Number of tokens, total
+
+    FOREIGN KEY(hash) REFERENCES source_file(hash)
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- A file is inserted here if it has invalid syntax.
 CREATE TABLE failure (
-    hash    TEXT PRIMARY KEY
-);
+    hash    TEXT PRIMARY KEY,
 
--- Define the list of approved licenses.
-DROP TABLE IF EXISTS approved_license;
-CREATE TABLE approved_license (
-    name TEXT PRIMARY KEY NOT NULL
+    FOREIGN KEY(hash) REFERENCES source_file(hash)
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
-INSERT INTO approved_license (name) VALUES
-    -- These are all permissive, but (may) require attribution.
-    ('mit'), ('mpl-2.0'), ('unlicense'), ('bsd-2-clause'), ('isc'),
-    ('apache-2.0'), ('cc0-1.0'), ('bsd-3-clause');
-
--- A repository is eligible if its license is approved.
-CREATE VIEW IF NOT EXISTS eligible_repository AS
-    SELECT *
-      FROM repository
-     WHERE license in (SELECT name FROM approved_license);
