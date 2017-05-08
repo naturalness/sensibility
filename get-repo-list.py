@@ -26,7 +26,7 @@ import sqlite3
 from typing import Iterator, Iterable
 
 from sensibility.miner.rate_limit import wait_for_rate_limit
-from sensibility.connection import github  # type: ignore
+from sensibility.miner.connection import github
 
 logger = logging.getLogger('search_worker')
 
@@ -81,7 +81,6 @@ class LanguageQuery(Iterable[str]):
 def main() -> None:
     from itertools import islice
     # TODO: take arguments: language, max results
-    # new upper-bound 307
     language = 'Python'
     for repo_name in islice(LanguageQuery('Python'), 10_000):
         print(repo_name)
