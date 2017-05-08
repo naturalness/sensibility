@@ -22,20 +22,25 @@ Obtains a list of repos from GitHub's API.
 
 import re
 import logging
-#import redis
 import sqlite3
-from github3 import login
-from typing import Iterator
+from typing import Iterator, Iterable
+
+from sensibility.connection import github  # type: ignore
 
 logger = logging.getLogger('search_worker')
 
 
-class LanguageQuery:
+class LanguageQuery(Iterable[str]):
+    """
+    Searches for the most popular repositories for the given langauge.
+    """
+
     def __init__(self, language: str, min_stars: int=10, max_stars: int=None) -> None:
         self.language = language.lower()
         assert re.match('^\w+$', self.language)
         self.max_stars = max_stars
         self.min_stars = min_stars
+        self._done = False
 
     def _make_query(self) -> str:
         if self.max_stars is not None:
@@ -44,6 +49,10 @@ class LanguageQuery:
         else:
             return (f'language:{self.language} '
                     f'stars:>={self.min_stars}')
+
+    def __iter__(self) -> Iterator[str]:
+        while not self._done:
+            yield from self.more()
 
     def more(self) -> Iterator[str]:
         """
@@ -54,38 +63,26 @@ class LanguageQuery:
         result_set = list(github.search_repositories(query, sort='stars'))
 
         if not result_set:
-            raise StopIteration
-
-        yield from (repo.repository.full_name for repo in result_set)
+            self._done = True
+            return
+        # Update the new upper-bound
         self.max_stars = result_set[-1].repository.stargazers - 1
-        if self.min_stars > self.max_stars:
-            raise StopIteration
+        logger.info('New upper-bound: %d;', self.max_stars)
 
+        # Finally, yield all the results.
+        yield from (repo.repository.full_name for repo in result_set)
 
-# Open $PWD/.token as the file containing the GitHub auth token.
-with open('.token', 'r', encoding='UTF=8') as token_file:
-    github_token = token_file.read().strip()
-
-del token_file
-github = login(token=github_token)
-logger.info('Logging in using %s', github)
-
-
-def _unused():
-    # Default Redis connection.
-    redis_client = redis.StrictRedis(db=0)
-
-    # Database hardcoded to this file path.
-    sqlite3_connection = sqlite3.connect('sources.sqlite3')
+        if self.min_stars >= self.max_stars:
+            self._done = True
+            return
 
 
 def main() -> None:
+    from itertools import islice
+    # TODO: take arguments: language, max results
     language = 'Python'
-    query = LanguageQuery(language)
-
-    #for num, result in enumerate(search_iter, start=1):
-    #   queue << result.full_name
-    #   logger.info('[%d] Adding %s to queue...', num, result.full_name)
+    for repo_name in islice(LanguageQuery('Python'), 10_000):
+        print(repo_name)
 
 
 if __name__ == '__main__':
