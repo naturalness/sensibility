@@ -1,2 +1,2 @@
 class StrictRedis:
-    def 
+    def __init__(self, db: int=None) -> None: ...
