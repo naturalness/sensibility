@@ -16,6 +16,13 @@
 PRAGMA encoding = "UTF-8";
 PRAGMA foreign_keys = ON;
 
+-- It is recommended to use WAL mode and normal synchronization when updating
+-- the database:
+--  PRAGMA journal_mode = WAL;
+--  PRAGMA synchronous = NORMAL;
+-- It is recommend to use DELETE mode when accessing the database read-only.
+--  PRAGMA journal_mode = DELETE;
+
 -- Represents a source code repository.
 CREATE TABLE repository (
     owner       TEXT NOT NULL,  -- the owner of the repository
