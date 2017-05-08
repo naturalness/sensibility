@@ -15,7 +15,7 @@ class ConnectionModule(ModuleType):
     @property
     def redis_client(mod) -> redis.StrictRedis:
         """
-        Import the default Redis client.
+        The default Redis client.
         """
         import redis
         return redis.StrictRedis(db=0)
@@ -23,7 +23,7 @@ class ConnectionModule(ModuleType):
     @property
     def sqlite3_connection(mod) -> sqlite3.Connection:
         """
-        Import the default Redis client.
+        The default sqlite3 connection.
         """
         from .language import language
         import sqlite3
@@ -31,6 +31,9 @@ class ConnectionModule(ModuleType):
 
     @property
     def github(mod) -> github3.GitHub:
+        """
+        The default GitHub API connection.
+        """
         from github3 import login
         # Open $PWD/.token as the file containing the GitHub auth token.
         with open('.token', 'r', encoding='UTF=8') as token_file:
