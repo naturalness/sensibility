@@ -25,6 +25,7 @@ import logging
 import sqlite3
 from typing import Iterator, Iterable
 
+from sensibility.miner.rate_limit import wait_for_rate_limit
 from sensibility.connection import github  # type: ignore
 
 logger = logging.getLogger('search_worker')
@@ -60,6 +61,7 @@ class LanguageQuery(Iterable[str]):
         """
         query = self._make_query()
         logger.info('Issuing query: %r', query)
+        wait_for_rate_limit('search')
         result_set = list(github.search_repositories(query, sort='stars'))
 
         if not result_set:
@@ -67,7 +69,6 @@ class LanguageQuery(Iterable[str]):
             return
         # Update the new upper-bound
         self.max_stars = result_set[-1].repository.stargazers - 1
-        logger.info('New upper-bound: %d;', self.max_stars)
 
         # Finally, yield all the results.
         yield from (repo.repository.full_name for repo in result_set)
@@ -80,6 +81,7 @@ class LanguageQuery(Iterable[str]):
 def main() -> None:
     from itertools import islice
     # TODO: take arguments: language, max results
+    # new upper-bound 307
     language = 'Python'
     for repo_name in islice(LanguageQuery('Python'), 10_000):
         print(repo_name)

@@ -15,46 +15,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Proxies to the common connections.
+"""
+
+import sqlite3
 import sys
 from types import ModuleType
 
 import redis
-import sqlite3
 import github3
+from lazy_object_proxy import Proxy
+
+from .language import language
 
 
-class ConnectionModule(ModuleType):
+__all__ = ['redis_client', 'sqlite3_connection', 'github']
+
+
+redis_client = Proxy(lambda: redis.StrictRedis(db=0))
+"""
+The default Redis client.
+"""
+
+sqlite3_connection = Proxy(
+    lambda: sqlite3.connect(f'sources-{language}.sqlite3')
+)
+"""
+The default sqlite3 connection.
+"""
+
+@Proxy
+def github() -> github3.GitHub:
     """
-    Returns the appropriate clients.
+    The default GitHub API connection.
     """
-    __all__ = ['redis_client', 'sqlite3_connection', 'github']
-
-    @property
-    def redis_client(mod) -> redis.StrictRedis:
-        """
-        The default Redis client.
-        """
-        import redis
-        return redis.StrictRedis(db=0)
-
-    @property
-    def sqlite3_connection(mod) -> sqlite3.Connection:
-        """
-        The default sqlite3 connection.
-        """
-        from .language import language
-        import sqlite3
-        return sqlite3.connect(f'sources-{language}.sqlite3')
-
-    @property
-    def github(mod) -> github3.GitHub:
-        """
-        The default GitHub API connection.
-        """
-        from github3 import login
-        # Open $PWD/.token as the file containing the GitHub auth token.
-        with open('.token', 'r', encoding='UTF=8') as token_file:
-            github_token = token_file.read().strip()
-        return login(token=github_token)
-
-sys.modules[__name__] = ConnectionModule(__name__)
+    # Open $PWD/.token as the file containing the GitHub auth token.
+    with open('.token', 'r', encoding='UTF=8') as token_file:
+        github_token = token_file.read().strip()
+    return github3.login(token=github_token)

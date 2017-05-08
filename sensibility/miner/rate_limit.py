@@ -19,13 +19,11 @@
 import logging
 import time
 
-from connection import github
-
-
 logger = logging.getLogger(__name__)
+from .. import 
 
 
-def wait_for_rate_limit(resource='core'):
+def wait_for_rate_limit(resource='core') -> None:
     """
     Checks the rate limit and waits if the rate limit is beyond a certain
     threshold.
