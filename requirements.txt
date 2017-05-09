@@ -1,7 +1,10 @@
-tqdm
-redis
-sh
-path.py
-requests
-github3.py==1.0.0a4
-git+https://github.com/eddieantonio/miner-db.git@javascript
+github3.py==0.9.6
+graphene==1.4
+lazy-object-proxy==1.3.1
+mypy==0.510
+pytest==3.0.7
+redis==2.10.5
+requests==2.13.0
+typed-ast==1.0.3
+uritemplate.py==3.0.2
+uritemplate==3.0.0
