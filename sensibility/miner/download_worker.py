@@ -28,14 +28,14 @@ import zipfile
 
 import requests
 
-from miner_db import Database, DuplicateFileError
-from miner_db.datatypes import RepositoryID, Repository, SourceFile
-from rqueue import Queue, WorkQueue
-from connection import redis_client, sqlite3_connection, github_token
-from rate_limit import wait_for_rate_limit
+#from miner_db import Database, DuplicateFileError
+#from miner_db.datatypes import RepositoryID, Repository, SourceFile
+#from rqueue import Queue, WorkQueue
+#from connection import redis_client, sqlite3_connection, github_token
+#from rate_limit import wait_for_rate_limit
 
-from names import DOWNLOAD_QUEUE as QUEUE_NAME, PARSE_QUEUE
-QUEUE_ERRORS = QUEUE_NAME.errors
+#from names import DOWNLOAD_QUEUE as QUEUE_NAME, PARSE_QUEUE
+#QUEUE_ERRORS = QUEUE_NAME.errors
 
 logger = logging.getLogger('download_worker')
 

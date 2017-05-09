@@ -2,13 +2,13 @@
 # -*- coding: UTF-8 -*-
 
 # Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,42 +19,43 @@
 r"""
 
 First, ensure the Redis server is running, and clear it.
-
->>> client = redis.StrictRedis(db=1)
->>> client.flushdb()
-True
-
-Okay, now we can rock.
-
->>> q = Queue('foo', client)
->>> from miner_db.datatypes import RepositoryID
->>> q << RepositoryID('eddieantonio', 'bop')
->>> list(q)
-[b'eddieantonio/bop']
-
->>> q << "<sentinel>"
->>> line = Queue('bar', client)
->>> q >> line
->>> list(q)
-[b'<sentinel>']
->>> list(line)
-[b'eddieantonio/bop']
-
-WorkQueue tests:
-
->>> q.clear()
->>> q << "hello"
->>> worker = WorkQueue(q)
->>> name = worker.name
->>> import re; bool(re.match(r'^q:worker:[0-9a-f\-]{20,}$', name))
-True
->>> worker.get()
-b'hello'
->>> worker.acknowledge(b'hello')
->>> worker.get(timeout=1) is None
-True
-
 """
+
+def inert_test():
+    client = redis.StrictRedis(db=1)
+    client.flushdb()
+    #True
+
+    # Okay, now we can rock.
+
+    q = Queue('foo', client)
+    from miner_db.datatypes import RepositoryID
+    q << RepositoryID('eddieantonio', 'bop')
+    list(q)
+    #[b'eddieantonio/bop']
+
+    q << "<sentinel>"
+    line = Queue('bar', client)
+    q >> line
+    list(q)
+    #[b'<sentinel>']
+    list(line)
+    #[b'eddieantonio/bop']
+
+    #WorkQueue tests:
+
+    q.clear()
+    q << "hello"
+    worker = WorkQueue(q)
+    name = worker.name
+    import re; bool(re.match(r'^q:worker:[0-9a-f\-]{20,}$', name))
+    #True
+    worker.get()
+    #b'hello'
+    worker.acknowledge(b'hello')
+    worker.get(timeout=1) is None
+    #True
+
 
 import uuid
 
