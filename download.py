@@ -28,6 +28,9 @@ import zipfile
 
 import requests
 
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
+
 #from miner_db import Database, DuplicateFileError
 #from miner_db.datatypes import RepositoryID, Repository, SourceFile
 #from rqueue import Queue, WorkQueue
@@ -144,6 +147,28 @@ def main():
             worker.acknowledge(repo_id)
             logger.info('Downloaded: %s', repo_id)
 
+def sure() -> None:
+    client = Client(RequestsHTTPTransport(
+    ))
+
+    query = gql('''
+    query RepositoryInfo($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) {
+          path
+            defaultBranchRef {
+                name
+                target {
+                    sha1: oid
+                    ... on Commit {
+                      committedDate
+                    }
+                }
+            }
+            license
+        }
+    }
+    ''')
+    client.execute(query)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
