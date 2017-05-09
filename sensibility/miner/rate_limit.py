@@ -36,13 +36,15 @@ def wait_for_rate_limit(resource='core') -> None:
     limit_info = response['resources'][resource]
 
     remaining = limit_info['remaining']
-    logger.debug('%d requests remaining', remaining)
+    logger.info('%d requests remaining', remaining)
 
-    if remaining < 10:
+    if remaining <= 10:
         # Wait until reset
         reset = limit_info['reset']
         logger.info('Exceded rate limit; waiting until %r', reset)
-        time.sleep(seconds_until(reset) + 1)
+        # Wait two extra seconds just to ensure.
+        time.sleep(seconds_until(reset) + 2)
+        wait_for_rate_limit(resource)
 
 
 def seconds_until(timestamp: float) -> float:

@@ -23,6 +23,7 @@ Obtains a list of repos from GitHub's API.
 import re
 import logging
 import sqlite3
+import argparse
 from typing import Iterator, Iterable
 
 from sensibility.miner.rate_limit import wait_for_rate_limit
@@ -80,9 +81,12 @@ class LanguageQuery(Iterable[str]):
 
 def main() -> None:
     from itertools import islice
-    # TODO: take arguments: language, max results
-    language = 'Python'
-    for repo_name in islice(LanguageQuery('Python'), 10_000):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('language', type=str)
+    parser.add_argument('--max-results', type=int, default=10_000)
+    args = parser.parse_args()
+    repos = islice(LanguageQuery(args.language), args.max_results)
+    for repo_name in repos:
         print(repo_name)
 
 
