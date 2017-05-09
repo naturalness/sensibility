@@ -34,8 +34,8 @@ import requests
 #from connection import redis_client, sqlite3_connection, github_token
 #from rate_limit import wait_for_rate_limit
 
-#from names import DOWNLOAD_QUEUE as QUEUE_NAME, PARSE_QUEUE
-#QUEUE_ERRORS = QUEUE_NAME.errors
+from sensibility.miner.names import DOWNLOAD_QUEUE, PARSE_QUEUE
+QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 
 logger = logging.getLogger('download_worker')
 
@@ -96,16 +96,9 @@ def download_source_files(repo):
             yield SourceFile.create(repo, source, path)
 
 
-def seconds_until(timestamp):
-    now = datetime.datetime.now()
-    future = datetime.datetime.fromtimestamp(timestamp)
-    difference = future - now
-    return difference.seconds
-
-
 def main():
     db = Database(sqlite3_connection)
-    worker = WorkQueue(Queue(QUEUE_NAME, redis_client))
+    worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
     parser_worker = Queue(PARSE_QUEUE, redis_client)
 
