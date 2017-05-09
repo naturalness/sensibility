@@ -16,64 +16,61 @@
 # limitations under the License.
 
 import uuid
+from typing import AnyStr, Iterable
+
 import redis
 
+from .names import WORK_QUEUE
 
-class Queue:
-    def __init__(self, name, client=None):
+
+class Queue(Iterable[bytes]):
+    def __init__(self, name: str, client: redis.StrictRedis=None) -> None:
         self.name = name
         if client is None:
             self.client = redis.StrictRedis()
         else:
-            assert isinstance(client, redis.StrictRedis)
             self.client = client
 
-    def enqueue(self, thing):
-        if isinstance(thing, (str, bytes)):
-            serialized = thing
-        else:
-            serialized = str(thing)
-        return self.client.lpush(self.name, thing)
+    def enqueue(self, thing: AnyStr) -> None:
+        self.client.lpush(self.name, thing)
 
-    def pop(self):
+    def pop(self) -> None:
         return self.client.rpop(self.name)
 
-    def __lshift__(self, other):
+    def __lshift__(self, other: AnyStr) -> None:
         """Alias for self.enqueue(rhs); discards return."""
         self.enqueue(other)
 
-    def __rshift__(self, other):
+    def __rshift__(self, other: 'Queue') -> None:
         """Alias for self.transfer(other)"""
         self.transfer(other)
 
     def __iter__(self):
         return iter(self.client.lrange(self.name, 0, -1))
 
-    def clear(self):
+    def clear(self) -> None:
         self.client.delete(self.name)
 
-    def remove(self, value, count=1):
+    def remove(self, value: AnyStr, count: int=1) -> None:
         self.client.lrem(self.name, count, value)
 
-    def transfer(self, other, timeout=0):
+    def transfer(self, other: 'Queue', timeout: int=0) -> bytes:
         """Transfer one element to the other"""
-        assert isinstance(other, Queue)
         return self.client.brpoplpush(self.name, other.name, timeout)
 
 
 class WorkQueue:
-    def __init__(self, queue):
-        assert isinstance(queue, Queue)
+    def __init__(self, queue: Queue) -> None:
         self.origin = queue
-        name = "q:worker:%s" % (uuid.uuid4(),)
-        self._processing = Queue(name, client=queue.client)
+        self._id = uuid.uuid4()
+        self._processing = Queue(self.name, client=queue.client)
 
     @property
-    def name(self):
-        return self._processing.name
+    def name(self) -> str:
+        return WORK_QUEUE[self._id]
 
-    def get(self, timeout=0):
+    def get(self, timeout: int=0) -> bytes:
         return self.origin.transfer(self._processing, timeout)
 
-    def acknowledge(self, value):
+    def acknowledge(self, value: AnyStr) -> None:
         self._processing.remove(value)

@@ -51,7 +51,7 @@ def test_work_queue(redis_client):
     q << "hello"
 
     worker = WorkQueue(q)
-    assert re.match(r'^q:worker:[0-9a-f\-]{20,}$', worker.name)
+    assert re.match(r'^q:work:[0-9a-f\-]{20,}$', worker.name)
     assert worker.get() == b'hello'
 
     worker.acknowledge(b'hello')
