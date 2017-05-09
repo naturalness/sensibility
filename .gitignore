@@ -8,3 +8,4 @@ dump.rdb
 venv/
 .mypy_cache
 .python-version
+/*.egg-info

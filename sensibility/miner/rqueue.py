@@ -15,50 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-r"""
-
-First, ensure the Redis server is running, and clear it.
-"""
-
-def inert_test():
-    client = redis.StrictRedis(db=1)
-    client.flushdb()
-    #True
-
-    # Okay, now we can rock.
-
-    q = Queue('foo', client)
-    from miner_db.datatypes import RepositoryID
-    q << RepositoryID('eddieantonio', 'bop')
-    list(q)
-    #[b'eddieantonio/bop']
-
-    q << "<sentinel>"
-    line = Queue('bar', client)
-    q >> line
-    list(q)
-    #[b'<sentinel>']
-    list(line)
-    #[b'eddieantonio/bop']
-
-    #WorkQueue tests:
-
-    q.clear()
-    q << "hello"
-    worker = WorkQueue(q)
-    name = worker.name
-    import re; bool(re.match(r'^q:worker:[0-9a-f\-]{20,}$', name))
-    #True
-    worker.get()
-    #b'hello'
-    worker.acknowledge(b'hello')
-    worker.get(timeout=1) is None
-    #True
-
-
 import uuid
-
 import redis
 
 
