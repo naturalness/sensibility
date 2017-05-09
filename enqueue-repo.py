@@ -17,9 +17,9 @@ from sensibility.miner.rqueue import Queue
 
 def repository(item: str) -> str:
     match = re.match(r'''^
-        [\w\-.]+
+        [\w_\-.]+
         /
-        [\w\-.]+
+        [\w_\-.]+
     $''', item, re.VERBOSE)
     if match is None:
         raise ValueError(item)
