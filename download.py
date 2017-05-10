@@ -21,11 +21,13 @@ Downloads metadata from the GitHub API.
 """
 
 import datetime
+import hashlib
 import io
 import logging
 import time
 import zipfile
-from typing import Union, Any, Dict, NamedTuple
+from typing import Any, Dict, Iterator, NamedTuple, Tuple, Union
+from pathlib import PurePosixPath
 
 import requests
 import dateutil.parser
@@ -47,6 +49,26 @@ class RepositoryMetadata(NamedTuple):
     revision: str
     license: str
     commit_date: datetime.datetime
+
+
+class SourceFile:
+    def __init__(self, source: bytes) -> None:
+        self.source = source
+
+    @property
+    def filehash(self):
+        m = hashlib.sha256()
+        m.update(self.source)
+        return m.hexdigest()
+
+    def __repr__(self) -> str:
+        return f"SourceFile({self.filehash!r}, source=...)"
+
+
+class SourceFileInRepository(NamedTuple):
+    repository: RepositoryMetadata
+    source_file: SourceFile
+    path: PurePosixPath
 
 
 class GitHubGraphQLClient:
@@ -151,17 +173,27 @@ class GitHubGraphQLClient:
         time.sleep(seconds_remaining)
 
 
+def coerce_to_bytes(thing: Union[str, bytes]) -> bytes:
+    return thing.encode('UTF-8') if isinstance(thing, str) else thing
+
+
+def clean_path(path: str) -> PurePosixPath:
+    """
+    >>> clean_path('eddieantonio-bop-9884ff9/bop/__init__.py')
+    PurePosixPath('bop/__init__.py')
+    """
+    return PurePosixPath(*PurePosixPath(path).parts[1:])
+
+
 class SourceFileExtractor:
     extension: str = '.py'
 
-    def extract_sources(self, archive):
+    def extract_sources(self, archive) -> Iterator[Tuple[PurePosixPath, bytes]]:
         for path in archive.namelist():
-            if not filename.endswith(self.extension):
+            if not path.endswith(self.extension):
                 continue
-
-            with archive.open(filename) as js_file:
-                # TODO: path has junk at the front.
-                yield path, js_file.read()
+            with archive.open(path, mode='r') as source_file:
+                yield clean_path(path), coerce_to_bytes(source_file.read())
 
     @staticmethod
     def zip_url_for(repo: RepositoryMetadata) -> str:
@@ -170,7 +202,7 @@ class SourceFileExtractor:
         revision = repo.revision
         return f"https://api.github.com/repos/{owner}/{name}/zipball/{revision}"
 
-    def download(self, repo: RepositoryMetadata) -> None:
+    def download(self, repo: RepositoryMetadata) -> Iterator[SourceFileInRepository]:
         url = self.zip_url_for(repo)
 
         wait_for_rate_limit()
@@ -185,8 +217,7 @@ class SourceFileExtractor:
         with zipfile.ZipFile(fake_file) as repo_zip:
             # Iterate through all javascript files
             for path, source in self.extract_sources(repo_zip):
-                logger.debug("Extracted %s", path)
-                #yield SourceFile.create(repo, source, path)
+                yield SourceFileInRepository(repo, SourceFile(source), path)
 
 
 def main():
@@ -240,6 +271,8 @@ def main():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    #client = GitHubGraphQLClient()
-    #client.fetch_repository(RepositoryID.parse('eddieantonio/imgcat'))
+    client = GitHubGraphQLClient()
+    repo = client.fetch_repository(RepositoryID.parse('eddieantonio/training-grammar-guru'))
+    extractor = SourceFileExtractor()
+    contents = list(extractor.download(repo))
     #main()
