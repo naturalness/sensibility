@@ -25,7 +25,8 @@ import io
 import logging
 import time
 import zipfile
-from typing import Union, Any, Dict
+import dateutil
+from typing import Union, Any, Dict, NamedTuple
 
 import requests
 
@@ -39,6 +40,14 @@ QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
 
 
+class RepositoryMetadata(NamedTuple):
+    owner: str
+    name: str
+    revision: str
+    license: str
+    commit_date: datetime.datetime
+
+
 class GitHubGraphQLClient:
     endpoint = "https://api.github.com/graphql"
 
@@ -48,7 +57,7 @@ class GitHubGraphQLClient:
         # todo: datetime?
         self._ratelimit_reset = 0.0
 
-    def fetch_repository(self, owner: str, name: str) -> Dict[str, Any]:
+    def fetch_repository(self, owner: str, name: str) -> RepositoryMetadata:
         r"""
         Returns:
             {
@@ -66,7 +75,7 @@ class GitHubGraphQLClient:
               }
             }
         """
-        return self.query(r"""
+        json_data = self.query(r"""
             query RepositoryInfo($owner: String!, $name: String!) {
               repository(owner: $owner, name: $name) {
                 nameWithOwner
@@ -84,6 +93,18 @@ class GitHubGraphQLClient:
               }
             }
         """, owner=owner, name=name)
+
+        info = json_data['repository']
+        owner, name = parse_full_name(info['nameWithOwner'])
+        latest_commit = info['defaultBranchRef']['target']
+
+        return RepositoryMetadata(
+            owner=owner,
+            name=name,
+            revision=latest_commit['sha1'],
+            license=info['license'],
+            commit_date=dateutil.parser.parse(latest_commit['committedDate'])
+        )
 
     def query(self, query: str, **kwargs: Union[str, float, bool]) -> Dict[str, Any]:
         """
