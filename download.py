@@ -33,7 +33,7 @@ import dateutil.parser
 from sensibility.miner.connection import redis_client, sqlite3_connection, github_token
 from sensibility.miner.names import DOWNLOAD_QUEUE, PARSE_QUEUE
 from sensibility.miner.rqueue import Queue, WorkQueue
-from sensibility.miner.rate_limit import seconds_until
+from sensibility.miner.rate_limit import wait_for_rate_limit, seconds_until
 from sensibility.miner.repository import RepositoryID
 
 
@@ -50,6 +50,11 @@ class RepositoryMetadata(NamedTuple):
 
 
 class GitHubGraphQLClient:
+    """
+    Allows fetches from GitHub's GraphQL endpoint.
+    As of this writing, the endpoint is in alpha status, and has a restrictive
+    rate limit.
+    """
     endpoint = "https://api.github.com/graphql"
 
     def __init__(self) -> None:
@@ -58,23 +63,9 @@ class GitHubGraphQLClient:
         # todo: datetime?
         self._ratelimit_reset = 0.0
 
-    def fetch_repository(self, owner: str, name: str) -> RepositoryMetadata:
-        r"""
-        Returns:
-            {
-              "repository": {
-                "nameWithOwner": "orezpraw/MIT-Language-Modeling-Toolkit",
-                "url": "https://github.com/orezpraw/MIT-Language-Modeling-Toolkit",
-                "defaultBranchRef": {
-                  "name": "master",
-                  "target": {
-                    "sha1": "267325017f60dee86caacd5b207eacdc50a3fc32",
-                    "committedDate": "2017-04-05T01:56:08Z"
-                  }
-                },
-                "license": "BSD 3-clause \"New\" or \"Revised\" License"
-              }
-            }
+    def fetch_repository(self, repo: RepositoryID) -> RepositoryMetadata:
+        """
+        Return RepositoryMetadata for the given owner/name.
         """
         json_data = self.query(r"""
             query RepositoryInfo($owner: String!, $name: String!) {
@@ -93,7 +84,7 @@ class GitHubGraphQLClient:
                 license
               }
             }
-        """, owner=owner, name=name)
+        """, owner=repo.owner, name=repo.name)
 
         info = json_data['repository']
         owner, name = RepositoryID.parse(info['nameWithOwner'])
@@ -109,7 +100,7 @@ class GitHubGraphQLClient:
 
     def query(self, query: str, **kwargs: Union[str, float, bool]) -> Dict[str, Any]:
         """
-        Requests for all the relevant information.
+        Issues a GraphQL query.
         """
 
         logger.info("Performing query with vars: %r", kwargs)
@@ -160,60 +151,42 @@ class GitHubGraphQLClient:
         time.sleep(seconds_remaining)
 
 
-def get_repo_info(repo_id):
-    url = repo_id.api_url
-    logger.debug('Accessing %s', url)
+class SourceFileExtractor:
+    extension: str = '.py'
 
-    wait_for_rate_limit()
-    resp = requests.get(url, headers={
-        'User-Agent': 'eddieantonio-ad-hoc-miner',
-        'Accept': 'application/vnd.github.drax-preview+json',
-        'Authorization': "token %s" % (github_token,)
-    })
+    def extract_sources(self, archive):
+        for path in archive.namelist():
+            if not filename.endswith(self.extension):
+                continue
 
-    assert resp.status_code == 200
-    body = resp.json()
-    logger.debug("Headers: %r", resp.headers)
-    logger.debug("Body: %r", resp.content)
+            with archive.open(filename) as js_file:
+                # TODO: path has junk at the front.
+                yield path, js_file.read()
 
-    # Get the license, else assume None
-    try:
-        license = body['license']['key']
-    except (KeyError, TypeError):
-        license = None
-    rev = body.get('default_branch', 'master')
+    @staticmethod
+    def zip_url_for(repo: RepositoryMetadata) -> str:
+        owner = repo.owner
+        name = repo.name
+        revision = repo.revision
+        return f"https://api.github.com/repos/{owner}/{name}/zipball/{revision}"
 
-    return Repository(repo_id, license, rev)
+    def download(self, repo: RepositoryMetadata) -> None:
+        url = self.zip_url_for(repo)
 
+        wait_for_rate_limit()
+        resp = requests.get(url, headers={
+            'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
+            'Authorization': f"token {github_token}"
+        })
+        resp.raise_for_status()
 
-def extract_js(archive):
-    for filename in archive.namelist():
-        if not filename.endswith('.js'):
-            continue
-
-        with archive.open(filename) as js_file:
-            yield filename, js_file.read()
-
-
-def download_source_files(repo):
-    assert isinstance(repo, Repository)
-    url = repo.id.archive_url(format="zipball", revision=repo.revision)
-
-    wait_for_rate_limit()
-    resp = requests.get(url, headers={
-        'User-Agent': 'eddieantonio-ad-hoc-miner',
-        'Authorization': "token %s" % (github_token,)
-    })
-
-    assert resp.status_code == 200
-
-    # Open zip file
-    fake_file = io.BytesIO(resp.content)
-    with zipfile.ZipFile(fake_file) as repo_zip:
-        # Iterate through all javascript files
-        for path, source in extract_js(repo_zip):
-            logger.debug("Extracted %s", path)
-            yield SourceFile.create(repo, source, path)
+        # Open zip file
+        fake_file = io.BytesIO(resp.content)
+        with zipfile.ZipFile(fake_file) as repo_zip:
+            # Iterate through all javascript files
+            for path, source in self.extract_sources(repo_zip):
+                logger.debug("Extracted %s", path)
+                #yield SourceFile.create(repo, source, path)
 
 
 def main():
@@ -267,7 +240,6 @@ def main():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    client = GitHubGraphQLClient()
-    data = client.fetch_repository('orezpraw', 'mit-language-modeling-toolkit')
-    import pdb; pdb.set_trace()
+    #client = GitHubGraphQLClient()
+    #client.fetch_repository(RepositoryID.parse('eddieantonio/imgcat'))
     #main()
