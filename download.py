@@ -15,13 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
-Downloads metadata from the GitHub API.
+Downloads metadata and source files from GitHub.
+
+Have the Redis server running, then
+
+    python download.py
+
+This script will do the rest :D.
 """
 
 import datetime
-import hashlib
 import io
 import logging
 import time
@@ -36,39 +40,13 @@ from sensibility.miner.connection import redis_client, sqlite3_connection, githu
 from sensibility.miner.names import DOWNLOAD_QUEUE, PARSE_QUEUE
 from sensibility.miner.rqueue import Queue, WorkQueue
 from sensibility.miner.rate_limit import wait_for_rate_limit, seconds_until
-from sensibility.miner.repository import RepositoryID
+from sensibility.miner.models import (
+    RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
+)
 
 
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
-
-
-class RepositoryMetadata(NamedTuple):
-    owner: str
-    name: str
-    revision: str
-    license: str
-    commit_date: datetime.datetime
-
-
-class SourceFile:
-    def __init__(self, source: bytes) -> None:
-        self.source = source
-
-    @property
-    def filehash(self):
-        m = hashlib.sha256()
-        m.update(self.source)
-        return m.hexdigest()
-
-    def __repr__(self) -> str:
-        return f"SourceFile({self.filehash!r}, source=...)"
-
-
-class SourceFileInRepository(NamedTuple):
-    repository: RepositoryMetadata
-    source_file: SourceFile
-    path: PurePosixPath
 
 
 class GitHubGraphQLClient:
@@ -173,17 +151,6 @@ class GitHubGraphQLClient:
         time.sleep(seconds_remaining)
 
 
-def coerce_to_bytes(thing: Union[str, bytes]) -> bytes:
-    return thing.encode('UTF-8') if isinstance(thing, str) else thing
-
-
-def clean_path(path: str) -> PurePosixPath:
-    """
-    >>> clean_path('eddieantonio-bop-9884ff9/bop/__init__.py')
-    PurePosixPath('bop/__init__.py')
-    """
-    return PurePosixPath(*PurePosixPath(path).parts[1:])
-
 
 class SourceFileExtractor:
     extension: str = '.py'
@@ -220,7 +187,7 @@ class SourceFileExtractor:
                 yield SourceFileInRepository(repo, SourceFile(source), path)
 
 
-def main():
+def main() -> None:
     db = Database(sqlite3_connection)
     worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
     aborted = Queue(QUEUE_ERRORS, redis_client)
@@ -267,6 +234,18 @@ def main():
         else:
             worker.acknowledge(repo_id)
             logger.info('Downloaded: %s', repo_id)
+
+
+def coerce_to_bytes(thing: Union[str, bytes]) -> bytes:
+    return thing.encode('UTF-8') if isinstance(thing, str) else thing
+
+
+def clean_path(path: str) -> PurePosixPath:
+    """
+    >>> clean_path('eddieantonio-bop-9884ff9/bop/__init__.py')
+    PurePosixPath('bop/__init__.py')
+    """
+    return PurePosixPath(*PurePosixPath(path).parts[1:])
 
 
 if __name__ == '__main__':

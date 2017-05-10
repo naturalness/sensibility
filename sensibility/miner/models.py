@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
 Provides RepositoryInfo
 
@@ -26,7 +25,19 @@ RepositoryID(owner='erlang', name='otp')
 """
 
 import re
+import hashlib
+import datetime
+from pathlib import PurePosixPath
 from typing import NamedTuple
+
+
+__all__ = [
+    'RepositoryID'
+    'RepositoryMetadata',
+    'SourceFile',
+    'SourceFileInRepository',
+]
+""
 
 
 class _RepositoryID(NamedTuple):
@@ -45,12 +56,38 @@ class RepositoryID(_RepositoryID):
     @classmethod
     def parse(cls, text: str) -> 'RepositoryID':
         match = re.match(r'''^
-            (?P<owner>[\w_\-.]+)
-            /
-            (?P<name>[\w_\-.]+)
+            (?P<owner>[\w_\-.]+) / (?P<name>[\w_\-.]+)
         $''', text, re.VERBOSE)
 
         if match is None:
             raise ValueError(text)
 
         return cls(match.group('owner'), match.group('name'))
+
+
+class RepositoryMetadata(NamedTuple):
+    owner: str
+    name: str
+    revision: str
+    license: str
+    commit_date: datetime.datetime
+
+
+class SourceFile:
+    def __init__(self, source: bytes) -> None:
+        self.source = source
+
+    @property
+    def filehash(self):
+        m = hashlib.sha256()
+        m.update(self.source)
+        return m.hexdigest()
+
+    def __repr__(self) -> str:
+        return f"SourceFile({self.filehash!r}, source=...)"
+
+
+class SourceFileInRepository(NamedTuple):
+    repository: RepositoryMetadata
+    source_file: SourceFile
+    path: PurePosixPath
