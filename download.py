@@ -25,22 +25,117 @@ import io
 import logging
 import time
 import zipfile
+from typing import Union, Any, Dict
 
 import requests
 
-from gql import gql, Client
-from gql.transport.requests import RequestsHTTPTransport
-
-#from miner_db import Database, DuplicateFileError
-#from miner_db.datatypes import RepositoryID, Repository, SourceFile
-#from rqueue import Queue, WorkQueue
-#from connection import redis_client, sqlite3_connection, github_token
-#from rate_limit import wait_for_rate_limit
-
+from sensibility.miner.connection import redis_client, sqlite3_connection, github_token
 from sensibility.miner.names import DOWNLOAD_QUEUE, PARSE_QUEUE
-QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
+from sensibility.miner.rqueue import Queue, WorkQueue
+from sensibility.miner.rate_limit import seconds_until
 
+
+QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
+
+
+class GitHubGraphQLClient:
+    endpoint = "https://api.github.com/graphql"
+
+    def __init__(self) -> None:
+        ...
+        self._requests_remaining = 11  # One more than min
+        # todo: datetime?
+        self._ratelimit_reset = 0.0
+
+    def fetch_repository(self, owner: str, name: str) -> Dict[str, Any]:
+        r"""
+        Returns:
+            {
+              "repository": {
+                "nameWithOwner": "orezpraw/MIT-Language-Modeling-Toolkit",
+                "url": "https://github.com/orezpraw/MIT-Language-Modeling-Toolkit",
+                "defaultBranchRef": {
+                  "name": "master",
+                  "target": {
+                    "sha1": "267325017f60dee86caacd5b207eacdc50a3fc32",
+                    "committedDate": "2017-04-05T01:56:08Z"
+                  }
+                },
+                "license": "BSD 3-clause \"New\" or \"Revised\" License"
+              }
+            }
+        """
+        return self.query(r"""
+            query RepositoryInfo($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                nameWithOwner
+                url
+                defaultBranchRef {
+                  name
+                  target {
+                    sha1: oid
+                    ... on Commit {
+                      committedDate
+                    }
+                  }
+                }
+                license
+              }
+            }
+        """, owner=owner, name=name)
+
+    def query(self, query: str, **kwargs: Union[str, float, bool]) -> Dict[str, Any]:
+        """
+        Requests for all the relevant information.
+        """
+
+        logger.info("Performing query with vars: %r", kwargs)
+
+        self.wait_for_rate_limit()
+        resp = requests.post(self.endpoint, headers={
+            'Authorization': f"bearer {github_token}",
+            'Accept': 'application/json',
+            'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
+        }, json={
+            "query": query,
+            "variables": kwargs
+        })
+        resp.raise_for_status()
+        self.update_rate_limit(resp)
+
+        response = resp.json()
+        # Check that there are no errors.
+        if 'errors' in response and not response.get('data', False):
+            raise ValueError(repr(response['errors']))
+
+        return response['data']
+
+    def update_rate_limit(self, resp: requests.Response) -> None:
+        self._requests_remaining = int(resp.headers['X-RateLimit-Remaining'])
+        self._ratelimit_reset = float(resp.headers['X-RateLimit-Reset'])
+        logger.info('Updated ratelimit: %d left; reset at %s (in %s seconds)',
+                    self._requests_remaining, self.ratelimit_reset,
+                    self.seconds_until_reset)
+
+    @property
+    def ratelimit_reset(self) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(self._ratelimit_reset)
+
+    @property
+    def seconds_until_reset(self) -> float:
+        return seconds_until(self._ratelimit_reset)
+
+    def wait_for_rate_limit(self) -> None:
+        """
+        Blocks until the rate limit is ready.
+        """
+        if self._requests_remaining > 10:
+            return
+        seconds_remaining = seconds_until(self._ratelimit_reset) + 2
+        logger.info("Rate limit almost exceeded; waiting %d seconds",
+                    seconds_remaining)
+        time.sleep(seconds_remaining)
 
 
 def get_repo_info(repo_id):
@@ -147,29 +242,10 @@ def main():
             worker.acknowledge(repo_id)
             logger.info('Downloaded: %s', repo_id)
 
-def sure() -> None:
-    client = Client(RequestsHTTPTransport(
-    ))
-
-    query = gql('''
-    query RepositoryInfo($owner: String!, $name: String!) {
-        repository(owner: $owner, name: $name) {
-          path
-            defaultBranchRef {
-                name
-                target {
-                    sha1: oid
-                    ... on Commit {
-                      committedDate
-                    }
-                }
-            }
-            license
-        }
-    }
-    ''')
-    client.execute(query)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    main()
+    client = GitHubGraphQLClient()
+    data = client.fetch_repository('orezpraw', 'mit-language-modeling-toolkit')
+    import pdb; pdb.set_trace()
+    #main()

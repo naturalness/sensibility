@@ -30,7 +30,7 @@ from lazy_object_proxy import Proxy
 from ..language import language
 
 
-__all__ = ['redis_client', 'sqlite3_connection', 'github']
+__all__ = ['redis_client', 'sqlite3_connection', 'github', 'github_token']
 
 
 redis_client = Proxy(lambda: redis.StrictRedis(db=0))
@@ -45,12 +45,16 @@ sqlite3_connection = Proxy(
 The default sqlite3 connection.
 """
 
+github = Proxy(lambda: github3.login(token=str(github_token)))
+"""
+The default GitHub connection.
+"""
+
 @Proxy
-def github() -> github3.GitHub:
+def github_token() -> str:
     """
-    The default GitHub API connection.
+    The GitHub token.
     """
     # Open $PWD/.token as the file containing the GitHub auth token.
     with open('.token', 'r', encoding='UTF=8') as token_file:
-        github_token = token_file.read().strip()
-    return github3.login(token=github_token)
+        return token_file.read().strip()
