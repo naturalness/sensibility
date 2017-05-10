@@ -25,15 +25,16 @@ import io
 import logging
 import time
 import zipfile
-import dateutil
 from typing import Union, Any, Dict, NamedTuple
 
 import requests
+import dateutil.parser
 
 from sensibility.miner.connection import redis_client, sqlite3_connection, github_token
 from sensibility.miner.names import DOWNLOAD_QUEUE, PARSE_QUEUE
 from sensibility.miner.rqueue import Queue, WorkQueue
 from sensibility.miner.rate_limit import seconds_until
+from sensibility.miner.repository import RepositoryID
 
 
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
@@ -95,7 +96,7 @@ class GitHubGraphQLClient:
         """, owner=owner, name=name)
 
         info = json_data['repository']
-        owner, name = parse_full_name(info['nameWithOwner'])
+        owner, name = RepositoryID.parse(info['nameWithOwner'])
         latest_commit = info['defaultBranchRef']['target']
 
         return RepositoryMetadata(
