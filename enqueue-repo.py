@@ -13,7 +13,7 @@ from typing import Iterator
 from sensibility.miner.connection import redis_client
 from sensibility.miner.names import DOWNLOAD_QUEUE
 from sensibility.miner.rqueue import Queue
-from sensibility.miner.repository import RepositoryID
+from sensibility.miner.models import RepositoryID
 
 parser = argparse.ArgumentParser()
 parser.add_argument('repositories', nargs='*', type=RepositoryID.parse,

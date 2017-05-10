@@ -37,7 +37,7 @@ import requests
 import dateutil.parser
 
 from sensibility.miner.connection import redis_client, sqlite3_connection, github_token
-from sensibility.miner.names import DOWNLOAD_QUEUE, PARSE_QUEUE
+from sensibility.miner.names import DOWNLOAD_QUEUE
 from sensibility.miner.rqueue import Queue, WorkQueue
 from sensibility.miner.rate_limit import wait_for_rate_limit, seconds_until
 from sensibility.miner.models import (
@@ -47,6 +47,99 @@ from sensibility.miner.models import (
 
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
+
+
+class Downloader:
+    def __init__(self) -> None:
+        self.client = GitHubGraphQLClient()
+        self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
+        self.errors = Queue(QUEUE_ERRORS, redis_client)
+        self.extension = '.py'
+
+    def loop_forever(self) -> None:
+        logger.info("Downloader queue: %s", self.worker.name)
+        while True:
+            job = self.get_a_job()
+            try:
+                self.do_job(job)
+            except Exception:
+                # "You had one job!"
+                self.log_error(job)
+            finally:
+                self.acknowledge(job)
+
+    def get_a_job(self) -> str:
+        """
+        This will block until a job is available.
+        (place a job using enqueue-job.py)
+        """
+        # TODO: if there already is a job in the worker queue, then, fetch
+        # this job.
+        return self.worker.get().decode('UTF-8')
+
+    def acknowledge(self, job: str) -> None:
+        """
+        This must be done before getting another job.
+        """
+        return self.worker.acknowledge(job)
+
+    def do_job(self, job: str) -> None:
+        repo_id = RepositoryID.parse(job)
+
+        logger.info('Fetching %s', repo_id)
+        repo = self.client.fetch_repository(repo_id)
+        self.insert_repository(repo)
+
+        for source_file in self.download(repo):
+            self.insert_source(source_file)
+
+    def download(self, repo: RepositoryMetadata) -> Iterator[SourceFileInRepository]:
+        """
+        Downloads files for the given repository revision.
+        """
+        url = self.zip_url_for(repo)
+
+        logger.debug('Downloading %s', url)
+        wait_for_rate_limit()
+        resp = requests.get(url, headers={
+            'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
+            'Authorization': f"token {github_token}"
+        })
+        resp.raise_for_status()
+
+        # Open zip file
+        fake_file = io.BytesIO(resp.content)
+        with zipfile.ZipFile(fake_file) as repo_zip:
+            # Iterate through all javascript files
+            for path, source in self.extract_sources(repo_zip):
+                yield SourceFileInRepository(repo, SourceFile(source), path)
+
+    def log_error(self, job: str) -> None:
+        logger.exception('Error downloading "%s"', job)
+        self.errors << job
+
+    def insert_source(self, source_file: SourceFileInRepository) -> None:
+        # TODO:
+        logger.info('  > %s', source_file.path)
+
+    def insert_repository(self, repo: RepositoryMetadata) -> None:
+        # TODO:
+        logger.info('Insering %s', repo)
+
+    def extract_sources(self, archive: zipfile.ZipFile) -> Iterator[Tuple[PurePosixPath, bytes]]:
+        """
+        Extracts sources (with the given extension) from a zip file.
+        """
+        for path in archive.namelist():
+            if not path.endswith(self.extension):
+                continue
+            with archive.open(path, mode='r') as source_file:
+                yield clean_path(path), coerce_to_bytes(source_file.read())
+
+    @staticmethod
+    def zip_url_for(repo: RepositoryMetadata) -> str:
+        return (f"https://api.github.com/repos/{repo.owner}/{repo.name}"
+                f"/zipball/{repo.revision}")
 
 
 class GitHubGraphQLClient:
@@ -87,6 +180,8 @@ class GitHubGraphQLClient:
         """, owner=repo.owner, name=repo.name)
 
         info = json_data['repository']
+        if info is None:
+            raise ValueError(f'Could not fetch info for {repo}')
         owner, name = RepositoryID.parse(info['nameWithOwner'])
         latest_commit = info['defaultBranchRef']['target']
 
@@ -151,97 +246,16 @@ class GitHubGraphQLClient:
         time.sleep(seconds_remaining)
 
 
-
-class SourceFileExtractor:
-    extension: str = '.py'
-
-    def extract_sources(self, archive) -> Iterator[Tuple[PurePosixPath, bytes]]:
-        for path in archive.namelist():
-            if not path.endswith(self.extension):
-                continue
-            with archive.open(path, mode='r') as source_file:
-                yield clean_path(path), coerce_to_bytes(source_file.read())
-
-    @staticmethod
-    def zip_url_for(repo: RepositoryMetadata) -> str:
-        owner = repo.owner
-        name = repo.name
-        revision = repo.revision
-        return f"https://api.github.com/repos/{owner}/{name}/zipball/{revision}"
-
-    def download(self, repo: RepositoryMetadata) -> Iterator[SourceFileInRepository]:
-        url = self.zip_url_for(repo)
-
-        wait_for_rate_limit()
-        resp = requests.get(url, headers={
-            'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
-            'Authorization': f"token {github_token}"
-        })
-        resp.raise_for_status()
-
-        # Open zip file
-        fake_file = io.BytesIO(resp.content)
-        with zipfile.ZipFile(fake_file) as repo_zip:
-            # Iterate through all javascript files
-            for path, source in self.extract_sources(repo_zip):
-                yield SourceFileInRepository(repo, SourceFile(source), path)
-
-
-def main() -> None:
-    db = Database(sqlite3_connection)
-    worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
-    aborted = Queue(QUEUE_ERRORS, redis_client)
-    parser_worker = Queue(PARSE_QUEUE, redis_client)
-
-    logger.info("Downloader listening on %s", worker.name)
-
-    while True:
-        try:
-            repo_name = worker.get()
-        except KeyboardInterrupt:
-            logger.info('Interrupted while idle (no data loss)')
-            break
-
-        repo_id = RepositoryID.parse(repo_name.decode('utf-8'))
-
-        logger.debug('Set to download: %s', repo_id)
-
-        try:
-            repo = get_repo_info(repo_id)
-            db.add_repository(repo)
-            to_analyze = set()
-            for source_file in download_source_files(repo):
-                try:
-                    db.add_source_file(source_file)
-                except DuplicateFileError:
-                    logger.info("Duplicate file: %s", source_file.path)
-                else:
-                    to_analyze.add(source_file.hash)
-
-            # XXX: For some reason, we need to wait a bit before adding to the
-            # queue, or else the parser will not be able to read sources.
-            time.sleep(1)
-            for hash_ in to_analyze:
-                parser_worker << hash_
-        except KeyboardInterrupt:
-            aborted << repo_id
-            logger.warn("Interrupted: %s", repo_id)
-            break
-        except:
-            aborted << repo_id
-            worker.acknowledge(repo_id)
-            logger.exception("Failed: %s", repo_id)
-        else:
-            worker.acknowledge(repo_id)
-            logger.info('Downloaded: %s', repo_id)
-
-
 def coerce_to_bytes(thing: Union[str, bytes]) -> bytes:
+    """
+    Ensure whatever is passed in is a bytes object.
+    """
     return thing.encode('UTF-8') if isinstance(thing, str) else thing
 
 
 def clean_path(path: str) -> PurePosixPath:
     """
+    Cleans paths from zip files.
     >>> clean_path('eddieantonio-bop-9884ff9/bop/__init__.py')
     PurePosixPath('bop/__init__.py')
     """
@@ -250,8 +264,9 @@ def clean_path(path: str) -> PurePosixPath:
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    client = GitHubGraphQLClient()
-    repo = client.fetch_repository(RepositoryID.parse('eddieantonio/training-grammar-guru'))
-    extractor = SourceFileExtractor()
-    contents = list(extractor.download(repo))
-    #main()
+    # TODO: set extension(s)
+    downloader = Downloader()
+    try:
+        downloader.loop_forever()
+    except KeyboardInterrupt:
+        exit(0)
