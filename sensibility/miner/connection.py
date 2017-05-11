@@ -30,7 +30,11 @@ from lazy_object_proxy import Proxy
 from ..language import language
 
 
-__all__ = ['redis_client', 'sqlite3_connection', 'github', 'github_token']
+__all__ = [
+    'github', 'github_token',
+    'redis_client',
+    'sqlite3_connection', 'sqlite3_path',
+]
 
 
 redis_client = Proxy(lambda: redis.StrictRedis(db=0))
@@ -38,9 +42,12 @@ redis_client = Proxy(lambda: redis.StrictRedis(db=0))
 The default Redis client.
 """
 
-sqlite3_connection = Proxy(
-    lambda: sqlite3.connect(f'sources-{language}.sqlite3')
-)
+sqlite3_path = Proxy(lambda: f'sources-{language}.sqlite3')
+"""
+The SQLite3 database for given language
+"""
+
+sqlite3_connection = Proxy(lambda: sqlite3.connect(str(sqlite3_path)))
 """
 The default sqlite3 connection.
 """

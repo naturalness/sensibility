@@ -30,13 +30,15 @@ import io
 import logging
 import time
 import zipfile
+
 from typing import Any, Dict, Iterator, NamedTuple, Tuple, Union
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import requests
 import dateutil.parser
+from sqlalchemy import create_engine, MetaData, Table  # type: ignore
 
-from sensibility.miner.connection import redis_client, sqlite3_connection, github_token
+from sensibility.miner.connection import redis_client, sqlite3_path, github_token
 from sensibility.miner.names import DOWNLOAD_QUEUE
 from sensibility.miner.rqueue import Queue, WorkQueue
 from sensibility.miner.rate_limit import wait_for_rate_limit, seconds_until
@@ -44,9 +46,9 @@ from sensibility.miner.models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
 )
 
-
-QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
+here = Path(__file__).parent
 logger = logging.getLogger('download_worker')
+QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 
 
 class Downloader:
@@ -55,6 +57,7 @@ class Downloader:
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
         self.extension = '.py'
+        self.database = Database()
 
     def loop_forever(self) -> None:
         logger.info("Downloader queue: %s", self.worker.name)
@@ -118,13 +121,14 @@ class Downloader:
         logger.exception('Error downloading "%s"', job)
         self.errors << job
 
-    def insert_source(self, source_file: SourceFileInRepository) -> None:
-        # TODO:
-        logger.info('  > %s', source_file.path)
+    def insert_source(self, entry: SourceFileInRepository) -> None:
+        logger.info('  > %s', entry.path)
+        self.database.insert_source(entry.source_file)
+        self.database.insert_source_from_repo(entry)
 
     def insert_repository(self, repo: RepositoryMetadata) -> None:
-        # TODO:
         logger.info('Insering %s', repo)
+        self.database.insert_repository(repo)
 
     def extract_sources(self, archive: zipfile.ZipFile) -> Iterator[Tuple[PurePosixPath, bytes]]:
         """
@@ -140,6 +144,50 @@ class Downloader:
     def zip_url_for(repo: RepositoryMetadata) -> str:
         return (f"https://api.github.com/repos/{repo.owner}/{repo.name}"
                 f"/zipball/{repo.revision}")
+
+
+class Database:
+    def __init__(self):
+        self.engine = create_engine(f"sqlite:///{sqlite3_path}", echo=True)
+        self._connect()
+
+    def _connect(self) -> None:
+        self._insert_schema()
+        meta = self.meta = MetaData()
+        meta.reflect(bind=self.engine)
+        assert all(table in meta.tables for table in {
+            'repository', 'source_file', 'repository_source'
+        })
+        self.conn = self.engine.connect()
+
+    def _insert_schema(self) -> None:
+        if Path(str(sqlite3_path)).exists():
+            return
+        from sensibility.miner.connection import sqlite3_connection
+        with open(here / 'schema.sql') as schema:
+            sqlite3_connection.executescript(schema.read())
+        sqlite3_connection.commit()
+
+    def __getattr__(self, name):
+        if name.endswith('_table'):
+            end = len('_table')
+            return self.meta.tables[name[:-end]]
+        return super().__getattr__(name)
+
+    def insert_repository(self, repo: RepositoryMetadata) -> None:
+        self.conn.execute(self.repository_table.insert(),
+                          owner=repo.owner, name=repo.name,
+                          revision=repo.revision, license=repo.license,
+                          commit_date=repo.commit_date)
+
+    def insert_source_from_repo(self, entry: SourceFileInRepository) -> None:
+        self.conn.execute(self.repository_source_table.insert(),
+                          owner=entry.owner, name=entry.name,
+                          hash=entry.filehash, path=str(entry.path))
+
+    def insert_source(self, source: SourceFile) -> None:
+        self.conn.execute(self.source_file_table.insert(),
+                          hash=source.filehash, source=source.source)
 
 
 class GitHubGraphQLClient:
@@ -261,12 +309,14 @@ def clean_path(path: str) -> PurePosixPath:
     """
     return PurePosixPath(*PurePosixPath(path).parts[1:])
 
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    # TODO: set extension(s)
+def main():
+    # TODO: set extension(s) from languages or whatever
     downloader = Downloader()
     try:
         downloader.loop_forever()
     except KeyboardInterrupt:
         exit(0)
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    main()

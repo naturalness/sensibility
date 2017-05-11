@@ -87,7 +87,21 @@ class SourceFile:
         return f"SourceFile({self.filehash!r}, source=...)"
 
 
-class SourceFileInRepository(NamedTuple):
+class _SourceFileInRepository(NamedTuple):
     repository: RepositoryMetadata
     source_file: SourceFile
     path: PurePosixPath
+
+
+class SourceFileInRepository(_SourceFileInRepository):
+    @property
+    def owner(self) -> str:
+        return self.repository.owner
+
+    @property
+    def name(self) -> str:
+        return self.repository.name
+
+    @property
+    def filehash(self) -> str:
+        return self.source_file.filehash

@@ -31,7 +31,7 @@ CREATE TABLE repository (
     commit_date DATETIME NOT NULL, -- Timestamp of last commit
     license     TEXT,           -- License name of the file
 
-    PRIMARY KEY (repo, owner, revision)
+    PRIMARY KEY (owner, name)
 );
 
 -- A source file from **any** repository.
@@ -49,7 +49,7 @@ CREATE TABLE repository_source(
     hash    TEXT NOT NULL,
     path    TEXT NOT NULL, -- Path of file within this repository.
 
-    FOREIGN KEY(owner, name) REFERENCES repository(hash)
+    FOREIGN KEY(owner, name) REFERENCES repository(owner, name)
         ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY(hash) REFERENCES source_file(hash)
         ON DELETE CASCADE ON UPDATE CASCADE

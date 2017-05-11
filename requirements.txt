@@ -5,3 +5,4 @@ pytest==3.0.7
 redis==2.10.5
 requests==2.13.0
 python-dateutil==2.6.0
+SQLAlchemy==1.1.9
