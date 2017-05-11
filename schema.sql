@@ -57,9 +57,9 @@ CREATE TABLE repository_source(
 
 -- Files with valid syntax are inserted here and embued with useful metadata.
 CREATE TABLE source_summary (
-    hash    TEXT PRIMARY KEY,
-    sloc    INTEGER NOT NULL,   -- Source lines of code
-    n_tokens INTEGER NOT NULL,  -- Number of tokens, total
+    hash        TEXT PRIMARY KEY,
+    sloc        INTEGER NOT NULL,   -- Source lines of code
+    n_tokens    INTEGER NOT NULL,  -- Number of tokens, total
 
     FOREIGN KEY(hash) REFERENCES source_file(hash)
         ON DELETE CASCADE ON UPDATE CASCADE

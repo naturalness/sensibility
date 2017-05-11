@@ -66,7 +66,7 @@ class Downloader:
             try:
                 self.do_job(job)
             except Exception:
-                # "You had one job!"
+                # "You had ONE job!"
                 self.log_error(job)
             finally:
                 self.acknowledge(job)
@@ -74,7 +74,7 @@ class Downloader:
     def get_a_job(self) -> str:
         """
         This will block until a job is available.
-        (place a job using enqueue-job.py)
+        (to place a job, use enqueue-job.py)
         """
         # TODO: if there already is a job in the worker queue, then, fetch
         # this job.
@@ -89,12 +89,12 @@ class Downloader:
     def do_job(self, job: str) -> None:
         repo_id = RepositoryID.parse(job)
 
-        logger.info('Fetching %s', repo_id)
+        logger.debug('Fetching %s', repo_id)
         repo = self.client.fetch_repository(repo_id)
         self.insert_repository(repo)
 
         for source_file in self.download(repo):
-            self.insert_source(source_file)
+            self.insert_source_file(source_file)
 
     def download(self, repo: RepositoryMetadata) -> Iterator[SourceFileInRepository]:
         """
@@ -121,14 +121,15 @@ class Downloader:
         logger.exception('Error downloading "%s"', job)
         self.errors << job
 
-    def insert_source(self, entry: SourceFileInRepository) -> None:
-        logger.info('  > %s', entry.path)
-        self.database.insert_source(entry.source_file)
-        self.database.insert_source_from_repo(entry)
-
     def insert_repository(self, repo: RepositoryMetadata) -> None:
-        logger.info('Insering %s', repo)
+        logger.debug('Insering %s', repo)
         self.database.insert_repository(repo)
+
+    def insert_source_file(self, entry: SourceFileInRepository) -> None:
+        logger.debug('  > %s', entry.path)
+        # TODO: only one call.
+        self.database.insert_source_file(entry.source_file)
+        self.database.insert_source_from_repo(entry)
 
     def extract_sources(self, archive: zipfile.ZipFile) -> Iterator[Tuple[PurePosixPath, bytes]]:
         """
@@ -163,8 +164,11 @@ class Database:
     def _insert_schema(self) -> None:
         if Path(str(sqlite3_path)).exists():
             return
+
         from sensibility.miner.connection import sqlite3_connection
         with open(here / 'schema.sql') as schema:
+            # TODO: Turn on WAL
+            # TODO: Set synchronous to normal.
             sqlite3_connection.executescript(schema.read())
         sqlite3_connection.commit()
 
@@ -181,13 +185,16 @@ class Database:
                           commit_date=repo.commit_date)
 
     def insert_source_from_repo(self, entry: SourceFileInRepository) -> None:
+        # TODO: Insert source file here.
         self.conn.execute(self.repository_source_table.insert(),
                           owner=entry.owner, name=entry.name,
                           hash=entry.filehash, path=str(entry.path))
 
-    def insert_source(self, source: SourceFile) -> None:
-        self.conn.execute(self.source_file_table.insert(),
-                          hash=source.filehash, source=source.source)
+    def insert_source_file(self, source: SourceFile, ignorable: bool=False) -> None:
+        ins = self.source_file_table.insert()
+        if ignorable:
+            ins = ins.prefix_with('OR IGNORE', dialect='sqlite')
+        self.conn.execute(ins, hash=source.filehash, source=source.source)
 
 
 class GitHubGraphQLClient:
@@ -241,12 +248,12 @@ class GitHubGraphQLClient:
             commit_date=dateutil.parser.parse(latest_commit['committedDate'])
         )
 
-    def query(self, query: str, **kwargs: Union[str, float, bool]) -> Dict[str, Any]:
+    def query(self, query: str, **variables: Union[str, float, bool]) -> Dict[str, Any]:
         """
         Issues a GraphQL query.
         """
 
-        logger.info("Performing query with vars: %r", kwargs)
+        logger.debug("Performing query with vars: %r", variables)
 
         self.wait_for_rate_limit()
         resp = requests.post(self.endpoint, headers={
@@ -255,7 +262,7 @@ class GitHubGraphQLClient:
             'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
         }, json={
             "query": query,
-            "variables": kwargs
+            "variables": variables
         })
         resp.raise_for_status()
         self.update_rate_limit(resp)
@@ -270,7 +277,7 @@ class GitHubGraphQLClient:
     def update_rate_limit(self, resp: requests.Response) -> None:
         self._requests_remaining = int(resp.headers['X-RateLimit-Remaining'])
         self._ratelimit_reset = float(resp.headers['X-RateLimit-Reset'])
-        logger.info('Updated ratelimit: %d left; reset at %s (in %s seconds)',
+        logger.debug('Updated ratelimit: %d left; reset at %s (in %s seconds)',
                     self._requests_remaining, self.ratelimit_reset,
                     self.seconds_until_reset)
 
@@ -309,6 +316,7 @@ def clean_path(path: str) -> PurePosixPath:
     """
     return PurePosixPath(*PurePosixPath(path).parts[1:])
 
+
 def main():
     # TODO: set extension(s) from languages or whatever
     downloader = Downloader()
@@ -317,6 +325,8 @@ def main():
     except KeyboardInterrupt:
         exit(0)
 
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    main()
+    #main()
+    db = Database()

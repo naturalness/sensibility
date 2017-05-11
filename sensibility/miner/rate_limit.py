@@ -36,7 +36,7 @@ def wait_for_rate_limit(resource='core') -> None:
     limit_info = response['resources'][resource]
 
     remaining = limit_info['remaining']
-    logger.info('%d requests remaining', remaining)
+    logger.debug('%d requests remaining', remaining)
 
     if remaining <= 10:
         # Wait until reset
