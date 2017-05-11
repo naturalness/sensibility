@@ -38,6 +38,7 @@ import requests
 import dateutil.parser
 from sqlalchemy import create_engine, MetaData # type: ignore
 
+from sensibility.language import language
 from sensibility.miner.connection import redis_client, sqlite3_path, github_token
 from sensibility.miner.names import DOWNLOAD_QUEUE
 from sensibility.miner.rqueue import Queue, WorkQueue
@@ -134,7 +135,7 @@ class Downloader:
         Extracts sources (with the given extension) from a zip file.
         """
         for path in archive.namelist():
-            if not path.endswith(self.extension):
+            if not language.matches_extension(path):
                 continue
             with archive.open(path, mode='r') as source_file:
                 yield clean_path(path), coerce_to_bytes(source_file.read())
@@ -320,7 +321,6 @@ def clean_path(path: str) -> PurePosixPath:
 
 
 def main():
-    # TODO: set extension(s) from languages or whatever
     downloader = Downloader()
     try:
         downloader.loop_forever()

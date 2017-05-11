@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import os
-from typing import Dict, Iterable, ClassVar, Set
+from typing import ClassVar, Dict, Iterable, Set, Union
 from abc import ABC, abstractmethod
 from lazy_object_proxy import Proxy
 
@@ -28,7 +28,7 @@ class Language(ABC):
     def __str__(self) -> str:
         return self.id
 
-    def matches_extension(self, path: os.PathLike) -> bool:
+    def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
         filename = os.fspath(path)
         return any(filename.endswith(ext) for ext in self.extensions)
 
