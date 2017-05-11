@@ -1,17 +1,61 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-class Language:
+import os
+from typing import Dict, Iterable, ClassVar, Set
+from abc import ABC, abstractmethod
+from lazy_object_proxy import Proxy
+
+
+class Language(ABC):
     """
     A programming language.
     """
-    def __init__(self, name: str) -> None:
-        self.name = name.lower()
 
-    def __str__(self):
+    extensions: Set[str]
+
+    @property
+    def id(self) -> str:
         return self.name.lower()
 
+    @property
+    def name(self) -> str:
+        if hasattr(self, 'fullname'):
+            return self.fullname  # type: ignore
+        else:
+            return type(self).__name__
+
+    def __str__(self) -> str:
+        return self.id
+
+    def matches_extension(self, path: os.PathLike) -> bool:
+        filename = os.fspath(path)
+        return any(filename.endswith(ext) for ext in self.extensions)
+
+    @abstractmethod
     def tokenize(self) -> None: ...
+
+    @abstractmethod
     def check_syntax(self) -> bool: ...
 
-language = Language('python')
+
+class Python(Language):
+    extensions = {'.py'}
+
+    def tokenize(self) -> None:
+        raise NotImplementedError
+
+    def check_syntax(self) -> None:
+        raise NotImplementedError
+
+
+class JavaScript(Language):
+    extensions = {'.js'}
+
+
+@Proxy
+def language() -> Language:
+    """
+    The globally set proxy object.
+    """
+    return Python()

@@ -165,8 +165,7 @@ class Database:
 
         from sensibility.miner.connection import sqlite3_connection
         with open(here / 'schema.sql') as schema:
-            # TODO: Turn on WAL
-            # TODO: Set synchronous to normal.
+            sqlite3_connection.execute('PRAGMA journal_mode = WAL')
             sqlite3_connection.execute('PRAGMA synchronous = NORMAL')
             sqlite3_connection.executescript(schema.read())
         sqlite3_connection.commit()
