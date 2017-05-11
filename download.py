@@ -36,7 +36,7 @@ from pathlib import Path, PurePosixPath
 
 import requests
 import dateutil.parser
-from sqlalchemy import create_engine, MetaData, Table  # type: ignore
+from sqlalchemy import create_engine, MetaData # type: ignore
 
 from sensibility.miner.connection import redis_client, sqlite3_path, github_token
 from sensibility.miner.names import DOWNLOAD_QUEUE
@@ -127,9 +127,7 @@ class Downloader:
 
     def insert_source_file(self, entry: SourceFileInRepository) -> None:
         logger.debug('  > %s', entry.path)
-        # TODO: only one call.
-        self.database.insert_source_file(entry.source_file)
-        self.database.insert_source_from_repo(entry)
+        self.database.insert_source_file_from_repo(entry)
 
     def extract_sources(self, archive: zipfile.ZipFile) -> Iterator[Tuple[PurePosixPath, bytes]]:
         """
@@ -149,7 +147,7 @@ class Downloader:
 
 class Database:
     def __init__(self):
-        self.engine = create_engine(f"sqlite:///{sqlite3_path}", echo=True)
+        self.engine = create_engine(f"sqlite:///{sqlite3_path}")
         self._connect()
 
     def _connect(self) -> None:
@@ -169,6 +167,7 @@ class Database:
         with open(here / 'schema.sql') as schema:
             # TODO: Turn on WAL
             # TODO: Set synchronous to normal.
+            sqlite3_connection.execute('PRAGMA synchronous = NORMAL')
             sqlite3_connection.executescript(schema.read())
         sqlite3_connection.commit()
 
@@ -184,17 +183,21 @@ class Database:
                           revision=repo.revision, license=repo.license,
                           commit_date=repo.commit_date)
 
-    def insert_source_from_repo(self, entry: SourceFileInRepository) -> None:
-        # TODO: Insert source file here.
-        self.conn.execute(self.repository_source_table.insert(),
-                          owner=entry.owner, name=entry.name,
-                          hash=entry.filehash, path=str(entry.path))
-
-    def insert_source_file(self, source: SourceFile, ignorable: bool=False) -> None:
-        ins = self.source_file_table.insert()
-        if ignorable:
-            ins = ins.prefix_with('OR IGNORE', dialect='sqlite')
-        self.conn.execute(ins, hash=source.filehash, source=source.source)
+    def insert_source_file_from_repo(self, entry: SourceFileInRepository) -> None:
+        trans = self.conn.begin()
+        try:
+            self.conn.execute((self.source_file_table.insert()
+                                .prefix_with('OR IGNORE', dialect='sqlite')),
+                              source=entry.source_file.source,
+                              hash=entry.filehash)
+            self.conn.execute(self.repository_source_table.insert(),
+                              owner=entry.owner, name=entry.name,
+                              hash=entry.filehash, path=str(entry.path))
+        except:
+            trans.rollback()
+            raise
+        else:
+            trans.commit()
 
 
 class GitHubGraphQLClient:
@@ -328,5 +331,4 @@ def main():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    #main()
-    db = Database()
+    main()

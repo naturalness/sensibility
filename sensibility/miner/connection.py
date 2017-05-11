@@ -42,7 +42,7 @@ redis_client = Proxy(lambda: redis.StrictRedis(db=0))
 The default Redis client.
 """
 
-sqlite3_path = Proxy(lambda: f'sources-{language}.sqlite3')
+sqlite3_path = Proxy(lambda: f'{language}-sources.sqlite3')
 """
 The SQLite3 database for given language
 """
