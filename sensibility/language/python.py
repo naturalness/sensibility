@@ -24,7 +24,7 @@ class Python(Language):
     extensions = {'.py'}
 
     def tokenize(self, source: str) -> None:
-        raise NotImplementedError
+        ...
 
     def check_syntax(self, source: str) -> bool:
         r"""

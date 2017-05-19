@@ -46,4 +46,4 @@ class JavaScript(Language):
     extensions = {'.js'}
 
 from .python import Python
-language = Python
+language = Python()
