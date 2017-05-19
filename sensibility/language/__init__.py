@@ -2,9 +2,11 @@
 # -*- coding: UTF-8 -*-
 
 import os
-from typing import ClassVar, Dict, Iterable, Set, Union
+from typing import Set, Sequence, Union
 from abc import ABC, abstractmethod
 from lazy_object_proxy import Proxy
+
+from ..token_utils import Token
 
 
 class Language(ABC):
@@ -33,29 +35,15 @@ class Language(ABC):
         return any(filename.endswith(ext) for ext in self.extensions)
 
     @abstractmethod
-    def tokenize(self) -> None: ...
+    def tokenize(self, source: str) -> Sequence[Token]: ...
 
     @abstractmethod
-    def check_syntax(self) -> bool: ...
+    def check_syntax(self, source: str) -> bool: ...
 
-
-class Python(Language):
-    extensions = {'.py'}
-
-    def tokenize(self) -> None:
-        raise NotImplementedError
-
-    def check_syntax(self) -> None:
-        raise NotImplementedError
 
 
 class JavaScript(Language):
     extensions = {'.js'}
 
-
-@Proxy
-def language() -> Language:
-    """
-    The globally set proxy object.
-    """
-    return Python()
+from .python import Python
+language = Python
