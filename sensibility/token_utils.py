@@ -53,7 +53,7 @@ class Lexeme:
         return self.value
 
     def __repr__(self) -> str:
-        return f"Lexeme(name={self.name}, value={self.value})"
+        return f"Lexeme(name={self.name!r}, value={self.value!r})"
 
 
 class Position:
@@ -67,7 +67,7 @@ class Position:
         self.column = column
 
     def __repr__(self) -> str:
-        return f"Position(line={self.line}, column={self.column}"
+        return f"Position(line={self.line!r}, column={self.column!r})"
 
 
 class Location:
@@ -80,7 +80,7 @@ class Location:
         self.end = end
 
     def __repr__(self) -> str:
-        return f"Position(start={self.start}, end={self.end})"
+        return f"Position(start={self.start!r}, end={self.end!r})"
 
 
 class Token(Lexeme):
@@ -133,5 +133,5 @@ class Token(Lexeme):
 
     def __repr__(self) -> str:
         return (f"Token("
-                f"name={self.name}, value={self.value}, "
-                f"start={self.start}, end={self.end})")
+                f"name={self.name!r}, value={self.value!r}, "
+                f"start={self.start!r}, end={self.end!r})")

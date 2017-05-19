@@ -16,15 +16,51 @@
 # limitations under the License.
 
 import os
+import token
+import tokenize
+from io import BytesIO
+from typing import Sequence, Union
 
 from . import Language
+from ..token_utils import Token, Position
 
 
 class Python(Language):
     extensions = {'.py'}
 
-    def tokenize(self, source: str) -> None:
-        ...
+    def tokenize(self, source: Union[str, bytes]) -> Sequence[Token]:
+        """
+        Tokenizes Python sources.
+
+        NOTE:
+        This may include extra, unwanted tokens, including
+        COMMENT, ENCODING, ENDMARKER
+
+        NOTE:
+        There are TWO newline tokens:
+        NEWLINE and NL
+
+        NEWLINES are actually used in the grammar;
+        whereas NL are "filler" newlines, for formatting.
+        """
+
+        if isinstance(source, str):
+            def open_as_file():
+                # TODO: technically incorrect -- have to check coding line,
+                # buyt I ain't doing that...
+                return BytesIO(source.encode('UTF-8'))
+        elif isinstance(source, bytes):
+            def open_as_file():
+                return BytesIO(source)
+
+        with open_as_file() as source_file:
+            token_stream = tokenize.tokenize(source_file.readline)
+            # TODO: what's a logical line... what?
+            return [Token(name=token.tok_name[tok.type],
+                          value=tok.string,
+                          start=Position(line=tok.start[0], column=tok.start[1]),
+                          end=Position(line=tok.end[0], column=tok.end[1]))
+                    for tok in token_stream]
 
     def check_syntax(self, source: str) -> bool:
         r"""

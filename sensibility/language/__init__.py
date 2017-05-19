@@ -35,15 +35,15 @@ class Language(ABC):
         return any(filename.endswith(ext) for ext in self.extensions)
 
     @abstractmethod
-    def tokenize(self, source: str) -> Sequence[Token]: ...
+    def tokenize(self, source: Union[str, bytes]) -> Sequence[Token]: ...
 
     @abstractmethod
     def check_syntax(self, source: str) -> bool: ...
 
 
-
 class JavaScript(Language):
     extensions = {'.js'}
+
 
 from .python import Python
 language = Python()
