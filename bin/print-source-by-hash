@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+# coding: UTF-8
+
+"""
+Prints hashes of files that have been downloaded, but have not been parsed.
+
+Usage:
+
+    print-source-by-hash filehash
+
+"""
+
+import sys
+import sqlite3
+
+filehash, = sys.argv[1:]
+database = 'python-sources.sqlite3'
+
+conn = sqlite3.connect(database)
+
+cur = conn.execute('''
+SELECT source FROM source_file
+    WHERE hash = ?
+''', (filehash,))
+
+try:
+    source, = cur.fetchone()
+except:
+    print(f"not found: {filehash}", file=sys.stderr)
+    exit(1)
+with open(sys.stderr.fileno(), 'wb') as output_file:
+    output_file.write(source)
