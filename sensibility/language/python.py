@@ -19,7 +19,7 @@ import os
 import token
 import tokenize
 from io import BytesIO
-from typing import Sequence, Union
+from typing import IO, Sequence, Union
 
 from . import Language
 from ..token_utils import Token, Position
@@ -28,7 +28,7 @@ from ..token_utils import Token, Position
 class Python(Language):
     extensions = {'.py'}
 
-    def tokenize(self, source: Union[str, bytes]) -> Sequence[Token]:
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """
         Tokenizes Python sources.
 
@@ -44,17 +44,18 @@ class Python(Language):
         whereas NL are "filler" newlines, for formatting.
         """
 
-        if isinstance(source, str):
-            def open_as_file():
+        def open_as_file() -> IO[bytes]:
+            if isinstance(source, str):
                 # TODO: technically incorrect -- have to check coding line,
-                # buyt I ain't doing that...
+                # but I ain't doing that...
                 return BytesIO(source.encode('UTF-8'))
-        elif isinstance(source, bytes):
-            def open_as_file():
+            elif isinstance(source, bytes):
                 return BytesIO(source)
+            else:
+                return source
 
         with open_as_file() as source_file:
-            token_stream = tokenize.tokenize(source_file.readline)
+            token_stream = tokenize.tokenize(source_file.readline)  # type: ignore
             # TODO: what's a logical line... what?
             return [Token(name=token.tok_name[tok.type],
                           value=tok.string,

@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import os
-from typing import Set, Sequence, Union
+from typing import Set, Sequence, IO, Union
 from abc import ABC, abstractmethod
 from lazy_object_proxy import Proxy
 
@@ -35,7 +35,7 @@ class Language(ABC):
         return any(filename.endswith(ext) for ext in self.extensions)
 
     @abstractmethod
-    def tokenize(self, source: Union[str, bytes]) -> Sequence[Token]: ...
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]: ...
 
     @abstractmethod
     def check_syntax(self, source: str) -> bool: ...
