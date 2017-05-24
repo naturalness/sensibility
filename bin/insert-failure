@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+"""
+Mark a source file as a failure.
+
+Usage:
+    insert-source-summary FILEHASH
+"""
+
+import sys
+import sqlite3
+
+filehash, = sys.argv[1:]
+
+conn = sqlite3.connect('python-sources.sqlite3')
+with conn:
+    conn.execute('''
+        INSERT OR REPLACE INTO failure (hash) VALUES (?)
+    ''', (filehash,))

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+
+FILEHASH=${1}
+if print-source-by-hash "$FILEHASH" | check-syntax ; then
+  summary=$(print-source-by-hash "$FILEHASH" | summarize)
+  echo "$FILEHASH $summary" | bin/insert-source-summary python-sources.sqlite3
+else
+  insert-failure "$FILEHASH"
+fi
