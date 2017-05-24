@@ -21,6 +21,8 @@ Named `token_utils` because `token` is a Python standard library import, and
 it breaks things if you shadow standard library stuff...
 """
 
+from typing import Iterator
+
 __all__ = [
     'Lexeme',
     'Token',
@@ -116,6 +118,13 @@ class Token(Lexeme):
         Line number of the beginning of the token.
         """
         return self.start.line
+
+    @property
+    def lines(self) -> Iterator[int]:
+        """
+        An order list of all the lines in this file
+        """
+        yield from range(self.start.line, self.end.line + 1)
 
     @property
     def column(self) -> int:
