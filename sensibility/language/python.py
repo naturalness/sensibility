@@ -63,7 +63,7 @@ class Python(Language):
                           end=Position(line=tok.end[0], column=tok.end[1]))
                     for tok in token_stream]
 
-    def check_syntax(self, source: str) -> bool:
+    def check_syntax(self, source: Union[str, bytes]) -> bool:
         r"""
         Given a source file, returns True if the file compiles.
         >>> Python().check_syntax('print("Hello, World!")')
