@@ -21,6 +21,10 @@ Usage
 Run `redis-server` on localhost on the default port; then consult with
 the documentation in the loose Python files. :/
 
+To run files in `bin/` you must have `sensibility` installed locally:
+
+	pip install -e .
+
 License
 -------
 

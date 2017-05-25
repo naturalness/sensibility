@@ -28,5 +28,5 @@ try:
 except:
     print(f"not found: {filehash}", file=sys.stderr)
     exit(1)
-with open(sys.stderr.fileno(), 'wb') as output_file:
+with open(sys.stdout.fileno(), 'wb') as output_file:
     output_file.write(source)
