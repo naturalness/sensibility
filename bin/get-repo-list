@@ -18,6 +18,10 @@
 
 """
 Obtains a list of repos from GitHub's API.
+
+Usage:
+    get-repo-list > repo-list.txt
+
 """
 
 import re
