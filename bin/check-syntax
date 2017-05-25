@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 """
-Checks if Python file has valid syntax. Returns non-zero otherwise.
+Checks if stdin is syntatically-valid Python 3.6 source code. Returns non-zero otherwise.
 """
 
 import sys
@@ -12,7 +12,8 @@ import sensibility.language.python
 
 if __name__ == '__main__':
     language = sensibility.language.python.Python()
-    if language.check_syntax(sys.stdin.read()):
-        exit(0)
-    else:
-        exit(1)
+    with open(sys.stdin.fileno(), 'rb') as input_file:
+        if language.check_syntax(input_file.read()):
+            exit(0)
+        else:
+            exit(1)
