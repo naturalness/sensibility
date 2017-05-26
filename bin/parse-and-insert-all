@@ -25,16 +25,19 @@ Usage:
 import sys
 import logging
 from sensibility.language import language
-from sensibility.miner import corpus 
+from sensibility.miner.database import Database
+
+
+database = Database()
 
 
 def parse_and_insert(filehash: str) -> None:
-    source = corpus.get_source(filehash)
+    source = database.get_source(filehash)
     if language.check_syntax(source):
         counts = language.word_count(source)
-        corpus.insert_source_summary(filehash, counts)
+        database.insert_source_summary(filehash, counts)
     else:
-        corpus.insert_failure(filehash)
+        database.insert_failure(filehash)
 
 
 if __name__ == '__main__':

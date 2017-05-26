@@ -22,6 +22,8 @@ import pytest  # type: ignore
 from sqlalchemy import create_engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
+# This is the WRONG place to store the WordCount class!
+from sensibility.language.python import WordCount
 from sensibility.miner.database import Database
 from sensibility.miner.models import (
     RepositoryMetadata, SourceFile,
@@ -34,19 +36,41 @@ def test_create(engine):
     db = database()
 
 
-def test_inserts(database, repo_file):
+def test_inserts(database, repo_file) -> None:
     repository, _, _ = repo_file
     database.insert_repository(repository)
     database.insert_source_file_from_repo(repo_file)
+    database.insert_source_summary(repo_file.filehash,
+                                   WordCount(2, 3))
+
+
+def test_insert(populated_database, source_file):
+    source_code = populated_database.get_source(source_file.filehash)
+    assert source_code == source_file.source
+    assert SourceFile(source_code).filehash == source_file.filehash
+
+
+@pytest.fixture
+def populated_database() -> Database:
+    db = database()
+    entry = repo_file()
+    db.insert_repository(entry.repository)
+    db.insert_source_file_from_repo(entry)
+    return db
+
+
+@pytest.fixture
+def source_file() -> SourceFile:
+    return SourceFile(
+        source=b'import sys\n\nprint("hello, world")\n'
+    )
 
 
 @pytest.fixture
 def repo_file() -> SourceFileInRepository:
     return SourceFileInRepository(
         repository=repository(),
-        source_file=SourceFile(
-            source=b'import sys\n\nprint("hello, world")\n'
-        ),
+        source_file=source_file(),
         path=PurePosixPath('hello.py')
     )
 

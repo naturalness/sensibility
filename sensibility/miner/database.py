@@ -28,10 +28,12 @@ from sqlalchemy import (
     MetaData,
     ForeignKeyConstraint
 )  # type: ignore
+from sqlalchemy.sql import select  # type: ignore
 
 from .connection import sqlite3_path
 from .models import RepositoryMetadata, SourceFileInRepository
 
+from ..language.python import WordCount
 
 class Database:
     def __init__(self, engine=None):
@@ -72,6 +74,29 @@ class Database:
             raise
         else:
             trans.commit()
+
+    def insert_source_summary(self, filehash: str, summary: WordCount) -> None:
+        """
+        Insert the word count into the source summary.
+        """
+        self.conn.execute(self.source_summary.insert(),
+                          hash=filehash,
+                          sloc=summary.sloc, n_tokens=summary.n_tokens)
+
+    def insert_failure(self, filehash: str) -> None:
+        """
+        Insert the word count into the source summary.
+        """
+        self.conn.execute(self.failure.insert(), hash=filehash)
+
+    def get_source(self, filehash: str) -> bytes:
+        """
+        Returns the source code for one file.
+        """
+        query = select([self.source_file.c.source])\
+            .where(self.source_file.c.hash == filehash)
+        result, = self.conn.execute(query)
+        return result[0]
 
     def _initialize_schema(self):
         """
