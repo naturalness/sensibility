@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-# Copyright 2016 Eddie Antonio Santos <easantos@ualberta.ca>
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +16,9 @@
 # limitations under the License.
 
 """
-Downloads metadata and source files from GitHub.
+Contains the Downloader class.
 
-Have the Redis server running, then
-
-    python download.py
-
-This script will do the rest :D.
+TODO: use GHTorrent instead of GitHub's alpha GraphQL API.
 """
 
 import datetime
@@ -30,26 +26,23 @@ import io
 import logging
 import time
 import zipfile
-
-from typing import Any, Dict, Iterator, NamedTuple, Tuple, Union
-from pathlib import Path, PurePosixPath
+from typing import Any, Dict, Iterator, Tuple, Union
+from pathlib import PurePosixPath
 
 import requests
 import dateutil.parser
-from sqlalchemy import create_engine, MetaData # type: ignore
 
-from sensibility.language import language
-from sensibility.miner.connection import redis_client, sqlite3_path, github_token
-from sensibility.miner.names import DOWNLOAD_QUEUE
-from sensibility.miner.rqueue import Queue, WorkQueue
-from sensibility.miner.rate_limit import wait_for_rate_limit, seconds_until
-from sensibility.miner.models import (
+from .rqueue import Queue, WorkQueue
+from .names import DOWNLOAD_QUEUE
+from .connection import redis_client, sqlite3_path, github_token, language
+from .rate_limit import wait_for_rate_limit, seconds_until
+from .models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
 )
+from .database import Database
 
-here = Path(__file__).parent
-logger = logging.getLogger('download_worker')
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
+logger = logging.getLogger('download_worker')
 
 
 class Downloader:
@@ -57,7 +50,6 @@ class Downloader:
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
-        self.extension = '.py'
         self.database = Database()
 
     def loop_forever(self) -> None:
@@ -144,60 +136,6 @@ class Downloader:
     def zip_url_for(repo: RepositoryMetadata) -> str:
         return (f"https://api.github.com/repos/{repo.owner}/{repo.name}"
                 f"/zipball/{repo.revision}")
-
-
-class Database:
-    def __init__(self):
-        self.engine = create_engine(f"sqlite:///{sqlite3_path}")
-        self._connect()
-
-    def _connect(self) -> None:
-        self._insert_schema()
-        meta = self.meta = MetaData()
-        meta.reflect(bind=self.engine)
-        assert all(table in meta.tables for table in {
-            'repository', 'source_file', 'repository_source'
-        })
-        self.conn = self.engine.connect()
-
-    def _insert_schema(self) -> None:
-        if Path(str(sqlite3_path)).exists():
-            return
-
-        from sensibility.miner.connection import sqlite3_connection
-        with open(here / 'schema.sql') as schema:
-            sqlite3_connection.execute('PRAGMA journal_mode = WAL')
-            sqlite3_connection.execute('PRAGMA synchronous = NORMAL')
-            sqlite3_connection.executescript(schema.read())
-        sqlite3_connection.commit()
-
-    def __getattr__(self, name):
-        if name.endswith('_table'):
-            end = len('_table')
-            return self.meta.tables[name[:-end]]
-        return super().__getattr__(name)
-
-    def insert_repository(self, repo: RepositoryMetadata) -> None:
-        self.conn.execute(self.repository_table.insert(),
-                          owner=repo.owner, name=repo.name,
-                          revision=repo.revision, license=repo.license,
-                          commit_date=repo.commit_date)
-
-    def insert_source_file_from_repo(self, entry: SourceFileInRepository) -> None:
-        trans = self.conn.begin()
-        try:
-            self.conn.execute((self.source_file_table.insert()
-                                .prefix_with('OR IGNORE', dialect='sqlite')),
-                              source=entry.source_file.source,
-                              hash=entry.filehash)
-            self.conn.execute(self.repository_source_table.insert(),
-                              owner=entry.owner, name=entry.name,
-                              hash=entry.filehash, path=str(entry.path))
-        except:
-            trans.rollback()
-            raise
-        else:
-            trans.commit()
 
 
 class GitHubGraphQLClient:
@@ -304,13 +242,6 @@ class GitHubGraphQLClient:
         time.sleep(seconds_remaining)
 
 
-def coerce_to_bytes(thing: Union[str, bytes]) -> bytes:
-    """
-    Ensure whatever is passed in is a bytes object.
-    """
-    return thing.encode('UTF-8') if isinstance(thing, str) else thing
-
-
 def clean_path(path: str) -> PurePosixPath:
     """
     Cleans paths from zip files.
@@ -320,14 +251,8 @@ def clean_path(path: str) -> PurePosixPath:
     return PurePosixPath(*PurePosixPath(path).parts[1:])
 
 
-def main():
-    downloader = Downloader()
-    try:
-        downloader.loop_forever()
-    except KeyboardInterrupt:
-        exit(0)
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    main()
+def coerce_to_bytes(thing: Union[str, bytes]) -> bytes:
+    """
+    Ensure whatever is passed in is a bytes object.
+    """
+    return thing.encode('UTF-8') if isinstance(thing, str) else thing
