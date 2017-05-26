@@ -25,31 +25,11 @@ Usage:
 """
 
 import sys
-
 import sensibility.language.python
-from sensibility.token_utils import Lexeme
-
-
-# TODO: handle this before tokens make it to this script?
-def is_physical_token(token: Lexeme) -> bool:
-    FAKE_TOKENS = {
-        'ENDMARKER', 'ENCODING', 'COMMENT', 'NL'
-    }
-    return token.name not in FAKE_TOKENS
 
 
 if __name__ == '__main__':
     language = sensibility.language.python.Python()
-    # TODO: should read file in bytes!
-    tokens = [token for token in language.tokenize(sys.stdin.read())
-              if is_physical_token(token)]
-    n_tokens = len(tokens)
-
-    INTANGIBLE_TOKENS = {'DEDENT', 'NEWLINE'}
-    # Special case DEDENT and NEWLINE tokens:
-    # They're do not count towards the line count (they are often on empty
-    # lines).
-    sloc = len(set(lineno for token in tokens
-                   for lineno in token.lines
-                   if token.name not in INTANGIBLE_TOKENS))
-    print(f"{sloc:8d} {n_tokens:8d}")
+    with open(sys.stdin.fileno(), 'rb') as input_file:
+        res = language.word_count(input_file.read())
+    print(f"{res.sloc:8d} {res.n_tokens:8d}")

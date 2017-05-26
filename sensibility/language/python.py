@@ -19,10 +19,16 @@ import os
 import token
 import tokenize
 from io import BytesIO
-from typing import IO, Sequence, Union
+from typing import IO, NamedTuple, Sequence, Union
 
 from . import Language
-from ..token_utils import Token, Position
+from ..token_utils import Lexeme, Position, Token
+
+
+# TODO: move elsewhere?
+class WordCount(NamedTuple):
+    sloc: int
+    n_tokens: int
 
 
 class Python(Language):
@@ -95,3 +101,31 @@ class Python(Language):
             # Parent process.
             child_pid, status = os.waitpid(pid, 0)
             return status == 0
+
+    def word_count(self, source: bytes) -> WordCount:
+        r"""
+        Calculates the word count of a Python source.
+
+        >>> Python().word_count('import sys\n\nsys.stdout.write("hello")\n')
+        WordCount(sloc=2, n_tokens=12)
+        """
+        tokens = [token for token in self.tokenize(source)
+                  if is_physical_token(token)]
+
+        INTANGIBLE_TOKENS = {'DEDENT', 'NEWLINE'}
+        # Special case DEDENT and NEWLINE tokens:
+        # They're do not count towards the line count (they are often on empty
+        # lines).
+        unique_lines = set(lineno for token in tokens
+                           for lineno in token.lines
+                           if token.name not in INTANGIBLE_TOKENS)
+
+        return WordCount(sloc=len(unique_lines), n_tokens=len(tokens))
+
+
+# TODO: handle this before tokens make it to this script?
+def is_physical_token(token: Lexeme) -> bool:
+    FAKE_TOKENS = {
+        'ENDMARKER', 'ENCODING', 'COMMENT', 'NL'
+    }
+    return token.name not in FAKE_TOKENS
