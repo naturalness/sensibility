@@ -21,48 +21,38 @@ It should really be called "corpus", shouldn't it?
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, MetaData # type: ignore
+from sqlalchemy import create_engine  # type: ignore
+from sqlalchemy import (
+    Table, Column,
+    Integer, String, DateTime, LargeBinary,
+    MetaData,
+    ForeignKeyConstraint
+)  # type: ignore
 
 from .connection import sqlite3_path
 from .models import RepositoryMetadata, SourceFileInRepository
 
 
-here = Path(__file__).parent
-
-
 class Database:
-    def __init__(self):
-        self.engine = create_engine(f"sqlite:///{sqlite3_path}")
-        self._connect()
+    def __init__(self, engine=None):
+        if engine is not None:
+            self.engine = engine
+        else:
+            self.engine = create_engine(f"sqlite:///{sqlite3_path}")
 
-    def _connect(self) -> None:
-        self._insert_schema()
-        meta = self.meta = MetaData()
-        meta.reflect(bind=self.engine)
-        assert all(table in meta.tables for table in {
-            'repository', 'source_file', 'repository_source'
-        })
+        metadata = self._initialize_schema()
+        if self.empty():
+            metadata.create_all(self.engine)
+
         self.conn = self.engine.connect()
 
-    def _insert_schema(self) -> None:
-        if Path(str(sqlite3_path)).exists():
-            return
-
-        from sensibility.miner.connection import sqlite3_connection
-        with open(here / 'schema.sql') as schema:
-            sqlite3_connection.execute('PRAGMA journal_mode = WAL')
-            sqlite3_connection.execute('PRAGMA synchronous = NORMAL')
-            sqlite3_connection.executescript(schema.read())
-        sqlite3_connection.commit()
-
-    def __getattr__(self, name):
-        if name.endswith('_table'):
-            end = len('_table')
-            return self.meta.tables[name[:-end]]
-        return super().__getattr__(name)
+    def empty(self):
+        metadata = MetaData()
+        metadata.reflect(self.engine)
+        return 'repository' not in metadata
 
     def insert_repository(self, repo: RepositoryMetadata) -> None:
-        self.conn.execute(self.repository_table.insert(),
+        self.conn.execute(self.repository.insert(),
                           owner=repo.owner, name=repo.name,
                           revision=repo.revision, license=repo.license,
                           commit_date=repo.commit_date)
@@ -70,11 +60,11 @@ class Database:
     def insert_source_file_from_repo(self, entry: SourceFileInRepository) -> None:
         trans = self.conn.begin()
         try:
-            self.conn.execute((self.source_file_table.insert()
+            self.conn.execute((self.source_file.insert()
                                 .prefix_with('OR IGNORE', dialect='sqlite')),
                               source=entry.source_file.source,
                               hash=entry.filehash)
-            self.conn.execute(self.repository_source_table.insert(),
+            self.conn.execute(self.repository_source.insert(),
                               owner=entry.owner, name=entry.name,
                               hash=entry.filehash, path=str(entry.path))
         except:
@@ -82,3 +72,62 @@ class Database:
             raise
         else:
             trans.commit()
+
+    def _initialize_schema(self):
+        """
+        The schema for this database.
+
+        TODO: adapt from GHTorrent's database.
+        """
+        metadata = MetaData()
+        cascade_all = dict(onupdate='CASCADE', ondelete='CASCADE')
+
+        self.repository = Table('repository', metadata,
+            Column('owner', String, primary_key=True),
+            Column('name', String, primary_key=True),
+
+            Column('revision', String, nullable=False),
+            Column('commit_date', DateTime, nullable=False),
+            Column('license', String)
+        )
+
+        self.source_file = Table('source_file', metadata,
+            Column('hash', String, primary_key=True),
+
+            Column('source', LargeBinary, nullable=False)
+        )
+
+        self.repository_source = Table('repository_source', metadata,
+            Column('owner', String, primary_key=True),
+            Column('name', String, primary_key=True),
+            Column('hash', String, primary_key=True),
+
+            Column('path', String, nullable=False),
+            ForeignKeyConstraint(*_to('repository', 'owner', 'name'),
+                                 **cascade_all),
+            ForeignKeyConstraint(*_to('source_file', 'hash'),
+                                 **cascade_all)
+        )
+
+        self.source_summary = Table('source_summary', metadata,
+            Column('hash', String, primary_key=True),
+
+            Column('sloc', Integer, nullable=False),
+            Column('n_tokens', Integer, nullable=False),
+
+            ForeignKeyConstraint(*_to('source_file', 'hash'),
+                                 **cascade_all)
+        )
+
+        self.failure = Table('failure', metadata,
+            Column('hash', String, primary_key=True),
+
+            ForeignKeyConstraint(*_to('source_file', 'hash'),
+                                 **cascade_all)
+        )
+        return metadata
+
+
+def _to(table_name, *columns):
+    yield columns
+    yield tuple(f"{table_name}.{col}" for col in columns)
