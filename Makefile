@@ -1,5 +1,9 @@
 parse: PATH:=$(PWD)/bin:$(PATH)
-parse:
-	list-unparsed-sources | parallel --pipe --eta parse-and-insert-all
+parse: unparsed
+	parallel --pipepart -a $< --round-robin parse-and-insert-all
+
+unparsed:
+	list-unparsed-sources > $@
 
 .PHONY: parse
+.INTERMEDIATE: unparsed

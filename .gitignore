@@ -9,3 +9,4 @@ venv/
 .mypy_cache
 .python-version
 /*.egg-info
+unparsed
