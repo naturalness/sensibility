@@ -46,4 +46,4 @@ if __name__ == '__main__':
         try:
             parse_and_insert(filehash)
         except:
-            logging.exception('Failed: %s')
+            logging.exception('Failed parsing %s', filehash)
