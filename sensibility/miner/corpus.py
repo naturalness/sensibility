@@ -218,8 +218,8 @@ class GitHubGraphQLClient:
         self._requests_remaining = int(resp.headers['X-RateLimit-Remaining'])
         self._ratelimit_reset = float(resp.headers['X-RateLimit-Reset'])
         logger.debug('Updated ratelimit: %d left; reset at %s (in %s seconds)',
-                    self._requests_remaining, self.ratelimit_reset,
-                    self.seconds_until_reset)
+                     self._requests_remaining, self.ratelimit_reset,
+                     self.seconds_until_reset)
 
     @property
     def ratelimit_reset(self) -> datetime.datetime:

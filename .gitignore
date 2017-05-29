@@ -10,3 +10,4 @@ venv/
 .python-version
 /*.egg-info
 unparsed
+/.idea/
