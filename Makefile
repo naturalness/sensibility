@@ -5,5 +5,8 @@ parse: unparsed
 unparsed:
 	list-unparsed-sources > $@
 
+vocabulary.py:
+	bin/list-elligible-sources | bin/discover-vocabulary > $@
+
 .PHONY: parse
 .INTERMEDIATE: unparsed
