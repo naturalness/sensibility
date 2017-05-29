@@ -35,6 +35,7 @@ from .models import RepositoryMetadata, SourceFileInRepository
 
 from ..language.python import WordCount
 
+
 class Corpus:
     def __init__(self, engine=None):
         if engine is not None:

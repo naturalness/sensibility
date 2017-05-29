@@ -47,11 +47,6 @@ sqlite3_path = Proxy(lambda: f'{language!s}-sources.sqlite3')
 The SQLite3 database for given language
 """
 
-sqlite3_connection = Proxy(lambda: sqlite3.connect(str(sqlite3_path)))
-"""
-The default sqlite3 connection.
-"""
-
 github = Proxy(lambda: github3.login(token=str(github_token)))
 """
 The default GitHub connection.
