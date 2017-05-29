@@ -15,12 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: rename to "VOCABULARIZE"?
 """
 Turns a stream of tokens, into a stream of plain-text vocabulary entries.
 
 Usage:
-    simplify <tokens >vocabulary-entries
+    vocabularize <tokens >vocabulary-entries
 """
 
 import sys

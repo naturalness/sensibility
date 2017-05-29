@@ -20,9 +20,10 @@ Miscellaneous filehashes
 """
 
 import sys
+from typing import Iterator
 
 
-def filehashes(file=sys.stdin):
+def filehashes(file=sys.stdin) -> Iterator[str]:
     """
     Yields valid filehashes from stdin.
     """

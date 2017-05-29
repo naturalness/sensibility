@@ -22,8 +22,8 @@ Usage:
     parse-and-insert-all < file-hashes
 """
 
-import sys
 import logging
+from sensibility.util import filehashes
 from sensibility.language import language
 from sensibility.miner.corpus import Corpus
 
@@ -33,6 +33,7 @@ database = Corpus()
 
 def parse_and_insert(filehash: str) -> None:
     source = database.get_source(filehash)
+    # TODO: check_syntax() accepts more inputs than tokenize().
     if language.check_syntax(source):
         counts = language.word_count(source)
         database.insert_source_summary(filehash, counts)
@@ -41,8 +42,7 @@ def parse_and_insert(filehash: str) -> None:
 
 
 if __name__ == '__main__':
-    for filehash in sys.stdin.readlines():
-        filehash = filehash.strip()
+    for filehash in filehashes():
         try:
             parse_and_insert(filehash)
         except:

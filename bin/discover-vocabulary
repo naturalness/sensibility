@@ -17,25 +17,26 @@
 
 
 """
-Prints the vocabulary from all given source files.
+Prints the vocabulary discovered from all given filehashes.
 
 Usage:
     discover-vocabulary <filehashes > vocabulary.py
 """
 
-import sys
 from pprint import pprint
 
+from sensibility.util import filehashes
 from sensibility.miner.corpus import Corpus
 from sensibility.pipeline import PythonPipeline
 
 
+# TODO: Make it so that it's no longer just for Python
 if __name__ == '__main__':
     pipeline = PythonPipeline()
     corpus = Corpus()
 
     unique_entries = set()
-    for filehash in sys.stdin.readlines():
+    for filehash in filehashes():
         filehash = filehash.strip()
         # Skip empty lines.
         if filehash == '':
