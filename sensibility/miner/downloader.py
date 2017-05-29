@@ -39,7 +39,7 @@ from .rate_limit import wait_for_rate_limit, seconds_until
 from .models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
 )
-from .database import Database
+from .corpus import Corpus
 
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
@@ -50,7 +50,7 @@ class Downloader:
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
-        self.database = Database()
+        self.database = Corpus()
 
     def loop_forever(self) -> None:
         logger.info("Downloader queue: %s", self.worker.name)

@@ -25,10 +25,10 @@ Usage:
 import sys
 import logging
 from sensibility.language import language
-from sensibility.miner.database import Database
+from sensibility.miner.corpus import Corpus
 
 
-database = Database()
+database = Corpus()
 
 
 def parse_and_insert(filehash: str) -> None:

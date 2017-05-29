@@ -24,7 +24,7 @@ from sqlalchemy.sql import select  # type: ignore
 
 # This is the WRONG place to store the WordCount class!
 from sensibility.language.python import WordCount
-from sensibility.miner.database import Database
+from sensibility.miner.corpus import Corpus
 from sensibility.miner.models import (
     RepositoryMetadata, SourceFile,
     SourceFileInRepository
@@ -51,7 +51,7 @@ def test_insert(populated_database, source_file):
 
 
 @pytest.fixture
-def populated_database() -> Database:
+def populated_database() -> Corpus:
     db = database()
     entry = repo_file()
     db.insert_repository(entry.repository)
@@ -87,7 +87,7 @@ def repository() -> RepositoryMetadata:
 
 @pytest.fixture
 def database():
-    return Database(engine=engine())
+    return Corpus(engine=engine())
 
 
 @pytest.fixture
