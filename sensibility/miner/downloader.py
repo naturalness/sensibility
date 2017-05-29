@@ -45,7 +45,7 @@ QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
 
 
-class Corpus:
+class Downloader:
     def __init__(self) -> None:
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
