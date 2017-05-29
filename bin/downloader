@@ -27,12 +27,12 @@ This server will do the rest :D.
 
 import logging
 
-from sensibility.miner.downloader import Downloader
+from sensibility.miner.corpus import Corpus
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    downloader = Downloader()
+    downloader = Corpus()
     try:
         downloader.loop_forever()
     except KeyboardInterrupt:

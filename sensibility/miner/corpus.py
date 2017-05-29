@@ -34,7 +34,7 @@ import dateutil.parser
 
 from .rqueue import Queue, WorkQueue
 from .names import DOWNLOAD_QUEUE
-from .connection import redis_client, sqlite3_path, github_token, language
+from .connection import redis_client, github_token, language
 from .rate_limit import wait_for_rate_limit, seconds_until
 from .models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
@@ -45,7 +45,7 @@ QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
 
 
-class Downloader:
+class Corpus:
     def __init__(self) -> None:
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
@@ -147,7 +147,6 @@ class GitHubGraphQLClient:
     endpoint = "https://api.github.com/graphql"
 
     def __init__(self) -> None:
-        ...
         self._requests_remaining = 11  # One more than min
         # todo: datetime?
         self._ratelimit_reset = 0.0
