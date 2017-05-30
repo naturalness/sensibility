@@ -21,13 +21,13 @@ Tokenization Pipeline
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, AnyStr, Callable, Optional, Sequence, Tuple, overload
+from typing import Any, AnyStr, Callable, Iterable, Optional, Sequence, Tuple, overload
 
 from .language import Language
-from .token_utils import Token, Lexeme, Location
+from .token_utils import Token, Location
 
 
-PipelineStage = Callable[[Sequence[Any]], Sequence[Optional[Any]]]
+PipelineStage = Callable[[Any], Optional[Any]]
 
 
 class Pipeline(ABC):
@@ -44,23 +44,32 @@ class Pipeline(ABC):
     def stages(self) -> Sequence[PipelineStage]: ...
 
     @overload
-    def execute(self, tokens: AnyStr) -> Sequence[Any]: ...
+    def execute(self, tokens: AnyStr) -> Iterable[Any]: ...
     @overload
-    def execute(self, tokens: Sequence[Token]) -> Sequence[Any]: ...
+    def execute(self, tokens: Sequence[Token]) -> Iterable[Any]: ...
 
     def execute(self, source):
         """
-        Executes all stages of the pipeline, returning a sequence of tokens,
-        in a format specified by the pipeline.
+        Executes all stages of the pipeline, yielding elements in a format
+        specified by the pipeline.
         """
-        intermediate: Sequence[Any]
         if isinstance(source, (bytes, str)):
-            intermediate = self.tokenize(source)
+            tokens = self.tokenize(source)
         else:
-            intermediate = source
+            tokens = source
 
+        # Yield the elements.
+        for token in tokens:
+            element = self.run_pipeline(token)
+            if element is not None:
+                yield element
+
+    def run_pipeline(self, element: Any) -> Optional[Any]:
+        intermediate: Any = element
         for stage in self.stages:
             intermediate = stage(intermediate)
+            if intermediate is None:
+                return None
         return intermediate
 
     @overload
@@ -85,6 +94,7 @@ class Pipeline(ABC):
 # TODO: Move from here down somewhere else, probably
 from .language.python import Python
 from keyword import iskeyword
+from .token_utils import Lexeme
 
 class PythonPipeline(Pipeline):
     """
@@ -97,7 +107,7 @@ class PythonPipeline(Pipeline):
     def stages(self) -> Sequence[PipelineStage]:
         return self.vocabularize, self.prune
 
-    def prune(self, tokens: Sequence[Any]) -> Sequence[Any]:
+    def prune(self, token: str) -> Optional[str]:
         EXTRANEOUS_TOKENS = {
             'ENCODING', # Always occurs as the first token: internally
                         # indicates the file ecoding, but is irrelelvant once
@@ -107,10 +117,13 @@ class PythonPipeline(Pipeline):
             'COMMENT',  # throw out comments
             'ENDMARKER',# Always occurs as the last token.
         }
-        return [tok for tok in tokens if tok not in EXTRANEOUS_TOKENS]
+        if token in EXTRANEOUS_TOKENS:
+            return None
+        else:
+            return token
 
-    def vocabularize(self, tokens: Sequence[Any]) -> Sequence[Any]:
-        return [open_closed_tokens(token) for token in tokens]
+    def vocabularize(self, token: Lexeme) -> Optional[str]:
+        return open_closed_tokens(token)
 
 
 def open_closed_tokens(token: Lexeme) -> str:
