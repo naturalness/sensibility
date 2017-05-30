@@ -37,10 +37,6 @@ if __name__ == '__main__':
 
     unique_entries = set()
     for filehash in filehashes():
-        filehash = filehash.strip()
-        # Skip empty lines.
-        if filehash == '':
-            continue
         source = corpus.get_source(filehash)
         for token in pipeline.execute(source):
             unique_entries.add(token)
