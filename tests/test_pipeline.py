@@ -26,10 +26,21 @@ source = r'''#!/usr/bin/env python
 print("Hello, world!")
 '''
 
+
 def test_works_on_source():
-    tokens = pipeline.execute(source)
+    tokens = list(pipeline.execute(source))
     assert len(tokens) == 5
-    assert list(tokens) == [
+    assert tokens == [
         'identifier', '(', '"string"', ')', 'NEWLINE'
     ]
     # Assert we can stringify it and convert it back?
+
+
+import pytest  # type: ignore
+@pytest.mark.skip
+def test_returns_locations():
+    tokens = list(pipeline.execute_with_locations(source))
+    assert len(tokens) == 5
+    #assert tokens == [
+        #'identifier', '(', '"string"', ')', 'NEWLINE'
+    #]

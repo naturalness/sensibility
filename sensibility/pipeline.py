@@ -21,19 +21,21 @@ Tokenization Pipeline
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, AnyStr, Callable, Sequence, overload
+from typing import Any, AnyStr, Callable, Optional, Sequence, Tuple, overload
 
 from .language import Language
-from .token_utils import Token, Lexeme
+from .token_utils import Token, Lexeme, Location
 
 
-PipelineStage = Callable[[Sequence[Any]], Sequence[Any]]
+PipelineStage = Callable[[Sequence[Any]], Sequence[Optional[Any]]]
 
 
 class Pipeline(ABC):
     """
     A tokenization pipeline that converts tokens to a format appropriate for
     ingestion into a language model.
+
+    TODO: make these composable, like cons-cells?
     """
     language: Language
 
@@ -42,13 +44,15 @@ class Pipeline(ABC):
     def stages(self) -> Sequence[PipelineStage]: ...
 
     @overload
-    def execute(self, tokens: bytes) -> Sequence[Any]: ...
-    @overload
-    def execute(self, tokens: str) -> Sequence[Any]: ...
+    def execute(self, tokens: AnyStr) -> Sequence[Any]: ...
     @overload
     def execute(self, tokens: Sequence[Token]) -> Sequence[Any]: ...
 
     def execute(self, source):
+        """
+        Executes all stages of the pipeline, returning a sequence of tokens,
+        in a format specified by the pipeline.
+        """
         intermediate: Sequence[Any]
         if isinstance(source, (bytes, str)):
             intermediate = self.tokenize(source)
@@ -59,7 +63,22 @@ class Pipeline(ABC):
             intermediate = stage(intermediate)
         return intermediate
 
+    @overload
+    def execute_with_locations(self, tokens: AnyStr) -> Tuple[Location, Any]: ...
+    @overload
+    def execute_with_locations(self, tokens: Sequence[Token]) -> Tuple[Location, Any]: ...
+
+    def execute_with_locations(self, source):
+        """
+        Same as #execute(), but returns pairs of (Location, token) pairs,
+        where `token` is returned by the pipeline.
+        """
+        raise NotImplementedError
+
     def tokenize(self, source: AnyStr) -> Sequence[Token]:
+        """
+        Tokenizes the source code.
+        """
         return self.language.tokenize(source)
 
 
