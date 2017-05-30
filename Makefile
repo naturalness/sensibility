@@ -4,7 +4,9 @@ PATH := $(PWD)/bin:$(PATH)
 # Automatically figure out the shuf(1) utility, even on macOS!
 SHUF := $(shell which shuf || which gshuf)
 
-ESTIMATENGRAM = false
+# KenLM
+ESTIMATENGRAM = lmplz
+ORDER = 4
 
 all:
 	@echo "Use the other targets."
@@ -18,10 +20,14 @@ lm: corpus.arpa
 
 # Estimate an n-gram langauge model from sentences
 %.arpa: %.sentences
-	$(ESTIMATENGRAM) < $< -o $@
+	$(ESTIMATENGRAM) -o $(ORDER) <$< >$@
+
+# Proprietary kenlm binary format
+%.binary: %.arpa
+	build_binary $< $@
 
 corpus.sentences: corpus.list
-	parallel run-pipeline :::: $< > $@
+	parallel --pipepart --line-buffer --round-robin run-pipeline :::: $< > $@
 
 unparsed.list:
 	list-unparsed-sources > $@

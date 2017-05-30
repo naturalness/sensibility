@@ -19,18 +19,33 @@
 Runs the pipeline on hashes given as stdin.
 
 Usage:
-      run-pipeline < hashes.txt > sentence
+      run-pipeline <hashes.txt >sentences
+      run-pipeline - <file.py >sentence
+
 """
+
+import sys
 
 from sensibility.util import filehashes
 from sensibility.miner.corpus import Corpus
 from sensibility.pipeline import PythonPipeline
 
+pipeline = PythonPipeline()
+
+
+def print_sentence(source: bytes) -> None:
+      tokens = list(pipeline.execute(source))
+      assert all(' ' not in t and '\n' not in t for t in tokens)
+      print(' '.join(tokens))
+
 
 if __name__ == '__main__':
-      corpus = Corpus()
-      pipeline = PythonPipeline()
-      for filehash in filehashes():
-            tokens = list(pipeline.execute(corpus[filehash]))
-            assert all(' ' not in t and '\n' not in t for t in tokens)
-            print(' '.join(tokens))
+      if ['-'] == sys.argv[1:]:
+            # Run pipeline on stdin
+            with open(sys.stdin.fileno(), 'rb') as input_file:
+                  print_sentence(input_file.read())
+      else:
+            # Treat stdin as file hashes, one per line.
+            corpus = Corpus()
+            for filehash in filehashes():
+                  print_sentence(corpus[filehash])
