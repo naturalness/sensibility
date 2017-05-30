@@ -81,6 +81,13 @@ class Location:
         self.start = start
         self.end = end
 
+    @property
+    def spans_single_line(self) -> bool:
+        """
+        True if the token spans multiple lines.
+        """
+        return self.start.line == self.end.line
+
     def __repr__(self) -> str:
         return f"Position(start={self.start!r}, end={self.end!r})"
 
@@ -106,11 +113,11 @@ class Token(Lexeme):
         self.end = end
 
     @property
-    def loc(self) -> Location:
+    def column(self) -> int:
         """
-        Deprecated. Location of the token.
+        Column number of the beginning of the token.
         """
-        return Location(start=self.start, end=self.end)
+        return self.start.column
 
     @property
     def line(self) -> int:
@@ -127,18 +134,25 @@ class Token(Lexeme):
         yield from range(self.start.line, self.end.line + 1)
 
     @property
-    def column(self) -> int:
+    def location(self) -> Location:
         """
-        Column number of the beginning of the token.
+        Location of the token.
         """
-        return self.end.column
+        return Location(start=self.start, end=self.end)
+
+    @property
+    def loc(self) -> Location:
+        """
+        Deprecated. Location of the token.
+        """
+        return self.location
 
     @property
     def spans_single_line(self) -> bool:
         """
         True if the token spans multiple lines.
         """
-        return self.start.line == self.end.line
+        return self.location.spans_single_line
 
     def __repr__(self) -> str:
         return (f"Token("
