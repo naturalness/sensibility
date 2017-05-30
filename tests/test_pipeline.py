@@ -16,6 +16,7 @@
 # limitations under the License.
 
 
+from sensibility.token_utils import Location, Position
 from sensibility.pipeline import PythonPipeline
 pipeline = PythonPipeline()
 
@@ -36,11 +37,36 @@ def test_works_on_source():
     # Assert we can stringify it and convert it back?
 
 
-import pytest  # type: ignore
-@pytest.mark.skip
+class LocationFactory:
+    """
+    Creates locations, incrementally.
+    """
+    def __init__(self, start: Position) -> None:
+        self.current = start
+
+    def point(self) -> Location:
+        return Location(start=self.current, end=self.current)
+
+    def across(self, width: int) -> Location:
+        start = self.current
+        self.current = Position(line=start.line, column=start.column + width)
+        return Location(start=start, end=self.current)
+
+    def single(self):
+        return self.across(1)
+
+    def newline(self):
+        return self.single()
+
+
 def test_returns_locations():
     tokens = list(pipeline.execute_with_locations(source))
     assert len(tokens) == 5
-    #assert tokens == [
-        #'identifier', '(', '"string"', ')', 'NEWLINE'
-    #]
+    loc = LocationFactory(Position(line=4, column=0))
+    assert tokens == [
+        (loc.across(len("print")), 'identifier'),
+        (loc.single(), '('),
+        (loc.across(len('"Hello, World!"')), '"string"'),
+        (loc.single(), ')'),
+        (loc.newline(), 'NEWLINE')
+    ]

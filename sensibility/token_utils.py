@@ -68,6 +68,11 @@ class Position:
         self.line = line
         self.column = column
 
+    def __eq__(self, other) -> bool:
+        return (isinstance(other, Position)
+                and self.line == other.line
+                and self.column == other.column)
+
     def __repr__(self) -> str:
         return f"Position(line={self.line!r}, column={self.column!r})"
 
@@ -81,6 +86,11 @@ class Location:
         self.start = start
         self.end = end
 
+    def __eq__(self, other) -> bool:
+        return (isinstance(other, Location)
+                and self.start == other.start
+                and self.end == other.end)
+
     @property
     def spans_single_line(self) -> bool:
         """
@@ -89,7 +99,7 @@ class Location:
         return self.start.line == self.end.line
 
     def __repr__(self) -> str:
-        return f"Position(start={self.start!r}, end={self.end!r})"
+        return f"Location(start={self.start!r}, end={self.end!r})"
 
 
 class Token(Lexeme):

@@ -53,16 +53,8 @@ class Pipeline(ABC):
         Executes all stages of the pipeline, yielding elements in a format
         specified by the pipeline.
         """
-        if isinstance(source, (bytes, str)):
-            tokens = self.tokenize(source)
-        else:
-            tokens = source
-
-        # Yield the elements.
-        for token in tokens:
-            element = self.run_pipeline(token)
-            if element is not None:
-                yield element
+        for _, element in self.execute_with_locations(source):
+            yield element
 
     def run_pipeline(self, element: Any) -> Optional[Any]:
         intermediate: Any = element
@@ -82,7 +74,18 @@ class Pipeline(ABC):
         Same as #execute(), but returns pairs of (Location, token) pairs,
         where `token` is returned by the pipeline.
         """
-        raise NotImplementedError
+        # Ensure we START with a token stream.
+        if isinstance(source, (bytes, str)):
+            tokens = self.tokenize(source)
+        else:
+            tokens = source
+
+        # Yield the elements.
+        for token in tokens:
+            location = token.location
+            element = self.run_pipeline(token)
+            if element is not None:
+                yield location, element
 
     def tokenize(self, source: AnyStr) -> Sequence[Token]:
         """
