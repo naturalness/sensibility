@@ -49,6 +49,12 @@ class Corpus:
 
         self.conn = self.engine.connect()
 
+    def __getitem__(self, filehash: str) -> bytes:
+        """
+        Yields a file from the corpus.
+        """
+        return self.get_source(filehash)
+
     def empty(self):
         metadata = MetaData()
         metadata.reflect(self.engine)
