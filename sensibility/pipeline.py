@@ -112,13 +112,22 @@ class PythonPipeline(Pipeline):
 
     def prune(self, token: str) -> Optional[str]:
         EXTRANEOUS_TOKENS = {
-            'ENCODING', # Always occurs as the first token: internally
-                        # indicates the file ecoding, but is irrelelvant once
-                        # the stream is already tokenized
-            'NL',       # Insignificant newline; not to be confused with
-                        # NEWLINE
-            'COMMENT',  # throw out comments
-            'ENDMARKER',# Always occurs as the last token.
+            # Always occurs as the first token: internally indicates the file
+            # ecoding, but is irrelelvant once the stream is already tokenized
+            'ENCODING',
+
+            # Always occurs as the last token.
+            'ENDMARKER',
+
+            # Insignificant newline; not to be confused with NEWLINE
+            'NL',
+
+            # Discard comments
+            'COMMENT',
+
+            # Represents a tokenization error. This should never appear for
+            # syntatically correct files.
+            'ERRORTOKEN',
         }
         if token in EXTRANEOUS_TOKENS:
             return None

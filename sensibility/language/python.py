@@ -112,6 +112,9 @@ class Python(Language):
         tokens = [token for token in self.tokenize(source)
                   if is_physical_token(token)]
 
+        if any(tok.name == 'ERRORTOKEN' for tok in tokens):
+            raise SyntaxError('ERRORTOKEN')
+
         INTANGIBLE_TOKENS = {'DEDENT', 'NEWLINE'}
         # Special case DEDENT and NEWLINE tokens:
         # They're do not count towards the line count (they are often on empty
@@ -126,6 +129,6 @@ class Python(Language):
 # TODO: handle this before tokens make it to this script?
 def is_physical_token(token: Lexeme) -> bool:
     FAKE_TOKENS = {
-        'ENDMARKER', 'ENCODING', 'COMMENT', 'NL'
+        'ENDMARKER', 'ENCODING', 'COMMENT', 'NL', 'ERRORTOKEN'
     }
     return token.name not in FAKE_TOKENS
