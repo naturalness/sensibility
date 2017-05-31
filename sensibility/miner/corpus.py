@@ -16,12 +16,13 @@
 # limitations under the License.
 
 """
-It should really be called "corpus", shouldn't it?
+Access to the corpus.
 """
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, MetaData  # type: ignore
+from sqlalchemy import create_engine, event, MetaData  # type: ignore
+from sqlalchemy.engine import Engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
 from .connection import sqlite3_path
@@ -35,18 +36,33 @@ from ..language.python import WordCount
 
 
 class Corpus:
-    def __init__(self, engine=None) -> None:
+    def __init__(self, engine=None, read_only=False) -> None:
         if engine is not None:
             self.engine = engine
         else:
             self.engine = create_engine(f"sqlite:///{sqlite3_path}")
 
+        self.initialize_sqlite3(read_only)
+
         if self.empty():
-            # TODO: set WAL mode
-            # TODO: set syncronized off
             metadata.create_all(self.engine)
 
         self.conn = self.engine.connect()
+
+    def initialize_sqlite3(self, read_only: bool) -> None:
+        """
+        Set some pragmas for initialy creating the SQLite3 database.
+        """
+
+        @event.listens_for(Engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, _connection_record):
+            cur = dbapi_connection.cursor()
+            cur.execute('PRAGMA encoding = "UTF-8"')
+            cur.execute('PRAGMA foreign_keys = ON')
+            if not read_only:
+                cur.execute('PRAGMA journal_mode = WAL')
+                cur.execute('PRAGMA synchronous = NORMAL')
+            cur.close()
 
     def __getitem__(self, filehash: str) -> bytes:
         """
