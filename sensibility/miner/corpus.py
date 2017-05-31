@@ -20,6 +20,7 @@ Access to the corpus.
 """
 
 from pathlib import Path
+from typing import Any, Dict
 
 from sqlalchemy import create_engine, event, MetaData  # type: ignore
 from sqlalchemy.engine import Engine  # type: ignore
@@ -28,7 +29,7 @@ from sqlalchemy.sql import select  # type: ignore
 from .connection import sqlite3_path
 from .models import RepositoryMetadata, SourceFileInRepository
 from ._schema import (
-    failure, repository, repository_source, source_file, source_summary,
+    failure, meta, repository, repository_source, source_file, source_summary,
     metadata
 )
 
@@ -42,27 +43,28 @@ class Corpus:
         else:
             self.engine = create_engine(f"sqlite:///{sqlite3_path}")
 
-        self.initialize_sqlite3(read_only)
+        self._initialize_sqlite3(read_only)
 
-        if self.empty():
+        if self.empty:
             metadata.create_all(self.engine)
 
         self.conn = self.engine.connect()
 
-    def initialize_sqlite3(self, read_only: bool) -> None:
+    @property
+    def language(self) -> str:
         """
-        Set some pragmas for initialy creating the SQLite3 database.
+        The main laguage of the mined sources.
         """
+        query = select([meta.c.value]).\
+            where(meta.c.key == 'language')
+        result, = self.conn.execute(query)
+        return result[meta.c.value]
 
-        @event.listens_for(Engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, _connection_record):
-            cur = dbapi_connection.cursor()
-            cur.execute('PRAGMA encoding = "UTF-8"')
-            cur.execute('PRAGMA foreign_keys = ON')
-            if not read_only:
-                cur.execute('PRAGMA journal_mode = WAL')
-                cur.execute('PRAGMA synchronous = NORMAL')
-            cur.close()
+    @property
+    def empty(self) -> bool:
+        metadata = MetaData()
+        metadata.reflect(self.engine)
+        return 'repository' not in metadata
 
     def __getitem__(self, filehash: str) -> bytes:
         """
@@ -70,18 +72,30 @@ class Corpus:
         """
         return self.get_source(filehash)
 
-    def empty(self) -> bool:
-        metadata = MetaData()
-        metadata.reflect(self.engine)
-        return 'repository' not in metadata
+    def set_metadata(self, **kwargs: Dict[str, Any]) -> None:
+        """
+        Sets the metadata table.
+        """
+        self.conn.execute(meta.insert(), [
+            {'key': key, 'value': str(value)}
+            for key, value in kwargs.items()
+        ])
 
     def insert_repository(self, repo: RepositoryMetadata) -> None:
+        """
+        Insert a repository's metadata into the database.
+        """
         self.conn.execute(repository.insert(),
                           owner=repo.owner, name=repo.name,
                           revision=repo.revision, license=repo.license,
                           commit_date=repo.commit_date)
 
     def insert_source_file_from_repo(self, entry: SourceFileInRepository) -> None:
+        """
+        Insert a source file from a repository into the database. If the
+        source file already exists in the database, only the relation is
+        inserted.
+        """
         trans = self.conn.begin()
         try:
             self.conn.execute((source_file.insert()
@@ -119,3 +133,19 @@ class Corpus:
             .where(source_file.c.hash == filehash)
         result, = self.conn.execute(query)
         return result[source_file.c.source]
+
+    def _initialize_sqlite3(self, read_only: bool) -> None:
+        """
+        Set some pragmas for initialy creating the SQLite3 database.
+        """
+
+        @event.listens_for(Engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, _connection_record):
+            cur = dbapi_connection.cursor()
+            cur.execute('PRAGMA encoding = "UTF-8"')
+            cur.execute('PRAGMA foreign_keys = ON')
+            if not read_only:
+                cur.execute('PRAGMA journal_mode = WAL')
+                cur.execute('PRAGMA synchronous = NORMAL')
+            cur.close()
+

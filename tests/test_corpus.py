@@ -33,33 +33,28 @@ from sensibility.miner.models import (
 
 
 def test_create(engine):
-    db = database()
+    db = empty_corpus()
 
 
 
-def test_insert_source_summary(database, repo_file) -> None:
+def test_insert_source_summary(empty_corpus, repo_file) -> None:
     repository, _, _ = repo_file
-    database.insert_repository(repository)
-    database.insert_source_file_from_repo(repo_file)
-    database.insert_source_summary(repo_file.filehash,
+    empty_corpus.insert_repository(repository)
+    empty_corpus.insert_source_file_from_repo(repo_file)
+    empty_corpus.insert_source_summary(repo_file.filehash,
                                    WordCount(2, 3))
 
 
-def test_insert_and_retrieve(populated_database, source_file):
-    source_code = populated_database.get_source(source_file.filehash)
+def test_insert_and_retrieve(corpus, source_file):
+    source_code = corpus.get_source(source_file.filehash)
     assert source_code == source_file.source
     assert SourceFile(source_code).filehash == source_file.filehash
-    # Ensure we can the item back from the database.
-    assert populated_database[source_file.filehash] == source_file.source
+    # Ensure we can the item back from the empty_corpus.
+    assert corpus[source_file.filehash] == source_file.source
 
 
-@pytest.fixture
-def populated_database() -> Corpus:
-    db = database()
-    entry = repo_file()
-    db.insert_repository(entry.repository)
-    db.insert_source_file_from_repo(entry)
-    return db
+def test_metadata(corpus) -> None:
+    assert corpus.language == 'Python'
 
 
 @pytest.fixture
@@ -89,7 +84,18 @@ def repository() -> RepositoryMetadata:
 
 
 @pytest.fixture
-def database():
+def corpus() -> Corpus:
+    db = empty_corpus()
+    db.set_metadata(language='Python',
+                    started=datetime.datetime.utcnow())
+    entry = repo_file()
+    db.insert_repository(entry.repository)
+    db.insert_source_file_from_repo(entry)
+    return db
+
+
+@pytest.fixture
+def empty_corpus() -> Corpus:
     return Corpus(engine=engine())
 
 

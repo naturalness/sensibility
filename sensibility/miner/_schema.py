@@ -56,6 +56,13 @@ def _to(table_name, *columns):
 metadata = MetaData()
 cascade_all = dict(onupdate='CASCADE', ondelete='CASCADE')
 
+# stores metadata for the database.
+meta = Table(
+    'meta', metadata,
+    Column('key', String, primary_key=True),
+    Column('value', String)
+)
+
 repository = Table(
     'repository', metadata,
     Column('owner', String, primary_key=True),
