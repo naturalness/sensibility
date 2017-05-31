@@ -21,47 +21,46 @@ It should really be called "corpus", shouldn't it?
 
 from pathlib import Path
 
-from sqlalchemy import create_engine  # type: ignore
-from sqlalchemy import (
-    Table, Column,
-    Integer, String, DateTime, LargeBinary,
-    MetaData,
-    ForeignKeyConstraint
-)  # type: ignore
+from sqlalchemy import create_engine, MetaData  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
 from .connection import sqlite3_path
 from .models import RepositoryMetadata, SourceFileInRepository
+from ._schema import (
+    failure, repository, repository_source, source_file, source_summary,
+    metadata
+)
 
 from ..language.python import WordCount
 
 
 class Corpus:
-    def __init__(self, engine=None):
+    def __init__(self, engine=None) -> None:
         if engine is not None:
             self.engine = engine
         else:
             self.engine = create_engine(f"sqlite:///{sqlite3_path}")
 
-        metadata = self._initialize_schema()
         if self.empty():
+            # TODO: set WAL mode
+            # TODO: set syncronized off
             metadata.create_all(self.engine)
 
         self.conn = self.engine.connect()
 
     def __getitem__(self, filehash: str) -> bytes:
         """
-        Yields a file from the corpus.
+        Returns a file from the corpus.
         """
         return self.get_source(filehash)
 
-    def empty(self):
+    def empty(self) -> bool:
         metadata = MetaData()
         metadata.reflect(self.engine)
         return 'repository' not in metadata
 
     def insert_repository(self, repo: RepositoryMetadata) -> None:
-        self.conn.execute(self.repository.insert(),
+        self.conn.execute(repository.insert(),
                           owner=repo.owner, name=repo.name,
                           revision=repo.revision, license=repo.license,
                           commit_date=repo.commit_date)
@@ -69,11 +68,11 @@ class Corpus:
     def insert_source_file_from_repo(self, entry: SourceFileInRepository) -> None:
         trans = self.conn.begin()
         try:
-            self.conn.execute((self.source_file.insert()
+            self.conn.execute((source_file.insert()
                                 .prefix_with('OR IGNORE', dialect='sqlite')),
                               source=entry.source_file.source,
                               hash=entry.filehash)
-            self.conn.execute(self.repository_source.insert(),
+            self.conn.execute(repository_source.insert(),
                               owner=entry.owner, name=entry.name,
                               hash=entry.filehash, path=str(entry.path))
         except:
@@ -86,7 +85,7 @@ class Corpus:
         """
         Insert the word count into the source summary.
         """
-        self.conn.execute(self.source_summary.insert(),
+        self.conn.execute(source_summary.insert(),
                           hash=filehash,
                           sloc=summary.sloc, n_tokens=summary.n_tokens)
 
@@ -94,72 +93,13 @@ class Corpus:
         """
         Insert the word count into the source summary.
         """
-        self.conn.execute(self.failure.insert(), hash=filehash)
+        self.conn.execute(failure.insert(), hash=filehash)
 
     def get_source(self, filehash: str) -> bytes:
         """
         Returns the source code for one file.
         """
-        query = select([self.source_file.c.source])\
-            .where(self.source_file.c.hash == filehash)
+        query = select([source_file.c.source])\
+            .where(source_file.c.hash == filehash)
         result, = self.conn.execute(query)
-        return result[0]
-
-    def _initialize_schema(self):
-        """
-        The schema for this database.
-
-        TODO: adapt from GHTorrent's database.
-        """
-        metadata = MetaData()
-        cascade_all = dict(onupdate='CASCADE', ondelete='CASCADE')
-
-        self.repository = Table('repository', metadata,
-            Column('owner', String, primary_key=True),
-            Column('name', String, primary_key=True),
-
-            Column('revision', String, nullable=False),
-            Column('commit_date', DateTime, nullable=False),
-            Column('license', String)
-        )
-
-        self.source_file = Table('source_file', metadata,
-            Column('hash', String, primary_key=True),
-
-            Column('source', LargeBinary, nullable=False)
-        )
-
-        self.repository_source = Table('repository_source', metadata,
-            Column('owner', String, primary_key=True),
-            Column('name', String, primary_key=True),
-            Column('hash', String, primary_key=True),
-
-            Column('path', String, nullable=False),
-            ForeignKeyConstraint(*_to('repository', 'owner', 'name'),
-                                 **cascade_all),
-            ForeignKeyConstraint(*_to('source_file', 'hash'),
-                                 **cascade_all)
-        )
-
-        self.source_summary = Table('source_summary', metadata,
-            Column('hash', String, primary_key=True),
-
-            Column('sloc', Integer, nullable=False),
-            Column('n_tokens', Integer, nullable=False),
-
-            ForeignKeyConstraint(*_to('source_file', 'hash'),
-                                 **cascade_all)
-        )
-
-        self.failure = Table('failure', metadata,
-            Column('hash', String, primary_key=True),
-
-            ForeignKeyConstraint(*_to('source_file', 'hash'),
-                                 **cascade_all)
-        )
-        return metadata
-
-
-def _to(table_name, *columns):
-    yield columns
-    yield tuple(f"{table_name}.{col}" for col in columns)
+        return result[source_file.c.source]
