@@ -29,8 +29,18 @@ import pickle
 import sensibility.language.python
 
 
+def as_pickle(tokens):
+    with open(sys.stdout.fileno(), 'wb') as output_file:
+        pickle.dump(tokens, output_file)
+
+
+def as_python(tokens):
+    from pprint import pprint
+    pprint(tokens)
+
+
 if __name__ == '__main__':
     language = sensibility.language.python.Python()
+    dump = as_python if sys.argv[1:] == ['--python'] else as_pickle
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        with open(sys.stdout.fileno(), 'wb') as output_file:
-            pickle.dump(language.tokenize(input_file), output_file)
+        dump(language.tokenize(input_file))
