@@ -46,6 +46,6 @@ if __name__ == '__main__':
                   print_sentence(input_file.read())
       else:
             # Treat stdin as file hashes, one per line.
-            corpus = Corpus()
+            corpus = Corpus(read_only=True)
             for filehash in filehashes():
                   print_sentence(corpus[filehash])

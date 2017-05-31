@@ -33,7 +33,7 @@ from sensibility.pipeline import PythonPipeline
 # TODO: Make it so that it's no longer just for Python
 if __name__ == '__main__':
     pipeline = PythonPipeline()
-    corpus = Corpus()
+    corpus = Corpus(read_only=True)
 
     unique_entries = set()
     for filehash in filehashes():

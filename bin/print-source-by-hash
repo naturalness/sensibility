@@ -26,22 +26,17 @@ Usage:
 """
 
 import sys
-import sqlite3
+from sensibility.miner.corpus import Corpus
 
 filehash, = sys.argv[1:]
-database = 'python-sources.sqlite3'
-
-conn = sqlite3.connect(database)
-
-cur = conn.execute('''
-SELECT source FROM source_file
-    WHERE hash = ?
-''', (filehash,))
+corpus = Corpus(read_only=True)
 
 try:
-    source, = cur.fetchone()
+    source = corpus[filehash]
 except:
     print(f"not found: {filehash}", file=sys.stderr)
     exit(1)
+
+# Write the file as binary.
 with open(sys.stdout.fileno(), 'wb') as output_file:
     output_file.write(source)
