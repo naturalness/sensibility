@@ -1,3 +1,6 @@
+# Putting the n in n-gram:
+ORDER = 4
+
 # Augment path wih applications in ./bin/
 PATH := $(PWD)/bin:$(PATH)
 
@@ -5,26 +8,29 @@ PATH := $(PWD)/bin:$(PATH)
 SHUF := $(shell which shuf || which gshuf)
 
 # KenLM
-ESTIMATENGRAM = lmplz
-ORDER = 4
+KENLMBIN = $(HOME)/.kenlm/bin
+ESTIMATENGRAM = $(KENLMBIN)/lmplz
+BUILDBINARY = $(KENLMBIN)/build_binary
 
 all:
-	@echo "Use the other targets."
+	@echo "Targets:"
+	@echo "\t" "parse"
+	@echo "\t" "lm"
 
 parse: unparsed.list
 	parallel --pipepart --round-robin parse-and-insert-all :::: $<
 
-lm: corpus.arpa
+lm: corpus.binary
 
 ################################################################################
+
+# Create a binary n-gram model with modkn backoffs, for querying.
+%.binary: %.arpa
+	$(BUILDBINARY) $< $@
 
 # Estimate an n-gram langauge model from sentences
 %.arpa: %.sentences
 	$(ESTIMATENGRAM) -o $(ORDER) <$< >$@
-
-# Proprietary kenlm binary format
-%.binary: %.arpa
-	build_binary $< $@
 
 corpus.sentences: corpus.list
 	parallel --pipepart --line-buffer --round-robin run-pipeline :::: $< > $@
