@@ -44,33 +44,41 @@ from sqlalchemy import (  # type: ignore
     ForeignKeyConstraint
 )
 
+from typing import Iterable, Any, Tuple
+
+
 def _to(table_name, *columns):
     "Helper: yields arguments for creating foreign key relations."
     yield columns
     yield tuple(f"{table_name}.{col}" for col in columns)
 
 
-# The schema
-
 metadata = MetaData()
 cascade_all = dict(onupdate='CASCADE', ondelete='CASCADE')
 
-repository = Table('repository', metadata,
+repository = Table(
+    'repository', metadata,
     Column('owner', String, primary_key=True),
     Column('name', String, primary_key=True),
 
     Column('revision', String, nullable=False),
     Column('commit_date', DateTime, nullable=False),
-    Column('license', String)
+    Column('license', String),
+
+    #comment="A source code repository from GitHub at a particular revision"
 )
 
-source_file = Table('source_file', metadata,
+source_file = Table(
+    'source_file', metadata,
     Column('hash', String, primary_key=True),
 
-    Column('source', LargeBinary, nullable=False)
+    Column('source', LargeBinary, nullable=False),
+
+    #comment="A source file, divorced from any repo it may belong to"
 )
 
-repository_source = Table('repository_source', metadata,
+repository_source = Table(
+    'repository_source', metadata,
     Column('owner', String, primary_key=True),
     Column('name', String, primary_key=True),
     Column('hash', String, primary_key=True),
@@ -79,22 +87,33 @@ repository_source = Table('repository_source', metadata,
     ForeignKeyConstraint(*_to('repository', 'owner', 'name'),
                          **cascade_all),
     ForeignKeyConstraint(*_to('source_file', 'hash'),
-                         **cascade_all)
+                         **cascade_all),
+
+    #comment=(
+    #    "Relates a source file to a repository. "
+    #    "A many-to-many relationship."
+    #)
 )
 
-source_summary = Table('source_summary', metadata,
+source_summary = Table(
+    'source_summary', metadata,
     Column('hash', String, primary_key=True),
 
     Column('sloc', Integer, nullable=False),
     Column('n_tokens', Integer, nullable=False),
 
     ForeignKeyConstraint(*_to('source_file', 'hash'),
-                         **cascade_all)
+                         **cascade_all),
+
+    #comment="Source files that are syntactically valid."
 )
 
-failure = Table('failure', metadata,
+failure = Table(
+    'failure', metadata,
     Column('hash', String, primary_key=True),
 
     ForeignKeyConstraint(*_to('source_file', 'hash'),
-                         **cascade_all)
+                         **cascade_all),
+
+    #comment="Files that are syntacticall invalid."
 )

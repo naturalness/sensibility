@@ -36,20 +36,21 @@ def test_create(engine):
     db = database()
 
 
-def test_insert_basic(populated_database, source_file):
-    source_code = populated_database.get_source(source_file.filehash)
-    assert source_code == source_file.source
-    assert SourceFile(source_code).filehash == source_file.filehash
-    # Ensure we can the item back from the database.
-    assert populated_database[source_file.filehash] == source_file.source
 
-
-def test_inserts(database, repo_file) -> None:
+def test_insert_source_summary(database, repo_file) -> None:
     repository, _, _ = repo_file
     database.insert_repository(repository)
     database.insert_source_file_from_repo(repo_file)
     database.insert_source_summary(repo_file.filehash,
                                    WordCount(2, 3))
+
+
+def test_insert_and_retrieve(populated_database, source_file):
+    source_code = populated_database.get_source(source_file.filehash)
+    assert source_code == source_file.source
+    assert SourceFile(source_code).filehash == source_file.filehash
+    # Ensure we can the item back from the database.
+    assert populated_database[source_file.filehash] == source_file.source
 
 
 @pytest.fixture
