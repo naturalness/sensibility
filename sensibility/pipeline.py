@@ -161,7 +161,7 @@ def open_closed_tokens(token: Lexeme) -> str:
         if iskeyword(token.value):
             return token.value
         else:
-            return 'identifier'
+            return 'IDENTIFIER'
     elif token.name in VERBATIM_CLASSES:
         assert ' ' not in token.value
         return token.value
