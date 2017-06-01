@@ -31,10 +31,8 @@ from sensibility.miner.models import (
 )
 
 
-
 def test_create(engine):
     db = empty_corpus()
-
 
 
 def test_insert_source_summary(empty_corpus, repo_file) -> None:
@@ -56,6 +54,27 @@ def test_insert_and_retrieve(corpus, source_file):
 def test_metadata(corpus) -> None:
     assert corpus.language == 'Python'
 
+
+def test_insert_duplicate(corpus: Corpus,
+                          repo_file: SourceFileInRepository) -> None:
+    """
+    Insert the same file with two DIFFERENT paths.
+    """
+    with pytest.raises(Exception):
+        corpus.insert_source_file_from_repo(repo_file)
+
+    # Insert the SAME file, under a different path.
+    repo_file2 = SourceFileInRepository(
+        repository=repo_file.repository,
+        source_file=repo_file.source_file,
+        path=PurePosixPath('world.py')
+    )
+
+    # This should work:
+    corpus.insert_source_file_from_repo(repo_file2)
+
+
+################################## Fixtures ##################################
 
 @pytest.fixture
 def source_file() -> SourceFile:

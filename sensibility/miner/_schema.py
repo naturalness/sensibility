@@ -89,16 +89,17 @@ repository_source = Table(
     Column('owner', String, primary_key=True),
     Column('name', String, primary_key=True),
     Column('hash', String, primary_key=True),
+    Column('path', String, primary_key=True),
 
-    Column('path', String, nullable=False),
     ForeignKeyConstraint(*_to('repository', 'owner', 'name'),
                          **cascade_all),
     ForeignKeyConstraint(*_to('source_file', 'hash'),
                          **cascade_all),
 
     #comment=(
-    #    "Relates a source file to a repository. "
-    #    "A many-to-many relationship."
+    #    "Relates a source file to a repository."
+    #    " A many-to-many relationship."
+    #    " Note: A file hash may be in the same repository twice!"
     #)
 )
 
