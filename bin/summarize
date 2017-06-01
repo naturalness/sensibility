@@ -25,11 +25,10 @@ Usage:
 """
 
 import sys
-import sensibility.language.python
+from sensibility.language.python import python
 
 
 if __name__ == '__main__':
-    language = sensibility.language.python.Python()
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        res = language.word_count(input_file.read())
+        res = python.word_count(input_file.read())
     print(f"{res.sloc:8d} {res.n_tokens:8d}")

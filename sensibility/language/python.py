@@ -23,9 +23,10 @@ from typing import IO, NamedTuple, Sequence, Union
 
 from . import Language
 from ..token_utils import Lexeme, Position, Token
+from ..util import singleton, C
 
 
-# TODO: move elsewhere?
+# TODO: rename to SourceSummary and move to... models?
 class WordCount(NamedTuple):
     sloc: int
     n_tokens: int
@@ -124,7 +125,7 @@ class Python(Language):
                            if token.name not in INTANGIBLE_TOKENS)
 
         return WordCount(sloc=len(unique_lines), n_tokens=len(tokens))
-
+python = Python()
 
 # TODO: handle this before tokens make it to this script?
 def is_physical_token(token: Lexeme) -> bool:

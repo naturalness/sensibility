@@ -95,7 +95,7 @@ class Pipeline(ABC):
 
 
 # TODO: Move from here down somewhere else, probably
-from .language.python import Python
+from .language.python import python
 from keyword import iskeyword
 from .token_utils import Lexeme
 
@@ -104,7 +104,7 @@ class PythonPipeline(Pipeline):
     Converts Python tokens to a format suitable for training and evaluating.
     """
 
-    language = Python()
+    language = python
 
     @property
     def stages(self) -> Sequence[PipelineStage]:

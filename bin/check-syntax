@@ -25,13 +25,13 @@ Usage:
 
 import sys
 
-import sensibility.language.python
+from sensibility.language.python import python
 
 
 if __name__ == '__main__':
-    language = sensibility.language.python.Python()
+    # TODO: use any language
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        if language.check_syntax(input_file.read()):
+        if python.check_syntax(input_file.read()):
             exit(0)
         else:
             exit(1)

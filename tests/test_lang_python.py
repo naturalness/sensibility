@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-from sensibility.language.python import Python
+from sensibility.language.python import python
 
 
 test_file = r"""#!/usr/bin/env python
@@ -20,7 +20,6 @@ if __name__ == '__main__':
 
 
 def test_tokenize():
-    python = Python()
     tokens = python.tokenize(test_file)
-    # TODO: better test for this.
+    # TODO: more robust tests for this.
     assert len(tokens) == 30

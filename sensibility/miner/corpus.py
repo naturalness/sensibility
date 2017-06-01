@@ -33,6 +33,7 @@ from ._schema import (
     metadata
 )
 
+# TODO: This object should NOT be here! Perhaps language.SourceSummary
 from ..language.python import WordCount
 
 
