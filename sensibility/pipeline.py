@@ -143,6 +143,8 @@ def open_closed_tokens(token: Lexeme) -> str:
     'Flattens' Python into tokens based on whether the token is open or
     closed.
     """
+
+    # List of token names that whose text should be used verbatim as the type.
     VERBATIM_CLASSES = {
         "AMPER", "AMPEREQUAL", "ASYNC", "AT", "ATEQUAL", "AWAIT", "CIRCUMFLEX",
         "CIRCUMFLEXEQUAL", "COLON", "COMMA", "DOT", "DOUBLESLASH",
@@ -160,12 +162,9 @@ def open_closed_tokens(token: Lexeme) -> str:
             return token.value
         else:
             return 'identifier'
-    elif token.name == 'NUMBER':
-        return '0'
-    elif token.name == 'STRING':
-        return '"string"'
     elif token.name in VERBATIM_CLASSES:
         assert ' ' not in token.value
         return token.value
     else:
+        # Note: includes NUMBER and STRING
         return token.name
