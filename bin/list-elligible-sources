@@ -22,6 +22,7 @@
 DATABASE=${1:-python-sources.sqlite3}
 QUERY=$(cat <<-SQL
 SELECT hash FROM source_summary
+ WHERE n_tokens > 0
 SQL
 )
 
