@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+"""
+Represents a language and actions you can do to its source code.
+"""
+
 import os
-from typing import Set, Sequence, IO, Union
+from typing import IO, Sequence, Set, Union
 from abc import ABC, abstractmethod
-from lazy_object_proxy import Proxy
 
 from ..token_utils import Token
 
@@ -40,7 +43,10 @@ class Language(ABC):
     @abstractmethod
     def check_syntax(self, source: Union[str, bytes]) -> bool: ...
 
+    # TODO: vocabulary?
 
+
+# TODO: move this to its own file.
 class JavaScript(Language):
     extensions = {'.js'}
 

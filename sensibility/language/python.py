@@ -23,7 +23,6 @@ from typing import IO, NamedTuple, Sequence, Union
 
 from . import Language
 from ..token_utils import Lexeme, Position, Token
-from ..util import singleton, C
 
 
 # TODO: rename to SourceSummary and move to... models?
@@ -41,7 +40,7 @@ class Python(Language):
 
         NOTE:
         This may include extra, unwanted tokens, including
-        COMMENT, ENCODING, ENDMARKER
+        COMMENT, ENCODING, ENDMARKER, ERRORTOKEN
 
         NOTE:
         There are TWO newline tokens:
@@ -73,13 +72,14 @@ class Python(Language):
     def check_syntax(self, source: Union[str, bytes]) -> bool:
         r"""
         Given a source file, returns True if the file compiles.
-        >>> Python().check_syntax('print("Hello, World!")')
+
+        >>> python.check_syntax('print("Hello, World!")')
         True
-        >>> Python().check_syntax('import java.util.*;')
+        >>> python.check_syntax('import java.util.*;')
         False
-        >>> Python().check_syntax('\x89PNG\x0D\x0A\x1A\x0A\x00\x00\x00\x0D')
+        >>> python.check_syntax('\x89PNG\x0D\x0A\x1A\x0A\x00\x00\x00\x0D')
         False
-        >>> Python().check_syntax(r"AWESOME_CHAR_ESCAPE = '\x0G'")
+        >>> python.check_syntax(r"AWESOME_CHAR_ESCAPE = '\x0G'")
         False
         """
 
@@ -125,7 +125,10 @@ class Python(Language):
                            if token.name not in INTANGIBLE_TOKENS)
 
         return WordCount(sloc=len(unique_lines), n_tokens=len(tokens))
-python = Python()
+
+
+python: Language = Python()
+
 
 # TODO: handle this before tokens make it to this script?
 def is_physical_token(token: Lexeme) -> bool:
