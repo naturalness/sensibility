@@ -50,7 +50,7 @@ class Downloader:
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
-        self.database = Corpus()
+        self.corpus = Corpus()
 
     def loop_forever(self) -> None:
         logger.info("Downloader queue: %s", self.worker.name)
@@ -67,7 +67,7 @@ class Downloader:
     def get_a_job(self) -> str:
         """
         This will block until a job is available.
-        (to place a job, use enqueue-job.py)
+        (to place a job, use bin/enqueue-job)
         """
         # TODO: if there already is a job in the worker queue, then, fetch
         # this job.
@@ -82,7 +82,7 @@ class Downloader:
     def do_job(self, job: str) -> None:
         repo_id = RepositoryID.parse(job)
 
-        logger.debug('Fetching %s', repo_id)
+        logger.info('Fetching %s', repo_id)
         repo = self.client.fetch_repository(repo_id)
         self.insert_repository(repo)
 
@@ -116,11 +116,11 @@ class Downloader:
 
     def insert_repository(self, repo: RepositoryMetadata) -> None:
         logger.debug('Insering %s', repo)
-        self.database.insert_repository(repo)
+        self.corpus.insert_repository(repo)
 
     def insert_source_file(self, entry: SourceFileInRepository) -> None:
         logger.debug('  > %s', entry.path)
-        self.database.insert_source_file_from_repo(entry)
+        self.corpus.insert_source_file_from_repo(entry)
 
     def extract_sources(self, archive: zipfile.ZipFile) -> Iterator[Tuple[PurePosixPath, bytes]]:
         """
