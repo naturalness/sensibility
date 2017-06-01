@@ -6,7 +6,7 @@ Represents a language and actions you can do to its source code.
 """
 
 import os
-from typing import IO, Sequence, Set, Union, NamedTuple
+from typing import Any, IO, Sequence, Set, Union, NamedTuple, cast, overload
 from abc import ABC, abstractmethod
 
 from ..token_utils import Token
@@ -39,15 +39,34 @@ class Language(ABC):
     def __str__(self) -> str:
         return self.id
 
-    def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
-        filename = os.fspath(path)
-        return any(filename.endswith(ext) for ext in self.extensions)
-
     @abstractmethod
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]: ...
 
     @abstractmethod
     def check_syntax(self, source: Union[str, bytes]) -> bool: ...
+
+    @abstractmethod
+    def summarize_tokens(self, source: Sequence[Token]) -> SourceSummary: ...
+
+    def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
+        """
+        Check if the given path matches any of the registered extensions for
+        this language.
+        """
+        filename = os.fspath(path)
+        return any(filename.endswith(ext) for ext in self.extensions)
+
+    @overload
+    def summarize(self, source: Sequence[Token]) -> SourceSummary: ...
+    @overload
+    def summarize(self, source: Union[str, bytes, IO[bytes]]) -> SourceSummary: ...
+
+    def summarize(self, source: Any) -> SourceSummary:
+        if isinstance(source, (str, bytes, IO)):
+            tokens = self.tokenize(source)
+        else:
+            tokens = cast(Sequence[Token], source)
+        return self.summarize_tokens(tokens)
 
     # TODO: vocabulary?
 

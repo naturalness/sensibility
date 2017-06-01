@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import pytest  # type: ignore
+
 from sensibility.language import Language
 from sensibility.language.python import python
 
@@ -27,3 +29,12 @@ def test_tokenize():
     tokens = python.tokenize(test_file)
     # TODO: more robust tests for this.
     assert len(tokens) == 30
+
+
+def test_summarize() -> None:
+    with pytest.raises(SyntaxError):
+        python.summarize('import $')
+
+    summary = python.summarize(test_file)
+    assert summary.sloc == 6
+    assert summary.n_tokens == 20

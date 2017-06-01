@@ -97,18 +97,17 @@ class Python(Language):
             child_pid, status = os.waitpid(pid, 0)
             return status == 0
 
-    def word_count(self, source: bytes) -> SourceSummary:
+    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary:
         r"""
         Calculates the word count of a Python source.
 
-        >>> Python().word_count('import sys\n\nsys.stdout.write("hello")\n')
+        >>> python.summarize('import sys\n\nsys.stdout.write("hello")\n')
         SourceSummary(sloc=2, n_tokens=12)
         """
-        tokens = [token for token in self.tokenize(source)
-                  if is_physical_token(token)]
-
         if any(tok.name == 'ERRORTOKEN' for tok in tokens):
             raise SyntaxError('ERRORTOKEN')
+
+        tokens = [token for token in tokens if is_physical_token(token)]
 
         INTANGIBLE_TOKENS = {'DEDENT', 'NEWLINE'}
         # Special case DEDENT and NEWLINE tokens:
