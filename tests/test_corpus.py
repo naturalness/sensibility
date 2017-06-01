@@ -23,7 +23,7 @@ from sqlalchemy import create_engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
 # This is the WRONG place to store the WordCount class!
-from sensibility.language.python import WordCount
+from sensibility.language import SourceSummary
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.models import (
     RepositoryMetadata, SourceFile,
@@ -42,7 +42,7 @@ def test_insert_source_summary(empty_corpus, repo_file) -> None:
     empty_corpus.insert_repository(repository)
     empty_corpus.insert_source_file_from_repo(repo_file)
     empty_corpus.insert_source_summary(repo_file.filehash,
-                                   WordCount(2, 3))
+                                       SourceSummary(2, 3))
 
 
 def test_insert_and_retrieve(corpus, source_file):

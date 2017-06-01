@@ -19,16 +19,10 @@ import os
 import token
 import tokenize
 from io import BytesIO
-from typing import IO, NamedTuple, Sequence, Union
+from typing import IO, Sequence, Union
 
-from . import Language
+from . import Language, SourceSummary
 from ..token_utils import Lexeme, Position, Token
-
-
-# TODO: rename to SourceSummary and move to... models?
-class WordCount(NamedTuple):
-    sloc: int
-    n_tokens: int
 
 
 class Python(Language):
@@ -103,12 +97,12 @@ class Python(Language):
             child_pid, status = os.waitpid(pid, 0)
             return status == 0
 
-    def word_count(self, source: bytes) -> WordCount:
+    def word_count(self, source: bytes) -> SourceSummary:
         r"""
         Calculates the word count of a Python source.
 
         >>> Python().word_count('import sys\n\nsys.stdout.write("hello")\n')
-        WordCount(sloc=2, n_tokens=12)
+        SourceSummary(sloc=2, n_tokens=12)
         """
         tokens = [token for token in self.tokenize(source)
                   if is_physical_token(token)]
@@ -124,7 +118,7 @@ class Python(Language):
                            for lineno in token.lines
                            if token.name not in INTANGIBLE_TOKENS)
 
-        return WordCount(sloc=len(unique_lines), n_tokens=len(tokens))
+        return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
 
 
 python: Language = Python()

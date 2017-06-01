@@ -6,10 +6,16 @@ Represents a language and actions you can do to its source code.
 """
 
 import os
-from typing import IO, Sequence, Set, Union
+from typing import IO, Sequence, Set, Union, NamedTuple
 from abc import ABC, abstractmethod
 
 from ..token_utils import Token
+
+
+
+class SourceSummary(NamedTuple):
+    sloc: int
+    n_tokens: int
 
 
 class Language(ABC):
@@ -50,6 +56,6 @@ class Language(ABC):
 class JavaScript(Language):
     extensions = {'.js'}
 
-
+# TODO: crazy proxy object
 from .python import python
 language: Language = python

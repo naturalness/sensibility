@@ -19,7 +19,6 @@
 Access to the corpus.
 """
 
-from pathlib import Path
 from typing import Any, Dict
 
 from sqlalchemy import create_engine, event, MetaData  # type: ignore
@@ -33,8 +32,7 @@ from ._schema import (
     metadata
 )
 
-# TODO: This object should NOT be here! Perhaps language.SourceSummary
-from ..language.python import WordCount
+from sensibility.language import SourceSummary
 
 
 class Corpus:
@@ -112,7 +110,7 @@ class Corpus:
         else:
             trans.commit()
 
-    def insert_source_summary(self, filehash: str, summary: WordCount) -> None:
+    def insert_source_summary(self, filehash: str, summary: SourceSummary) -> None:
         """
         Insert the word count into the source summary.
         """
@@ -149,4 +147,3 @@ class Corpus:
                 cur.execute('PRAGMA journal_mode = WAL')
                 cur.execute('PRAGMA synchronous = NORMAL')
             cur.close()
-
