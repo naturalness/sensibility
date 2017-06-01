@@ -19,9 +19,23 @@
 Language definition for JavaScript.
 """
 
+from typing import IO, Sequence, Union
+
+from ..token_utils import Token
 from . import Language
 
 
-# TODO: move this to its own file.
 class JavaScript(Language):
     extensions = {'.js'}
+
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
+        # TODO: use Esprima
+        raise NotImplementedError
+
+    def check_syntax(self, source: Union[str, bytes]) -> bool:
+        # TODO: use Esprima
+        raise NotImplementedError
+
+    def summarize_tokens(self, *args):
+        # TODO: use Esprima
+        raise NotImplementedError
