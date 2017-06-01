@@ -26,8 +26,8 @@ Usage:
 
 import sys
 
-from sensibility.util import filehashes
 from sensibility.miner.corpus import Corpus
+from sensibility.miner.util import filehashes
 from sensibility.pipeline import PythonPipeline
 
 pipeline = PythonPipeline()

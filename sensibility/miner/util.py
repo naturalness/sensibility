@@ -27,8 +27,8 @@ def filehashes(file=sys.stdin) -> Iterator[str]:
     """
     Yields valid filehashes from stdin.
     """
-    # TODO: throw on invalid input
-    # TODO: warn on invalid input
+    # TODO: throw on invalid input or warn on invalid input
+    # TODO: work on sys.argv
     for line in file:
         filehash = line.strip()
         if filehash:
