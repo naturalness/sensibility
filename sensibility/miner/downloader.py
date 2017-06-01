@@ -32,14 +32,15 @@ from pathlib import PurePosixPath
 import requests
 import dateutil.parser
 
+from sensibility.language import language
 from .rqueue import Queue, WorkQueue
 from .names import DOWNLOAD_QUEUE
-from .connection import redis_client, github_token, language
+from .connection import redis_client, github_token
 from .rate_limit import wait_for_rate_limit, seconds_until
 from .models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
 )
-from .corpus import Corpus
+from .corpus import Corpus, NewCorpusError
 
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')
@@ -51,6 +52,19 @@ class Downloader:
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
         self.corpus = Corpus()
+
+        # Ensure the corpus is initialized.
+        # If it's initialized with a different language, bail.
+        try:
+            lang_name = self.corpus.language
+        except NewCorpusError:
+            import datetime
+            now = datetime.datetime.utcnow()
+            self.corpus.set_metadata(language=language.name, mined=now)
+        else:
+            assert lang_name == language.name, (
+                f"Refusing to overwrite {lang_name} corpus"
+            )
 
     def loop_forever(self) -> None:
         logger.info("Downloader queue: %s", self.worker.name)

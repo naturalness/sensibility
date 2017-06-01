@@ -35,6 +35,10 @@ from ._schema import (
 from sensibility.language import SourceSummary
 
 
+class NewCorpusError(Exception):
+    pass
+
+
 class Corpus:
     def __init__(self, engine=None, read_only=False) -> None:
         if engine is not None:
@@ -56,8 +60,13 @@ class Corpus:
         """
         query = select([meta.c.value]).\
             where(meta.c.key == 'language')
-        result, = self.conn.execute(query)
-        return result[meta.c.value]
+        try:
+            result, = self.conn.execute(query)
+        except ValueError:
+            raise NewCorpusError
+        else:
+            return result[meta.c.value]
+
 
     @property
     def empty(self) -> bool:
@@ -71,7 +80,7 @@ class Corpus:
         """
         return self.get_source(filehash)
 
-    def set_metadata(self, **kwargs: Dict[str, Any]) -> None:
+    def set_metadata(self, **kwargs: Any) -> None:
         """
         Sets the metadata table.
         """
