@@ -6,7 +6,7 @@ Represents a language and actions you can do to its source code.
 """
 
 import os
-from typing import Any, IO, Sequence, Set, Union, NamedTuple, cast, overload
+from typing import Any, IO, NamedTuple, Sequence, Set, Union, cast, overload
 from abc import ABC, abstractmethod
 
 from ..token_utils import Token
@@ -23,6 +23,9 @@ class Language(ABC):
     A programming language.
     """
 
+    #@property
+    #@abstractmethod
+    #def extensions(self) -> Set[str]: ...
     extensions: Set[str]
 
     @property
@@ -71,20 +74,52 @@ class Language(ABC):
     # TODO: vocabulary?
 
 
-# TODO: crazy proxy object
 class LanguageProxy(Language):
+    """
+    Provides uniform access to the language
+    """
+
+    def __init__(self) -> None:
+        self._language: Language = None
+
     @property
-    def wrapped(self) -> Language:
-        from .python import python
-        return python
+    def is_initialized(self) -> bool:
+        return self._language is not None
+
+    @property
+    def wrapped_language(self) -> Language:
+        # TODO: smart things here. With logging!
+        if self._language is None:
+            from .python import python
+            self._language = python
+        return self._language
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._language!r})"
+
+    def __getattr__(self, name: str) -> Any:
+        """
+        Delegate to wrapped_language.
+        """
+        # Workaround for nosy inspect.unwrap():
+        if name == '__wrapped__':
+            raise AttributeError
+
+        return getattr(self.wrapped_language, name)
+
+    # Wrapped methods and properties
+
+    @property
+    def name(self) -> str:
+        return self.wrapped_language.name
 
     def tokenize(self, *args):
-        return self.wrapped.tokenize(*args)
+        return self.wrapped_language.tokenize(*args)
 
     def check_syntax(self, *args):
-        return self.wrapped.check_syntax(*args)
+        return self.wrapped_language.check_syntax(*args)
 
     def summarize_tokens(self, *args):
-        return self.wrapped.summarize_tokens(*args)
+        return self.wrapped_language.summarize_tokens(*args)
 
-language: Language = LanguageProxy()
+language = LanguageProxy()

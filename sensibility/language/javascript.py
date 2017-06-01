@@ -26,7 +26,8 @@ from . import Language
 
 
 class JavaScript(Language):
-    extensions = {'.js'}
+    def extensions(self):
+        return {'.js'}
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         # TODO: use Esprima
