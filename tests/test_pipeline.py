@@ -25,14 +25,16 @@ source = r'''#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 print("Hello, world!")
+exit(1)
 '''
 
 
 def test_works_on_source():
     tokens = list(pipeline.execute(source))
-    assert len(tokens) == 5
+    assert len(tokens) == 10
     assert tokens == [
-        'identifier', '(', '"string"', ')', 'NEWLINE'
+        'IDENTIFIER', '(', 'STRING', ')', 'NEWLINE',
+        'IDENTIFIER', '(', 'NUMBER', ')', 'NEWLINE',
     ]
     # Assert we can stringify it and convert it back?
 
@@ -44,9 +46,6 @@ class LocationFactory:
     def __init__(self, start: Position) -> None:
         self.current = start
 
-    def point(self) -> Location:
-        return Location(start=self.current, end=self.current)
-
     def across(self, width: int) -> Location:
         start = self.current
         self.current = Position(line=start.line, column=start.column + width)
@@ -55,18 +54,29 @@ class LocationFactory:
     def single(self):
         return self.across(1)
 
+    def next_line(self):
+        self.current = Position(line=self.current.line + 1, column=0)
+
     def newline(self):
-        return self.single()
+        result = self.single()
+        self.next_line()
+        return result
 
 
 def test_returns_locations():
     tokens = list(pipeline.execute_with_locations(source))
-    assert len(tokens) == 5
+    assert len(tokens) == 10
     loc = LocationFactory(Position(line=4, column=0))
     assert tokens == [
-        (loc.across(len("print")), 'identifier'),
+        (loc.across(len("print")), 'IDENTIFIER'),
         (loc.single(), '('),
-        (loc.across(len('"Hello, World!"')), '"string"'),
+        (loc.across(len('"Hello, World!"')), 'STRING'),
+        (loc.single(), ')'),
+        (loc.newline(), 'NEWLINE'),
+
+        (loc.across(len("exit")), 'IDENTIFIER'),
+        (loc.single(), '('),
+        (loc.across(len('0')), 'NUMBER'),
         (loc.single(), ')'),
         (loc.newline(), 'NEWLINE')
     ]
