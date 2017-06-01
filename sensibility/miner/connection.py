@@ -33,7 +33,7 @@ from ..language import language
 __all__ = [
     'github', 'github_token',
     'redis_client',
-    'sqlite3_connection', 'sqlite3_path',
+    'sqlite3_connection', 'get_sqlite3_path',
 ]
 
 
@@ -42,10 +42,11 @@ redis_client = Proxy(lambda: redis.StrictRedis(db=0))
 The default Redis client.
 """
 
-sqlite3_path = Proxy(lambda: f'{language!s}-sources.sqlite3')
-"""
-The SQLite3 database for given language
-"""
+def get_sqlite3_path():
+    """
+    The SQLite3 database for the default language
+    """
+    return f'{language!s}-sources.sqlite3'
 
 github = Proxy(lambda: github3.login(token=str(github_token)))
 """

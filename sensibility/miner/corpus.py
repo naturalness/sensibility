@@ -25,7 +25,7 @@ from sqlalchemy import create_engine, event, MetaData  # type: ignore
 from sqlalchemy.engine import Engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
-from .connection import sqlite3_path
+from .connection import get_sqlite3_path
 from .models import RepositoryMetadata, SourceFileInRepository
 from ._schema import (
     failure, meta, repository, repository_source, source_file, source_summary,
@@ -40,7 +40,7 @@ class Corpus:
         if engine is not None:
             self.engine = engine
         else:
-            self.engine = create_engine(f"sqlite:///{sqlite3_path}")
+            self.engine = create_engine(f"sqlite:///{get_sqlite3_path()}")
 
         self._initialize_sqlite3(read_only)
 
