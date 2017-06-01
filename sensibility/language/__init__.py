@@ -46,7 +46,7 @@ class Language(ABC):
     def check_syntax(self, source: Union[str, bytes]) -> bool: ...
 
     @abstractmethod
-    def summarize_tokens(self, source: Sequence[Token]) -> SourceSummary: ...
+    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary: ...
 
     def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
         """
@@ -71,10 +71,20 @@ class Language(ABC):
     # TODO: vocabulary?
 
 
-# TODO: move this to its own file.
-class JavaScript(Language):
-    extensions = {'.js'}
-
 # TODO: crazy proxy object
-from .python import python
-language: Language = python
+class LanguageProxy(Language):
+    @property
+    def wrapped(self) -> Language:
+        from .python import python
+        return python
+
+    def tokenize(self, *args):
+        return self.wrapped.tokenize(*args)
+
+    def check_syntax(self, *args):
+        return self.wrapped.check_syntax(*args)
+
+    def summarize_tokens(self, *args):
+        return self.wrapped.summarize_tokens(*args)
+
+language: Language = LanguageProxy()
