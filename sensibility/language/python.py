@@ -26,8 +26,7 @@ from ..token_utils import Lexeme, Position, Token
 
 
 class Python(Language):
-    def extensions(self):
-        return {'.py'}
+    extensions = {'.py'}
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """

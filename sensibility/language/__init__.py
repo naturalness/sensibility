@@ -6,11 +6,11 @@ Represents a language and actions you can do to its source code.
 """
 
 import os
+import logging
 from typing import Any, IO, NamedTuple, Sequence, Set, Union, cast, overload
 from abc import ABC, abstractmethod
 
 from ..token_utils import Token
-
 
 
 class SourceSummary(NamedTuple):
@@ -23,9 +23,6 @@ class Language(ABC):
     A programming language.
     """
 
-    #@property
-    #@abstractmethod
-    #def extensions(self) -> Set[str]: ...
     extensions: Set[str]
 
     @property
@@ -73,6 +70,9 @@ class Language(ABC):
 
     # TODO: vocabulary?
 
+class LanguageNotSpecifiedError(Exception):
+    ...
+
 
 class LanguageProxy(Language):
     """
@@ -90,8 +90,7 @@ class LanguageProxy(Language):
     def wrapped_language(self) -> Language:
         # TODO: smart things here. With logging!
         if self._language is None:
-            from .python import python
-            self._language = python
+            self._language = self.determine_language()
         return self._language
 
     def __repr__(self) -> str:
@@ -106,6 +105,37 @@ class LanguageProxy(Language):
             raise AttributeError
 
         return getattr(self.wrapped_language, name)
+
+    def set_language(self, name: str) -> 'LanguageProxy':
+        """
+        Explicitly set the language to load.
+        """
+        self._language = self.load_langauge_by_name(name)
+        return self
+
+    def determine_language(self) -> Language:
+        logger = logging.getLogger(self.__class__.__name__)
+
+        # Try loading from the environment LAST.
+        name_from_env = os.getenv('SENSIBILITY_LANGUAGE')
+        if name_from_env is not None:
+            logger.info('Language inferred from environment: %s',
+                        name_from_env)
+            return self.load_langauge_by_name(name_from_env)
+
+        raise LanguageNotSpecifiedError
+
+    def load_langauge_by_name(self, name: str):
+        """
+        Loads a Language dynamically by looking for the appropriate module,
+        and returning the attribute with the same name.
+        """
+        from importlib import import_module
+        name = name.lower()
+        module = import_module(f".{name}", package='sensibility.language')
+        if not hasattr(module, name):
+            raise ImportError(f'could not find {name} in module {module}')
+        return getattr(module, name)
 
     # Wrapped methods and properties
 

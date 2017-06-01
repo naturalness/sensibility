@@ -26,8 +26,7 @@ from . import Language
 
 
 class JavaScript(Language):
-    def extensions(self):
-        return {'.js'}
+    extensions = {'.js'}
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         # TODO: use Esprima
@@ -40,3 +39,5 @@ class JavaScript(Language):
     def summarize_tokens(self, *args):
         # TODO: use Esprima
         raise NotImplementedError
+
+javascript = JavaScript()

@@ -3,27 +3,30 @@
 
 import os
 
-
 def test_environment_variables():
-    os.putenv('SENSIBILITY_LANGAUGE', 'JavaScript')
+    os.environ['SENSIBILITY_LANGUAGE'] = 'JavaScript'
 
     from sensibility.language import language
     assert not language.is_initialized
 
-    assert language.name == 'javascript'
+    assert language.name == 'JavaScript'
     # TODO: Capture logging output?
     # [INFO]: Initializing language from environment: python
 
+    # TODO: Actually try it out.
+    """
     tokens = language.tokenize('import {Language} from "sensibility";')
-    [Token(...), ...]
-
-    language.set_language('Python')
-    assert language.name == 'python'
 
     # TODO: Capture logging output?
     # [INFO]: Language: inferred from corpus as Python
-    # language.tokenize('from sensibility import language')
-    #[Token(...), ...]
+    [Token(...), ...]
+    """
+
+    language.set_language('Python')
+    assert language.name == 'Python'
+    summary = language.summarize('from sensibility import language')
+    assert summary.n_tokens == 4
+
 
 # TODO: test to infer from the corpus?
 # TODO: test for match_extensions()!
