@@ -3,10 +3,11 @@
 
 import os
 
+from sensibility.language import language
+
+
 def test_environment_variables():
     os.environ['SENSIBILITY_LANGUAGE'] = 'JavaScript'
-
-    from sensibility.language import language
     assert not language.is_initialized
 
     assert language.name == 'JavaScript'
@@ -29,4 +30,9 @@ def test_environment_variables():
 
 
 # TODO: test to infer from the corpus?
-# TODO: test for match_extensions()!
+
+def test_match_extension():
+    language.set_language('JavaScript')
+    assert language.matches_extension('hello.js')
+    language.set_language('Python')
+    assert language.matches_extension('hello.py')

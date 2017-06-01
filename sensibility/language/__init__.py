@@ -71,7 +71,16 @@ class Language(ABC):
     # TODO: vocabulary?
 
 class LanguageNotSpecifiedError(Exception):
-    ...
+    """
+    Raised when Sensibility could not infer the programming language that
+    should be used.
+
+    You can explicitly define the environment variable SENSIBILITY_LANGUAGE= 
+    as a fallback, however, all other methods of inferring the language are
+    preferred to this (such as inferring the language from filename
+    extensions, or from command line arguments).
+    """
+    pass
 
 
 class LanguageProxy(Language):
