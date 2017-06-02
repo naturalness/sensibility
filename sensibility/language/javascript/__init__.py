@@ -19,14 +19,32 @@
 Language definition for JavaScript.
 """
 
+import subprocess
+from pathlib import Path
 from typing import IO, Sequence, Union
+from typing import cast
 
-from ..token_utils import Token
-from . import Language
+from sensibility.language import Language
+from sensibility.pipeline import Pipeline
+from sensibility.token_utils import Token
+
+here = Path(__file__).parent
+esprima_bin = here / 'esprima-interface'
+assert esprima_bin.exists()
+
+
+# TODO: Temporary!
+class NotImplementedDescriptor:
+    def __init__(self) -> None:
+        ...
+
+    def __get__(self, instance, cls):
+        raise NotImplementedError
 
 
 class JavaScript(Language):
     extensions = {'.js'}
+    pipeline = cast(Pipeline, NotImplementedDescriptor())
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         # TODO: use Esprima
@@ -39,5 +57,6 @@ class JavaScript(Language):
     def summarize_tokens(self, *args):
         # TODO: use Esprima
         raise NotImplementedError
+
 
 javascript = JavaScript()
