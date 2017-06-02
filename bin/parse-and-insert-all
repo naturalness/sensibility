@@ -33,12 +33,9 @@ corpus = Corpus()
 
 def parse_and_insert(filehash: str) -> None:
     source = corpus[filehash]
-
-    # NOTE: check_syntax() accepts more inputs than tokenize().
     if not language.check_syntax(source):
         raise SyntaxError(filehash)
-    # Word count may raise an exception.
-    counts = language.word_count(source)
+    counts = language.summarize(source)
     corpus.insert_source_summary(filehash, counts)
 
 

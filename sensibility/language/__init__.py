@@ -75,7 +75,7 @@ class LanguageNotSpecifiedError(Exception):
     Raised when Sensibility could not infer the programming language that
     should be used.
 
-    You can explicitly define the environment variable SENSIBILITY_LANGUAGE= 
+    You can explicitly define the environment variable SENSIBILITY_LANGUAGE=
     as a fallback, however, all other methods of inferring the language are
     preferred to this (such as inferring the language from filename
     extensions, or from command line arguments).
@@ -161,4 +161,4 @@ class LanguageProxy(Language):
     def summarize_tokens(self, *args):
         return self.wrapped_language.summarize_tokens(*args)
 
-language = LanguageProxy()
+language: Language = LanguageProxy()

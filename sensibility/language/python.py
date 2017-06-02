@@ -42,6 +42,11 @@ class Python(Language):
 
         NEWLINES are actually used in the grammar;
         whereas NL are "filler" newlines, for formatting.
+
+        BUGS: does not accept the same language as check_syntax()!
+
+        To use CPython's internal tokenizer, one must create a brand new
+        Python-accessible interface for it.
         """
 
         def open_as_file() -> IO[bytes]:
