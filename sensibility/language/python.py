@@ -19,7 +19,11 @@ import os
 import token
 import tokenize
 from io import BytesIO
-from typing import IO, Sequence, Union
+from keyword import iskeyword
+from typing import IO, Sequence, Union, Optional
+
+from sensibility.pipeline import Pipeline, PipelineStage
+from sensibility.token_utils import Lexeme
 
 from . import Language, SourceSummary
 from ..token_utils import Lexeme, Position, Token
@@ -134,3 +138,74 @@ def is_physical_token(token: Lexeme) -> bool:
         'ENDMARKER', 'ENCODING', 'COMMENT', 'NL', 'ERRORTOKEN'
     }
     return token.name not in FAKE_TOKENS
+
+
+class PythonPipeline(Pipeline):
+    """
+    Converts Python tokens to a format suitable for training and evaluating.
+    """
+
+    language = python
+
+    @property
+    def stages(self) -> Sequence[PipelineStage]:
+        return self.vocabularize, self.prune
+
+    def prune(self, token: str) -> Optional[str]:
+        EXTRANEOUS_TOKENS = {
+            # Always occurs as the first token: internally indicates the file
+            # ecoding, but is irrelelvant once the stream is already tokenized
+            'ENCODING',
+
+            # Always occurs as the last token.
+            'ENDMARKER',
+
+            # Insignificant newline; not to be confused with NEWLINE
+            'NL',
+
+            # Discard comments
+            'COMMENT',
+
+            # Represents a tokenization error. This should never appear for
+            # syntatically correct files.
+            'ERRORTOKEN',
+        }
+        if token in EXTRANEOUS_TOKENS:
+            return None
+        else:
+            return token
+
+    def vocabularize(self, token: Lexeme) -> Optional[str]:
+        return open_closed_tokens(token)
+
+
+def open_closed_tokens(token: Lexeme) -> str:
+    """
+    'Flattens' Python into tokens based on whether the token is open or
+    closed.
+    """
+
+    # List of token names that whose text should be used verbatim as the type.
+    VERBATIM_CLASSES = {
+        "AMPER", "AMPEREQUAL", "ASYNC", "AT", "ATEQUAL", "AWAIT", "CIRCUMFLEX",
+        "CIRCUMFLEXEQUAL", "COLON", "COMMA", "DOT", "DOUBLESLASH",
+        "DOUBLESLASHEQUAL", "DOUBLESTAR", "DOUBLESTAREQUAL", "ELLIPSIS",
+        "EQEQUAL", "EQUAL", "GREATER", "GREATEREQUAL", "LBRACE", "LEFTSHIFT",
+        "LEFTSHIFTEQUAL", "LESS", "LESSEQUAL", "LPAR", "LSQB", "MINEQUAL",
+        "MINUS", "NOTEQUAL", "OP", "PERCENT", "PERCENTEQUAL", "PLUS", "PLUSEQUAL",
+        "RARROW", "RBRACE", "RIGHTSHIFT", "RIGHTSHIFTEQUAL", "RPAR", "RSQB",
+        "SEMI", "SLASH", "SLASHEQUAL", "STAR", "STAREQUAL", "TILDE", "VBAR",
+        "VBAREQUAL"
+    }
+
+    if token.name == 'NAME':
+        if iskeyword(token.value):
+            return token.value
+        else:
+            return 'IDENTIFIER'
+    elif token.name in VERBATIM_CLASSES:
+        assert ' ' not in token.value
+        return token.value
+    else:
+        # Note: includes NUMBER and STRING
+        return token.name

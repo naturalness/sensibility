@@ -28,7 +28,7 @@ import sys
 
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
-from sensibility.pipeline import PythonPipeline
+from sensibility.language.python import PythonPipeline
 
 pipeline = PythonPipeline()
 

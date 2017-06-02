@@ -26,7 +26,6 @@ from typing import Any, AnyStr, Callable, Iterable, Optional, Sequence, Tuple, o
 from .language import Language
 from .token_utils import Token, Location
 
-
 PipelineStage = Callable[[Any], Optional[Any]]
 
 
@@ -37,6 +36,7 @@ class Pipeline(ABC):
 
     TODO: make these composable, like cons-cells?
     """
+    # TODO: remove need for language
     language: Language
 
     @property
@@ -92,79 +92,3 @@ class Pipeline(ABC):
         Tokenizes the source code.
         """
         return self.language.tokenize(source)
-
-
-# TODO: Move from here down somewhere else, probably
-from .language.python import python
-from keyword import iskeyword
-from .token_utils import Lexeme
-
-class PythonPipeline(Pipeline):
-    """
-    Converts Python tokens to a format suitable for training and evaluating.
-    """
-
-    language = python
-
-    @property
-    def stages(self) -> Sequence[PipelineStage]:
-        return self.vocabularize, self.prune
-
-    def prune(self, token: str) -> Optional[str]:
-        EXTRANEOUS_TOKENS = {
-            # Always occurs as the first token: internally indicates the file
-            # ecoding, but is irrelelvant once the stream is already tokenized
-            'ENCODING',
-
-            # Always occurs as the last token.
-            'ENDMARKER',
-
-            # Insignificant newline; not to be confused with NEWLINE
-            'NL',
-
-            # Discard comments
-            'COMMENT',
-
-            # Represents a tokenization error. This should never appear for
-            # syntatically correct files.
-            'ERRORTOKEN',
-        }
-        if token in EXTRANEOUS_TOKENS:
-            return None
-        else:
-            return token
-
-    def vocabularize(self, token: Lexeme) -> Optional[str]:
-        return open_closed_tokens(token)
-
-
-def open_closed_tokens(token: Lexeme) -> str:
-    """
-    'Flattens' Python into tokens based on whether the token is open or
-    closed.
-    """
-
-    # List of token names that whose text should be used verbatim as the type.
-    VERBATIM_CLASSES = {
-        "AMPER", "AMPEREQUAL", "ASYNC", "AT", "ATEQUAL", "AWAIT", "CIRCUMFLEX",
-        "CIRCUMFLEXEQUAL", "COLON", "COMMA", "DOT", "DOUBLESLASH",
-        "DOUBLESLASHEQUAL", "DOUBLESTAR", "DOUBLESTAREQUAL", "ELLIPSIS",
-        "EQEQUAL", "EQUAL", "GREATER", "GREATEREQUAL", "LBRACE", "LEFTSHIFT",
-        "LEFTSHIFTEQUAL", "LESS", "LESSEQUAL", "LPAR", "LSQB", "MINEQUAL",
-        "MINUS", "NOTEQUAL", "OP", "PERCENT", "PERCENTEQUAL", "PLUS", "PLUSEQUAL",
-        "RARROW", "RBRACE", "RIGHTSHIFT", "RIGHTSHIFTEQUAL", "RPAR", "RSQB",
-        "SEMI", "SLASH", "SLASHEQUAL", "STAR", "STAREQUAL", "TILDE", "VBAR",
-        "VBAREQUAL"
-    }
-
-    if token.name == 'NAME':
-        if iskeyword(token.value):
-            return token.value
-        else:
-            return 'IDENTIFIER'
-    elif token.name in VERBATIM_CLASSES:
-        assert ' ' not in token.value
-        return token.value
-    else:
-        # Note: includes NUMBER and STRING
-        return token.name

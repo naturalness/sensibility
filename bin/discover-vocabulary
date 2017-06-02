@@ -27,8 +27,7 @@ from pprint import pprint
 
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
-from sensibility.pipeline import PythonPipeline
-
+from sensibility.language.python import PythonPipeline
 
 # TODO: Make it so that it's no longer just for Python
 if __name__ == '__main__':

@@ -17,7 +17,8 @@
 
 
 from sensibility.token_utils import Location, Position
-from sensibility.pipeline import PythonPipeline
+from sensibility.language.python import PythonPipeline
+
 pipeline = PythonPipeline()
 
 

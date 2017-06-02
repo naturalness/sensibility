@@ -7,7 +7,8 @@ Represents a language and actions you can do to its source code.
 
 import os
 import logging
-from typing import Any, IO, NamedTuple, Sequence, Set, Union, cast, overload
+from typing import Any, Callable, IO, NamedTuple, Optional, Sequence, Set, Union
+from typing import no_type_check, cast, overload
 from abc import ABC, abstractmethod
 
 from ..token_utils import Token
@@ -24,6 +25,7 @@ class Language(ABC):
     """
 
     extensions: Set[str]
+    pipeline: Optional[Callable[[Sequence[Token]], Sequence]]
 
     @property
     def id(self) -> str:
@@ -105,6 +107,7 @@ class LanguageProxy(Language):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self._language!r})"
 
+    @no_type_check
     def __getattr__(self, name: str) -> Any:
         """
         Delegate to wrapped_language.
