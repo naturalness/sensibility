@@ -24,10 +24,11 @@ Usage:
 
 import sys
 import sqlite3
+from sensibility.miner.connection import get_sqlite3_connection
 
 filehash, = sys.argv[1:]
 
-conn = sqlite3.connect('python-sources.sqlite3')
+conn = get_sqlite3_connection()
 with conn:
     conn.execute('''
         INSERT OR REPLACE INTO failure (hash) VALUES (?)

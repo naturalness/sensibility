@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/bin/sh
 
 # Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
@@ -14,20 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Prints hashes of files that have been parsed successfully and have at least
-contain at least one token.
+# Prints hashes of files that have been parsed successfully and have at least
+# contain at least one token.
+#
+# Usage:
+#     list-elligible-sources > filehashes
 
-Usage:
-  list-elligible-sources > filehashes
-"""
+set -e
 
-from sensibility.miner.connection import get_sqlite3_connection
-
-cursor = get_sqlite3_connection().execute("""
+language=$("$(dirname "$0")"/language-id "$@")
+sqlite3 "${language}-sources.sqlite3" <<SQL
     SELECT hash FROM source_summary
-     WHERE n_tokens > 0
-""")
-
-for filehash in cursor:
-      print(filehash)
+     WHERE n_tokens > 0;
+SQL

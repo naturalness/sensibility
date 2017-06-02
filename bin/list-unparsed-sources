@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/bin/sh
 
 # Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
@@ -14,20 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Prints hashes of files that have been downloaded, but have not been parsed.
+# Prints hashes of files that have been downloaded, but have not been parsed.
+# 
+# Usage:
+#    list-unparsed-sources > filehashes
 
-Usage:
-  list-unparsed-sources [DATABASE.sqlite3]
-"""
+set -e
 
-from sensibility.miner.connection import get_sqlite3_connection
-
-cursor = get_sqlite3_connection().execute("""
-      SELECT hash FROM source_file
-            EXCEPT SELECT hash from source_summary
-            EXCEPT SELECT hash FROM failure
-""")
-
-for filehash in cursor:
-      print(filehash)
+language=$("$(dirname "$0")"/language-id "$@")
+sqlite3 "${language}-sources.sqlite3" <<SQL
+    SELECT hash FROM source_file
+        EXCEPT SELECT hash from source_summary
+        EXCEPT SELECT hash FROM failure;
+SQL
