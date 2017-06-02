@@ -24,12 +24,12 @@ import subprocess
 import tempfile
 from io import StringIO, IOBase
 from pathlib import Path
-from typing import Any, IO, Sequence, Union
+from typing import Any, Callable, IO, Sequence, Union
 from typing import cast
 
 from sensibility.language import Language, SourceSummary
 from sensibility.pipeline import Pipeline
-from sensibility.token_utils import Token, Position
+from sensibility.token_utils import Token, Lexeme, Position
 
 here = Path(__file__).parent
 esprima_bin = here / 'esprima-interface'
@@ -146,5 +146,81 @@ def from_esprima_format(token) -> Token:
                               column=loc['end']['column']))
 
 
-# The main export.
+
+class StringifyToken():
+    """
+    Misnomer. Should be called stringify_lexeme().
+
+    >>> stringify_token(Lexeme(value='**=', name='Punctuator'))
+    '**='
+    >>> stringify_token(Lexeme(value='var', name='Keyword'))
+    'var'
+    >>> stringify_token(Lexeme(value='false', name='Boolean'))
+    'false'
+    >>> stringify_token(Lexeme(value='null', name='Null'))
+    'null'
+    >>> stringify_token(Lexeme(value='``', name='Template'))
+    '`standalone-template`'
+    >>> stringify_token(Lexeme(value='``', name='Template'))
+    '`standalone-template`'
+    >>> stringify_token(Lexeme(value='`${', name='Template'))
+    '`template-head${'
+    >>> stringify_token(Lexeme(value='}`', name='Template'))
+    '}template-tail`'
+    >>> stringify_token(Lexeme(value='}  ${', name='Template'))
+    '}template-middle${'
+    >>> stringify_token(Lexeme(value='"hello world"', name='String'))
+    '"string"'
+    >>> stringify_token(Lexeme(value='💩', name='Identifier'))
+    'Identifier'
+    """
+
+    def __call__(self, token) -> str:
+        try:
+            fn = getattr(self, token.name)
+        except AttributeError:
+            raise TypeError(f'Unhandled type: {token.name}')
+        return fn(token.value)
+
+    def Boolean(self, text):
+        return text
+
+    def Identifier(self, text):
+        return 'Identifier'
+
+    def Keyword(self, text):
+        return text
+
+    def Null(self, text):
+        return 'null'
+
+    def Numeric(self, text):
+        return '/*number*/0'
+
+    def Punctuator(self, text):
+        return text
+
+    def String(self, text):
+        return '"string"'
+
+    def RegularExpression(self, text):
+        return '/regexp/'
+
+    def Template(self, text):
+        assert len(text) >= 2
+        if text.startswith('`'):
+            if text.endswith('`'):
+                return '`standalone-template`'
+            elif text.endswith('${'):
+                return '`template-head${'
+        elif text.startswith('}'):
+            if text.endswith('`'):
+                return '}template-tail`'
+            elif text.endswith('${'):
+                return '}template-middle${'
+        raise TypeError('Unhandled template literal: ' + text)
+
+
+# The main exports.
 javascript = JavaScript()
+stringify_token = cast(Callable[[Lexeme], str], StringifyToken())
