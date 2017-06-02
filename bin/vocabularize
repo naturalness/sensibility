@@ -25,14 +25,14 @@ Usage:
 import sys
 import pickle
 
-from sensibility.language.python import open_closed_tokens
+from sensibility.language import language
 
 if __name__ == '__main__':
     with open(sys.stdin.fileno(), 'rb') as input_file:
         tokens = pickle.load(input_file)
 
     # Write the sentence out on ONE line.
-    sentence = ' '.join(open_closed_tokens(t) for t in tokens)
+    sentence = ' '.join(str(t) for t in language.pipeline.execute(tokens))
     assert '\n' not in sentence
     sys.stdout.write(sentence)
     sys.stdout.write('\n')

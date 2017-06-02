@@ -17,21 +17,22 @@
 
 
 """
-Checks if stdin is syntatically-valid Python 3.6 source code. Returns non-zero otherwise.
+Checks if stdin is syntatically-valid source code for the active language.
+Returns non-zero otherwise.
 
 Usage:
-    check-syntax <maybe-python-file
+    check-syntax <source.ext
 """
 
 import sys
 
-from sensibility.language.python import python
+from sensibility.language import language
 
 
 if __name__ == '__main__':
     # TODO: use any language
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        if python.check_syntax(input_file.read()):
+        if language.check_syntax(input_file.read()):
             exit(0)
         else:
             exit(1)

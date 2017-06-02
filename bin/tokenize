@@ -26,8 +26,7 @@ Usage:
 import sys
 import pickle
 
-# TODO: use generic language
-from sensibility.language.python import python
+from sensibility.language import language
 
 
 def as_pickle(tokens):
@@ -43,4 +42,4 @@ def as_python(tokens):
 if __name__ == '__main__':
     dump = as_python if sys.argv[1:] == ['--python'] else as_pickle
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        dump(python.tokenize(input_file))
+        dump(language.tokenize(input_file))

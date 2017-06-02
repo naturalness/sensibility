@@ -17,18 +17,18 @@
 
 
 """
-Returns a summary of the number of source lines of code in the program.
-Like a smart wc(1)!
+Returns a summary of the number of tokens and number of  source lines of code
+in the program.  Like a smart wc(1)!
 
 Usage:
-    summarize <python-filename >summary
+    summarize <source.ext
 """
 
 import sys
-from sensibility.language.python import python
+from sensibility.language import language
 
 
 if __name__ == '__main__':
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        res = python.word_count(input_file.read())
+        res = language.summarize(input_file.read())
     print(f"{res.sloc:8d} {res.n_tokens:8d}")
