@@ -42,11 +42,20 @@ redis_client = Proxy(lambda: redis.StrictRedis(db=0))
 The default Redis client.
 """
 
-def get_sqlite3_path():
+
+def get_sqlite3_path() -> str:
     """
-    The SQLite3 database for the default language
+    Path to the SQLite3 database for the active language.
     """
     return f'{language!s}-sources.sqlite3'
+
+
+def get_sqlite3_connection() -> sqlite3.Connection:
+    """
+    The SQLite3 database for the active language.
+    """
+    return sqlite3.connect(get_sqlite3_path())
+
 
 github = Proxy(lambda: github3.login(token=str(github_token)))
 """

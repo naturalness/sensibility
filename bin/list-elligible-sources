@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
 # Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
@@ -14,16 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Prints hashes of files that have been downloaded, but have not been parsed.
-#
-# Usage:
-#   list-elligible-sources [DATABASE.sqlite3]
+"""
+Prints hashes of files that have been parsed successfully and have at least
+contain at least one token.
 
-DATABASE=${1:-python-sources.sqlite3}
-QUERY=$(cat <<-SQL
-SELECT hash FROM source_summary
- WHERE n_tokens > 0
-SQL
-)
+Usage:
+  list-elligible-sources > filehashes
+"""
 
-sqlite3 "$DATABASE" "$QUERY"
+from sensibility.miner.connection import get_sqlite3_connection
+
+cursor = get_sqlite3_connection().execute("""
+    SELECT hash FROM source_summary
+     WHERE n_tokens > 0
+""")
+
+for filehash in cursor:
+      print(filehash)
