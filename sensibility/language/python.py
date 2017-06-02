@@ -20,17 +20,61 @@ import token
 import tokenize
 from io import BytesIO
 from keyword import iskeyword
-from typing import IO, Sequence, Union, Optional
+from typing import AnyStr, IO, Sequence, Union, Optional
 
 from sensibility.pipeline import Pipeline, PipelineStage
-from sensibility.token_utils import Lexeme
 
 from . import Language, SourceSummary
 from ..token_utils import Lexeme, Position, Token
 
 
+class PythonPipeline(Pipeline):
+    """
+    Converts Python tokens to a format suitable for training and evaluating.
+    """
+
+    @property
+    def stages(self) -> Sequence[PipelineStage]:
+        return self.vocabularize, self.prune
+
+    def prune(self, token: str) -> Optional[str]:
+        EXTRANEOUS_TOKENS = {
+            # Always occurs as the first token: internally indicates the file
+            # ecoding, but is irrelelvant once the stream is already tokenized
+            'ENCODING',
+
+            # Always occurs as the last token.
+            'ENDMARKER',
+
+            # Insignificant newline; not to be confused with NEWLINE
+            'NL',
+
+            # Discard comments
+            'COMMENT',
+
+            # Represents a tokenization error. This should never appear for
+            # syntatically correct files.
+            'ERRORTOKEN',
+        }
+        if token in EXTRANEOUS_TOKENS:
+            return None
+        else:
+            return token
+
+    def vocabularize(self, token: Lexeme) -> Optional[str]:
+        return open_closed_tokens(token)
+
+    def tokenize(self, source: AnyStr) -> Sequence[Token]:
+        return python.tokenize(source)
+
+
 class Python(Language):
+    """
+    Defines the Python 3.6 language.
+    """
+
     extensions = {'.py'}
+    pipeline = PythonPipeline()
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """
@@ -132,51 +176,17 @@ class Python(Language):
 python: Language = Python()
 
 
-# TODO: handle this before tokens make it to this script?
 def is_physical_token(token: Lexeme) -> bool:
+    """
+    Return True when the token is something that should be counted towards
+    sloc (source lines of code).
+    """
     FAKE_TOKENS = {
         'ENDMARKER', 'ENCODING', 'COMMENT', 'NL', 'ERRORTOKEN'
     }
     return token.name not in FAKE_TOKENS
 
 
-class PythonPipeline(Pipeline):
-    """
-    Converts Python tokens to a format suitable for training and evaluating.
-    """
-
-    language = python
-
-    @property
-    def stages(self) -> Sequence[PipelineStage]:
-        return self.vocabularize, self.prune
-
-    def prune(self, token: str) -> Optional[str]:
-        EXTRANEOUS_TOKENS = {
-            # Always occurs as the first token: internally indicates the file
-            # ecoding, but is irrelelvant once the stream is already tokenized
-            'ENCODING',
-
-            # Always occurs as the last token.
-            'ENDMARKER',
-
-            # Insignificant newline; not to be confused with NEWLINE
-            'NL',
-
-            # Discard comments
-            'COMMENT',
-
-            # Represents a tokenization error. This should never appear for
-            # syntatically correct files.
-            'ERRORTOKEN',
-        }
-        if token in EXTRANEOUS_TOKENS:
-            return None
-        else:
-            return token
-
-    def vocabularize(self, token: Lexeme) -> Optional[str]:
-        return open_closed_tokens(token)
 
 
 def open_closed_tokens(token: Lexeme) -> str:

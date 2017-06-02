@@ -23,7 +23,6 @@ Tokenization Pipeline
 from abc import ABC, abstractmethod
 from typing import Any, AnyStr, Callable, Iterable, Optional, Sequence, Tuple, overload
 
-from .language import Language
 from .token_utils import Token, Location
 
 PipelineStage = Callable[[Any], Optional[Any]]
@@ -36,8 +35,6 @@ class Pipeline(ABC):
 
     TODO: make these composable, like cons-cells?
     """
-    # TODO: remove need for language
-    language: Language
 
     @property
     @abstractmethod
@@ -65,9 +62,9 @@ class Pipeline(ABC):
         return intermediate
 
     @overload
-    def execute_with_locations(self, tokens: AnyStr) -> Tuple[Location, Any]: ...
+    def execute_with_locations(self, tokens: AnyStr) -> Iterable[Tuple[Location, Any]]: ...
     @overload
-    def execute_with_locations(self, tokens: Sequence[Token]) -> Tuple[Location, Any]: ...
+    def execute_with_locations(self, tokens: Sequence[Token]) -> Iterable[Tuple[Location, Any]]: ...
 
     def execute_with_locations(self, source):
         """
@@ -87,8 +84,5 @@ class Pipeline(ABC):
             if element is not None:
                 yield location, element
 
-    def tokenize(self, source: AnyStr) -> Sequence[Token]:
-        """
-        Tokenizes the source code.
-        """
-        return self.language.tokenize(source)
+    @abstractmethod
+    def tokenize(self, source: AnyStr) -> Sequence[Token]: ...

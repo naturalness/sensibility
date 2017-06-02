@@ -16,8 +16,9 @@
 # limitations under the License.
 
 
-from sensibility.token_utils import Location, Position
 from sensibility.language.python import PythonPipeline
+from sensibility.token_utils import Position
+from tests.location_factory import LocationFactory
 
 pipeline = PythonPipeline()
 
@@ -38,30 +39,6 @@ def test_works_on_source():
         'IDENTIFIER', '(', 'NUMBER', ')', 'NEWLINE',
     ]
     # Assert we can stringify it and convert it back?
-
-
-class LocationFactory:
-    """
-    Creates locations, incrementally.
-    """
-    def __init__(self, start: Position) -> None:
-        self.current = start
-
-    def across(self, width: int) -> Location:
-        start = self.current
-        self.current = Position(line=start.line, column=start.column + width)
-        return Location(start=start, end=self.current)
-
-    def single(self):
-        return self.across(1)
-
-    def next_line(self):
-        self.current = Position(line=self.current.line + 1, column=0)
-
-    def newline(self):
-        result = self.single()
-        self.next_line()
-        return result
 
 
 def test_returns_locations():
