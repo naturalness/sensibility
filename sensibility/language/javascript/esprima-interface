@@ -9,7 +9,7 @@ script_dir=$(dirname "$0")
 
 (
     cd "$script_dir"
-    if [[ ! -d node_modules ]] || [[ package.json -nt node_modules ]]; then
+    if [[ ! -d node_modules ]] ; then
         npm install > /dev/null
     fi
 )
