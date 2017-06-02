@@ -29,6 +29,7 @@ def test_tokenize() -> None:
     assert len(tokens) == 7
 
 
+@pytest.mark.skip
 def test_summarize() -> None:
     with pytest.raises(SyntaxError):
         javascript.summarize('import #')
@@ -38,6 +39,7 @@ def test_summarize() -> None:
     assert summary.n_tokens == 7
 
 
+@pytest.mark.skip
 def test_pipeline() -> None:
     loc = LocationFactory(Position(line=6, column=0))
     result = list(javascript.pipeline.execute_with_locations(test_file))
