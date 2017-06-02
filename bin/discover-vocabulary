@@ -27,12 +27,12 @@ from pprint import pprint
 
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
-from sensibility.language.python import PythonPipeline
+from sensibility.language import language
 
-# TODO: Make it so that it's no longer just for Python
+
 if __name__ == '__main__':
-    pipeline = PythonPipeline()
     corpus = Corpus(read_only=True)
+    pipeline = language.pipeline
 
     unique_entries = set()
     for filehash in filehashes():

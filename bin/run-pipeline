@@ -20,7 +20,7 @@ Runs the pipeline on hashes given as stdin.
 
 Usage:
       run-pipeline <hashes.txt >sentences
-      run-pipeline - <file.py >sentence
+      run-pipeline - <file.ext >sentence
 
 """
 
@@ -28,9 +28,9 @@ import sys
 
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
-from sensibility.language.python import PythonPipeline
+from sensibility.language import language
 
-pipeline = PythonPipeline()
+pipeline = language.pipeline
 
 
 def print_sentence(source: bytes) -> None:
