@@ -106,7 +106,7 @@ class SafeSourceFile:
         if self._owned is not None:
             self._owned.close()
         else:
-            assert self._foreign is None
+            assert self._foreign is not None
 
 
 def synthetic_file(source: Union[str, bytes]) -> IO[bytes]:
