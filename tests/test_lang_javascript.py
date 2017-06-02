@@ -27,13 +27,15 @@ def test_tokenize() -> None:
     tokens = javascript.tokenize(test_file)
     # TODO: more robust tests for this.
     assert len(tokens) == 7
+    assert tokens[2].value == 'ಠ_ಠ'
 
 
-@pytest.mark.skip
+def test_check_syntax() -> None:
+    assert not javascript.check_syntax('import #')
+    assert javascript.check_syntax(test_file)
+
+
 def test_summarize() -> None:
-    with pytest.raises(SyntaxError):
-        javascript.summarize('import #')
-
     summary = javascript.summarize(test_file)
     assert summary.sloc == 1
     assert summary.n_tokens == 7
@@ -44,7 +46,7 @@ def test_pipeline() -> None:
     loc = LocationFactory(Position(line=6, column=0))
     result = list(javascript.pipeline.execute_with_locations(test_file))
     assert result[:4] == [
-        (loc.across(len("import")),         'IMPORT'),
+        (loc.across(len("import")),         'import'),
         (loc.space().across(1),             '{'),
         (loc.space().across(len("ಠ_ಠ")),    'IDENTIFIER'),
         (loc.space().across(1),             '}'),
