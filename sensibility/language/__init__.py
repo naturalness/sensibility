@@ -22,13 +22,14 @@ Represents a language and actions you can do to its source code.
 
 import os
 import logging
-from typing import Any, IO, NamedTuple, Sequence, Set, Union
+from typing import Any, IO, NamedTuple, Iterable, Sequence, Set, Union
 from typing import no_type_check, cast, overload
 from abc import ABC, abstractmethod
 
 from ..lexical_analysis import Token
-from ..pipeline import Pipeline
 
+
+Tokens = Iterable[Token]
 
 class SourceSummary(NamedTuple):
     sloc: int
@@ -41,7 +42,6 @@ class Language(ABC):
     """
 
     extensions: Set[str]
-    pipeline: Pipeline
 
     @property
     def id(self) -> str:
@@ -54,25 +54,7 @@ class Language(ABC):
         else:
             return type(self).__name__
 
-    def __str__(self) -> str:
-        return self.id
-
-    @abstractmethod
-    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]: ...
-
-    @abstractmethod
-    def check_syntax(self, source: Union[str, bytes]) -> bool: ...
-
-    @abstractmethod
-    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary: ...
-
-    def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
-        """
-        Check if the given path matches any of the registered extensions for
-        this language.
-        """
-        filename = os.fspath(path)
-        return any(filename.endswith(ext) for ext in self.extensions)
+    # Public API
 
     @overload
     def summarize(self, source: Sequence[Token]) -> SourceSummary: ...
@@ -86,7 +68,41 @@ class Language(ABC):
             tokens = cast(Sequence[Token], source)
         return self.summarize_tokens(tokens)
 
+    def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
+        """
+        Check if the given path matches any of the registered extensions for
+        this language.
+        """
+        filename = os.fspath(path)
+        return any(filename.endswith(ext) for ext in self.extensions)
+
     # TODO: vocabulary?
+
+    def __str__(self) -> str:
+        return self.id
+
+    # API implemented by inheritors.
+
+    @abstractmethod
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]: ...
+
+    @abstractmethod
+    def check_syntax(self, source: Union[str, bytes]) -> bool: ...
+
+    @abstractmethod
+    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary: ...
+
+    @abstractmethod
+    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[str]:
+        """
+        Given tokens, this should produce a stream of normalized types (string
+        representations of vocabulary entries) to be insterted into a language
+        model.
+        """
+
+    # TODO: vocabularize that also includes positions.
+    # TODO: Method with that also includes positions.
+
 
 class LanguageNotSpecifiedError(Exception):
     """
@@ -143,6 +159,9 @@ class LanguageProxy(Language):
     def determine_language(self) -> Language:
         logger = logging.getLogger(self.__class__.__name__)
 
+        # TODO: set language from filename?
+        # TODO: set language from database? -- but don't put this in this file.
+
         # Try loading from the environment LAST.
         name_from_env = os.getenv('SENSIBILITY_LANGUAGE')
         if name_from_env is not None:
@@ -179,8 +198,9 @@ class LanguageProxy(Language):
     def summarize_tokens(self, *args):
         return self.wrapped_language.summarize_tokens(*args)
 
-    # TODO: set language from filename?
-    # TODO: set language from database? -- but don't put this in this file.
+    def vocabularize_tokens(self, *args, **kwargs):
+        return self.wrapped_language.vocabularize_tokens(*args, **kwargs)
+
 
 # TODO: Use even MORE redirection to expose LanguageProxy interface,
 #       but let __getattr__ exist in a different class.

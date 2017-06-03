@@ -24,7 +24,7 @@ import subprocess
 import tempfile
 from io import StringIO, IOBase
 from pathlib import Path
-from typing import Any, Callable, IO, Sequence, Union
+from typing import Any, Callable, IO, Iterable, Sequence, Union
 from typing import cast
 
 from sensibility.language import Language, SourceSummary
@@ -36,18 +36,8 @@ esprima_bin = here / 'esprima-interface'
 assert esprima_bin.exists()
 
 
-# TODO: Temporary!
-class NotImplementedDescriptor:
-    def __init__(self) -> None:
-        ...
-
-    def __get__(self, instance, cls):
-        raise NotImplementedError
-
-
 class JavaScript(Language):
     extensions = {'.js'}
-    pipeline = cast(Pipeline, NotImplementedDescriptor())
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """
@@ -79,6 +69,9 @@ class JavaScript(Language):
                            for lineno in token.lines)
 
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
+
+    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[str]:
+        raise NotImplementedError
 
 
 class SafeSourceFile:

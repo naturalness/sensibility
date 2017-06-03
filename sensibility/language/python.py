@@ -20,7 +20,7 @@ import token
 import tokenize
 from io import BytesIO
 from keyword import iskeyword
-from typing import AnyStr, IO, Sequence, Union, Optional
+from typing import AnyStr, IO, Iterable, Optional, Sequence, Union
 
 from sensibility.pipeline import Pipeline, PipelineStage
 
@@ -170,6 +170,9 @@ class Python(Language):
                            if token.name not in INTANGIBLE_TOKENS)
 
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
+
+    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[str]:
+        return self.pipeline.execute(source)
 
 
 python: Language = Python()
