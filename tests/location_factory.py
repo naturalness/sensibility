@@ -1,4 +1,4 @@
-from sensibility.token_utils import Position, Location
+from sensibility.lexical_analysis import Position, Location
 
 
 class LocationFactory:

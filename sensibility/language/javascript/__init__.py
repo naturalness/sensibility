@@ -29,7 +29,7 @@ from typing import cast
 
 from sensibility.language import Language, SourceSummary
 from sensibility.pipeline import Pipeline
-from sensibility.token_utils import Token, Lexeme, Position
+from sensibility.lexical_analysis import Token, Lexeme, Position
 
 here = Path(__file__).parent
 esprima_bin = here / 'esprima-interface'

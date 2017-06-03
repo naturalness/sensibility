@@ -5,7 +5,7 @@ import pytest  # type: ignore
 
 from sensibility.language import Language
 from sensibility.language.javascript import javascript
-from sensibility.token_utils import Position
+from sensibility.lexical_analysis import Position
 
 from location_factory import LocationFactory
 

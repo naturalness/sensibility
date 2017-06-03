@@ -5,8 +5,8 @@ import pytest  # type: ignore
 
 from sensibility.language import Language
 from sensibility.language.python import python
-from sensibility.token_utils import Location
-from sensibility.token_utils import Position
+from sensibility.lexical_analysis import Location
+from sensibility.lexical_analysis import Position
 
 from location_factory import LocationFactory
 

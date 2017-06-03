@@ -25,7 +25,7 @@ from typing import AnyStr, IO, Sequence, Union, Optional
 from sensibility.pipeline import Pipeline, PipelineStage
 
 from . import Language, SourceSummary
-from ..token_utils import Lexeme, Position, Token
+from ..lexical_analysis import Lexeme, Position, Token
 
 
 class PythonPipeline(Pipeline):

@@ -23,7 +23,7 @@ Tokenization Pipeline
 from abc import ABC, abstractmethod
 from typing import Any, AnyStr, Callable, Iterable, Optional, Sequence, Tuple, overload
 
-from .token_utils import Token, Location
+from .lexical_analysis import Token, Location
 
 PipelineStage = Callable[[Any], Optional[Any]]
 
