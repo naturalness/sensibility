@@ -148,7 +148,7 @@ def from_esprima_format(token) -> Token:
 
 class StringifyLexeme:
     """
-    Misnomer. Should be called stringify_lexeme().
+    Converts a Lexeme to its vocabularized form.
 
     >>> stringify_lexeme(Lexeme(value='**=', name='Punctuator'))
     '**='
@@ -159,19 +159,21 @@ class StringifyLexeme:
     >>> stringify_lexeme(Lexeme(value='null', name='Null'))
     'null'
     >>> stringify_lexeme(Lexeme(value='``', name='Template'))
-    '`standalone-template`'
-    >>> stringify_lexeme(Lexeme(value='``', name='Template'))
-    '`standalone-template`'
+    '<STANDALONE-TEMPLATE>'
     >>> stringify_lexeme(Lexeme(value='`${', name='Template'))
-    '`template-head${'
+    '<TEMPLATE-HEAD>'
     >>> stringify_lexeme(Lexeme(value='}`', name='Template'))
-    '}template-tail`'
+    '<TEMPLATE-TAIL>'
     >>> stringify_lexeme(Lexeme(value='}  ${', name='Template'))
-    '}template-middle${'
+    '<TEMPLATE-MIDDLE>'
     >>> stringify_lexeme(Lexeme(value='"hello world"', name='String'))
-    '"string"'
+    '<STRING>'
     >>> stringify_lexeme(Lexeme(value='💩', name='Identifier'))
-    'Identifier'
+    '<IDENTIFIER>'
+    >>> stringify_lexeme(Lexeme(value='/g/i', name='RegularExpression'))
+    '<REGEXP>'
+    >>> stringify_lexeme(Lexeme(value='3.14', name='Numeric'))
+    '<NUMBER>'
     """
 
     def __call__(self, token) -> str:
@@ -185,7 +187,7 @@ class StringifyLexeme:
         return text
 
     def Identifier(self, text):
-        return 'Identifier'
+        return '<IDENTIFIER>'
 
     def Keyword(self, text):
         return text
@@ -194,29 +196,29 @@ class StringifyLexeme:
         return 'null'
 
     def Numeric(self, text):
-        return '/*number*/0'
+        return '<NUMBER>'
 
     def Punctuator(self, text):
         return text
 
     def String(self, text):
-        return '"string"'
+        return '<STRING>'
 
     def RegularExpression(self, text):
-        return '/regexp/'
+        return '<REGEXP>'
 
     def Template(self, text):
         assert len(text) >= 2
         if text.startswith('`'):
             if text.endswith('`'):
-                return '`standalone-template`'
+                return '<STANDALONE-TEMPLATE>'
             elif text.endswith('${'):
-                return '`template-head${'
+                return '<TEMPLATE-HEAD>'
         elif text.startswith('}'):
             if text.endswith('`'):
-                return '}template-tail`'
+                return '<TEMPLATE-TAIL>'
             elif text.endswith('${'):
-                return '}template-middle${'
+                return '<TEMPLATE-MIDDLE>'
         raise TypeError('Unhandled template literal: ' + text)
 
 
