@@ -146,32 +146,31 @@ def from_esprima_format(token) -> Token:
                               column=loc['end']['column']))
 
 
-
-class StringifyToken():
+class StringifyLexeme:
     """
     Misnomer. Should be called stringify_lexeme().
 
-    >>> stringify_token(Lexeme(value='**=', name='Punctuator'))
+    >>> stringify_lexeme(Lexeme(value='**=', name='Punctuator'))
     '**='
-    >>> stringify_token(Lexeme(value='var', name='Keyword'))
+    >>> stringify_lexeme(Lexeme(value='var', name='Keyword'))
     'var'
-    >>> stringify_token(Lexeme(value='false', name='Boolean'))
+    >>> stringify_lexeme(Lexeme(value='false', name='Boolean'))
     'false'
-    >>> stringify_token(Lexeme(value='null', name='Null'))
+    >>> stringify_lexeme(Lexeme(value='null', name='Null'))
     'null'
-    >>> stringify_token(Lexeme(value='``', name='Template'))
+    >>> stringify_lexeme(Lexeme(value='``', name='Template'))
     '`standalone-template`'
-    >>> stringify_token(Lexeme(value='``', name='Template'))
+    >>> stringify_lexeme(Lexeme(value='``', name='Template'))
     '`standalone-template`'
-    >>> stringify_token(Lexeme(value='`${', name='Template'))
+    >>> stringify_lexeme(Lexeme(value='`${', name='Template'))
     '`template-head${'
-    >>> stringify_token(Lexeme(value='}`', name='Template'))
+    >>> stringify_lexeme(Lexeme(value='}`', name='Template'))
     '}template-tail`'
-    >>> stringify_token(Lexeme(value='}  ${', name='Template'))
+    >>> stringify_lexeme(Lexeme(value='}  ${', name='Template'))
     '}template-middle${'
-    >>> stringify_token(Lexeme(value='"hello world"', name='String'))
+    >>> stringify_lexeme(Lexeme(value='"hello world"', name='String'))
     '"string"'
-    >>> stringify_token(Lexeme(value='💩', name='Identifier'))
+    >>> stringify_lexeme(Lexeme(value='💩', name='Identifier'))
     'Identifier'
     """
 
@@ -223,4 +222,4 @@ class StringifyToken():
 
 # The main exports.
 javascript = JavaScript()
-stringify_token = cast(Callable[[Lexeme], str], StringifyToken())
+stringify_lexeme = cast(Callable[[Lexeme], str], StringifyLexeme())
