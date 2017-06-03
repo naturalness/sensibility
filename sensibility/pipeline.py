@@ -19,6 +19,8 @@
 """
 Tokenization Pipeline
 """
+# TODO: Just get rid of this file!
+#   A new method in Language.
 
 from abc import ABC, abstractmethod
 from typing import Any, AnyStr, Callable, Iterable, Optional, Sequence, Tuple, overload

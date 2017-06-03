@@ -108,8 +108,7 @@ class Python(Language):
                 return source
 
         with open_as_file() as source_file:
-            token_stream = tokenize.tokenize(source_file.readline)  # type: ignore
-            # TODO: what's a logical line... what?
+            token_stream = tokenize.tokenize(source_file.readline)
             return [Token(name=token.tok_name[tok.type],
                           value=tok.string,
                           start=Position(line=tok.start[0], column=tok.start[1]),

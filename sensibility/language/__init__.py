@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 Represents a language and actions you can do to its source code.
 """
@@ -100,7 +115,6 @@ class LanguageProxy(Language):
 
     @property
     def wrapped_language(self) -> Language:
-        # TODO: smart things here. With logging!
         if self._language is None:
             self._language = self.determine_language()
         return self._language
@@ -165,4 +179,9 @@ class LanguageProxy(Language):
     def summarize_tokens(self, *args):
         return self.wrapped_language.summarize_tokens(*args)
 
+    # TODO: set language from filename?
+    # TODO: set language from database? -- but don't put this in this file.
+
+# TODO: Use even MORE redirection to expose LanguageProxy interface,
+#       but let __getattr__ exist in a different class.
 language: Language = LanguageProxy()

@@ -30,7 +30,6 @@ from sensibility.language import language
 
 
 if __name__ == '__main__':
-    # TODO: use any language
     with open(sys.stdin.fileno(), 'rb') as input_file:
         if language.check_syntax(input_file.read()):
             exit(0)
