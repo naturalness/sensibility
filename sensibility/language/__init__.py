@@ -22,14 +22,17 @@ Represents a language and actions you can do to its source code.
 
 import os
 import logging
-from typing import Any, IO, NamedTuple, Iterable, Sequence, Set, Union
+from operator import attrgetter
+from typing import Any, IO, NamedTuple, Iterable, Sequence, Set, Tuple, Union
 from typing import no_type_check, cast, overload
 from abc import ABC, abstractmethod
 
-from ..lexical_analysis import Token
+from ..lexical_analysis import Token, Location
 
 
+# Alias for simply an iterable of Tokens.
 Tokens = Iterable[Token]
+SourceCode = Union[str, bytes, IO[bytes]]
 
 class SourceSummary(NamedTuple):
     sloc: int
@@ -40,6 +43,10 @@ class Language(ABC):
     """
     A programming language.
     """
+
+    ############################################################################
+    # Public API                                                               #
+    ############################################################################
 
     extensions: Set[str]
 
@@ -54,20 +61,6 @@ class Language(ABC):
         else:
             return type(self).__name__
 
-    # Public API
-
-    @overload
-    def summarize(self, source: Sequence[Token]) -> SourceSummary: ...
-    @overload
-    def summarize(self, source: Union[str, bytes, IO[bytes]]) -> SourceSummary: ...
-
-    def summarize(self, source: Any) -> SourceSummary:
-        if isinstance(source, (str, bytes, IO)):
-            tokens = self.tokenize(source)
-        else:
-            tokens = cast(Sequence[Token], source)
-        return self.summarize_tokens(tokens)
-
     def matches_extension(self, path: Union[os.PathLike, str]) -> bool:
         """
         Check if the given path matches any of the registered extensions for
@@ -76,7 +69,28 @@ class Language(ABC):
         filename = os.fspath(path)
         return any(filename.endswith(ext) for ext in self.extensions)
 
-    # TODO: vocabulary?
+    @overload
+    def summarize(self, source: Tokens) -> SourceSummary: ...
+    @overload
+    def summarize(self, source: SourceCode) -> SourceSummary: ...
+
+    def summarize(self, source: Any) -> SourceSummary:
+        """
+        Return a SourceSummary, containing the number of tokens,
+        and source lines of code. In both cases, the numbers only count tokens
+        that are "physically" intended in the file.
+        """
+        return self.summarize_tokens(self._as_tokens(source))
+
+    def vocabularize(self, source: Union[SourceCode, Tokens]) -> Iterable[str]:
+        """
+        Produces a stream of normalized types (string representations of
+        vocabulary entries) to be insterted into a language model.
+        """
+        stream = self.vocabularize_tokens(self._as_tokens(source))
+        return (tok for _, tok in stream)
+
+    # TODO: Vocabulary?
 
     def __str__(self) -> str:
         return self.id
@@ -84,24 +98,32 @@ class Language(ABC):
     # API implemented by inheritors.
 
     @abstractmethod
-    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]: ...
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]: ...
 
     @abstractmethod
     def check_syntax(self, source: Union[str, bytes]) -> bool: ...
 
     @abstractmethod
-    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary: ...
+    def summarize_tokens(self, tokens: Iterable[Token]) -> SourceSummary: ...
 
     @abstractmethod
-    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[str]:
+    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
         """
         Given tokens, this should produce a stream of normalized types (string
         representations of vocabulary entries) to be insterted into a language
         model.
         """
 
-    # TODO: vocabularize that also includes positions.
-    # TODO: Method with that also includes positions.
+    def _as_tokens(self, source: Union[SourceCode, Tokens]) -> Tokens:
+        """
+        Ensures that anything that goes is returned as tokens.
+        """
+        if isinstance(source, (str, bytes, IO)):
+            return self.tokenize(source)
+        else:
+            # Mypy allows us to assume this is an iterable of tokens.
+            return cast(Tokens, source)
+
 
 
 class LanguageNotSpecifiedError(Exception):

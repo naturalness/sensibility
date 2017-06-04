@@ -20,12 +20,12 @@ import token
 import tokenize
 from io import BytesIO
 from keyword import iskeyword
-from typing import AnyStr, IO, Iterable, Optional, Sequence, Union
+from typing import AnyStr, IO, Iterable, Optional, Sequence, Tuple, Union
 
 from sensibility.pipeline import Pipeline, PipelineStage
 
 from . import Language, SourceSummary
-from ..lexical_analysis import Lexeme, Position, Token
+from ..lexical_analysis import Lexeme, Location, Position, Token
 
 
 class PythonPipeline(Pipeline):
@@ -65,7 +65,7 @@ class PythonPipeline(Pipeline):
         return open_closed_tokens(token)
 
     def tokenize(self, source: AnyStr) -> Sequence[Token]:
-        return python.tokenize(source)
+        return python.tokenize(source)  # type: ignore
 
 
 class Python(Language):
@@ -149,13 +149,14 @@ class Python(Language):
             child_pid, status = os.waitpid(pid, 0)
             return status == 0
 
-    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary:
+    def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
         r"""
         Calculates the word count of a Python source.
 
         >>> python.summarize('import sys\n\nsys.stdout.write("hello")\n')
         SourceSummary(sloc=2, n_tokens=12)
         """
+        tokens = list(source)
         if any(tok.name == 'ERRORTOKEN' for tok in tokens):
             raise SyntaxError('ERRORTOKEN')
 
@@ -171,8 +172,8 @@ class Python(Language):
 
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
 
-    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[str]:
-        return self.pipeline.execute(source)
+    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
+        return self.pipeline.execute_with_locations(pource)  # type: ignore
 
 
 python: Language = Python()
