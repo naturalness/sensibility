@@ -53,6 +53,11 @@ def test_vocabularize() -> None:
         # XXX: Esprima reports that `from` is an identifier, even though in my
         # opinion, it's a keyword, but the fix is far too difficult to
         # implement right now.
+        #
+        # "from" is a **contextual keyword**, so scanners usually treat them as
+        # identifiers.
+        # See: Parser#matchContextualKeyword() in
+        # https://github.com/jquery/esprima/blob/master/src/parser.ts
         (loc.space().across(len("from")),   '<IDENTIFIER>'),
         #(loc.space().across(len("from")),   'from'),
 
