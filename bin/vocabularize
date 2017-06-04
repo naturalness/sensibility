@@ -38,7 +38,7 @@ def print_sentence(source: bytes) -> None:
 
 if __name__ == '__main__':
       if ['-'] == sys.argv[1:]:
-            # Run pipeline on stdin
+            # Vocabularize stdin
             with open(sys.stdin.fileno(), 'rb') as input_file:
                   print_sentence(input_file.read())
       else:
