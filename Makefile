@@ -33,7 +33,7 @@ lm: corpus.binary
 	$(ESTIMATENGRAM) -o $(ORDER) <$< >$@
 
 corpus.sentences: corpus.list
-	parallel --pipepart --line-buffer --round-robin run-pipeline :::: $< > $@
+	parallel --pipepart --line-buffer --round-robin vocabularize :::: $< > $@
 
 unparsed.list:
 	list-unparsed-sources > $@
