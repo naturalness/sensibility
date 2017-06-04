@@ -24,12 +24,11 @@ import subprocess
 import tempfile
 from io import StringIO, IOBase
 from pathlib import Path
-from typing import Any, Callable, IO, Iterable, Sequence, Union
+from typing import Any, Callable, IO, Iterable, Sequence, Tuple, Union
 from typing import cast
 
 from sensibility.language import Language, SourceSummary
-from sensibility.pipeline import Pipeline
-from sensibility.lexical_analysis import Token, Lexeme, Position
+from sensibility.lexical_analysis import Token, Lexeme, Location, Position
 
 here = Path(__file__).parent
 esprima_bin = here / 'esprima-interface'
@@ -64,13 +63,14 @@ class JavaScript(Language):
                                     stdout=subprocess.PIPE)
         return status.returncode == 0
 
-    def summarize_tokens(self, tokens: Sequence[Token]) -> SourceSummary:
+    def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
+        tokens = list(source)
         unique_lines = set(lineno for token in tokens
                            for lineno in token.lines)
 
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
 
-    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[str]:
+    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
         raise NotImplementedError
 
 
