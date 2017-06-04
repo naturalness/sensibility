@@ -22,16 +22,62 @@ from io import BytesIO
 from keyword import iskeyword
 from typing import AnyStr, IO, Iterable, Optional, Sequence, Tuple, Union
 
-from sensibility.pipeline import Pipeline, PipelineStage
 
 from . import Language, SourceSummary
 from ..lexical_analysis import Lexeme, Location, Position, Token
 
+from typing import Any, Callable, overload
+PipelineStage = Callable[[Any], Optional[Any]]
 
-class PythonPipeline(Pipeline):
+
+class PythonPipeline:
     """
     Converts Python tokens to a format suitable for training and evaluating.
     """
+
+    @overload
+    def execute(self, tokens: AnyStr) -> Iterable[Any]: ...
+    @overload
+    def execute(self, tokens: Iterable[Token]) -> Iterable[Any]: ...
+
+    def execute(self, source):
+        """
+        Executes all stages of the pipeline, yielding elements in a format
+        specified by the pipeline.
+        """
+        for _, element in self.execute_with_locations(source):
+            yield element
+
+    def run_pipeline(self, element: Any) -> Optional[Any]:
+        intermediate: Any = element
+        for stage in self.stages:
+            intermediate = stage(intermediate)
+            if intermediate is None:
+                return None
+        return intermediate
+
+    @overload
+    def execute_with_locations(self, tokens: AnyStr) -> Iterable[Tuple[Location, Any]]: ...
+    @overload
+    def execute_with_locations(self, tokens: Sequence[Token]) -> Iterable[Tuple[Location, Any]]: ...
+
+    def execute_with_locations(self, source):
+        """
+        Same as #execute(), but returns pairs of (Location, token) pairs,
+        where `token` is returned by the pipeline.
+        """
+        # Ensure we START with a token stream.
+        if isinstance(source, (bytes, str)):
+            tokens = self.tokenize(source)
+        else:
+            tokens = source
+
+        # Yield the elements.
+        for token in tokens:
+            location = token.location
+            element = self.run_pipeline(token)
+            if element is not None:
+                yield location, element
 
     @property
     def stages(self) -> Sequence[PipelineStage]:
