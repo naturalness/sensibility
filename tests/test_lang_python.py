@@ -43,9 +43,10 @@ def test_summarize() -> None:
     assert summary.n_tokens == 20
 
 
-def test_pipeline() -> None:
+def test_vocabularize() -> None:
     loc = LocationFactory(Position(line=4, column=0))
-    result = list(python.pipeline.execute_with_locations(test_file))
+    result = list(python.vocabularize_with_locations(test_file))
+    assert len(result) == 20
     assert result[:7] == [
         (loc.until(Position(line=6, column=3)),     'STRING'),
         (loc.newline(),                             'NEWLINE'),

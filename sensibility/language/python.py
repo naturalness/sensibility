@@ -27,91 +27,6 @@ from . import Language, SourceSummary
 from ..lexical_analysis import Lexeme, Location, Position, Token
 
 from typing import Any, Callable, overload
-PipelineStage = Callable[[Any], Optional[Any]]
-
-
-class PythonPipeline:
-    """
-    Converts Python tokens to a format suitable for training and evaluating.
-    """
-
-    @overload
-    def execute(self, tokens: AnyStr) -> Iterable[Any]: ...
-    @overload
-    def execute(self, tokens: Iterable[Token]) -> Iterable[Any]: ...
-
-    def execute(self, source):
-        """
-        Executes all stages of the pipeline, yielding elements in a format
-        specified by the pipeline.
-        """
-        for _, element in self.execute_with_locations(source):
-            yield element
-
-    def run_pipeline(self, element: Any) -> Optional[Any]:
-        intermediate: Any = element
-        for stage in self.stages:
-            intermediate = stage(intermediate)
-            if intermediate is None:
-                return None
-        return intermediate
-
-    @overload
-    def execute_with_locations(self, tokens: AnyStr) -> Iterable[Tuple[Location, Any]]: ...
-    @overload
-    def execute_with_locations(self, tokens: Sequence[Token]) -> Iterable[Tuple[Location, Any]]: ...
-
-    def execute_with_locations(self, source):
-        """
-        Same as #execute(), but returns pairs of (Location, token) pairs,
-        where `token` is returned by the pipeline.
-        """
-        # Ensure we START with a token stream.
-        if isinstance(source, (bytes, str)):
-            tokens = self.tokenize(source)
-        else:
-            tokens = source
-
-        # Yield the elements.
-        for token in tokens:
-            location = token.location
-            element = self.run_pipeline(token)
-            if element is not None:
-                yield location, element
-
-    @property
-    def stages(self) -> Sequence[PipelineStage]:
-        return self.vocabularize, self.prune
-
-    def prune(self, token: str) -> Optional[str]:
-        EXTRANEOUS_TOKENS = {
-            # Always occurs as the first token: internally indicates the file
-            # ecoding, but is irrelelvant once the stream is already tokenized
-            'ENCODING',
-
-            # Always occurs as the last token.
-            'ENDMARKER',
-
-            # Insignificant newline; not to be confused with NEWLINE
-            'NL',
-
-            # Discard comments
-            'COMMENT',
-
-            # Represents a tokenization error. This should never appear for
-            # syntatically correct files.
-            'ERRORTOKEN',
-        }
-        if token in EXTRANEOUS_TOKENS:
-            return None
-        else:
-            return token
-
-    def vocabularize(self, token: Lexeme) -> Optional[str]:
-        return open_closed_tokens(token)
-
-    def tokenize(self, source: AnyStr) -> Sequence[Token]:
-        return python.tokenize(source)  # type: ignore
 
 
 class Python(Language):
@@ -120,7 +35,6 @@ class Python(Language):
     """
 
     extensions = {'.py'}
-    pipeline = PythonPipeline()
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """
@@ -219,10 +133,31 @@ class Python(Language):
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
 
     def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
-        return self.pipeline.execute_with_locations(source)  # type: ignore
+        EXTRANEOUS_TOKENS = {
+            # Always occurs as the first token: internally indicates the file
+            # ecoding, but is irrelelvant once the stream is already tokenized
+            'ENCODING',
 
+            # Always occurs as the last token.
+            'ENDMARKER',
 
-python: Language = Python()
+            # Insignificant newline; not to be confused with NEWLINE
+            'NL',
+
+            # Discard comments
+            'COMMENT',
+
+            # Represents a tokenization error. This should never appear for
+            # syntatically correct files.
+            'ERRORTOKEN',
+        }
+
+        for token in source:
+            vocab_entry = open_closed_tokens(token)
+            # Skip the extraneous tokens
+            if vocab_entry in EXTRANEOUS_TOKENS:
+                continue
+            yield token.location, vocab_entry
 
 
 def is_physical_token(token: Lexeme) -> bool:
@@ -234,8 +169,6 @@ def is_physical_token(token: Lexeme) -> bool:
         'ENDMARKER', 'ENCODING', 'COMMENT', 'NL', 'ERRORTOKEN'
     }
     return token.name not in FAKE_TOKENS
-
-
 
 
 def open_closed_tokens(token: Lexeme) -> str:
@@ -268,3 +201,6 @@ def open_closed_tokens(token: Lexeme) -> str:
     else:
         # Note: includes NUMBER and STRING
         return token.name
+
+
+python: Language = Python()
