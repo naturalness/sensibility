@@ -41,14 +41,15 @@ def test_summarize() -> None:
     assert summary.n_tokens == 7
 
 
-@pytest.mark.skip
-def test_pipeline() -> None:
+def test_vocabularize() -> None:
     loc = LocationFactory(Position(line=6, column=0))
-    result = list(javascript.pipeline.execute_with_locations(test_file))
-    assert result[:4] == [
+    result = list(javascript.vocabularize_with_locations(test_file))
+    expected = [
         (loc.across(len("import")),         'import'),
         (loc.space().across(1),             '{'),
-        (loc.space().across(len("ಠ_ಠ")),    'IDENTIFIER'),
-        (loc.space().across(1),             '}'),
+        (loc.across(len("ಠ_ಠ")),            '<IDENTIFIER>'),
+        (loc.across(1),                     '}'),
+        #(loc.space().across(len("from")),   'from'),
+        #(loc.space().across(len("'-_-'")),  '<STRING>'),
     ]
-    # TODO: Test more locations?
+    assert result[:len(expected)] == expected

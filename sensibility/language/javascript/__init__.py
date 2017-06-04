@@ -70,8 +70,9 @@ class JavaScript(Language):
 
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
 
-    def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
-        raise NotImplementedError
+    def vocabularize_tokens(self, tokens: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
+        for token in tokens:
+            yield token.location, stringify_lexeme(token)
 
 
 class SafeSourceFile:
