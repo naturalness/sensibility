@@ -49,7 +49,14 @@ def test_vocabularize() -> None:
         (loc.space().across(1),             '{'),
         (loc.across(len("ಠ_ಠ")),            '<IDENTIFIER>'),
         (loc.across(1),                     '}'),
+
+        # XXX: Esprima reports that `from` is an identifier, even though in my
+        # opinion, it's a keyword, but the fix is far too difficult to
+        # implement right now.
+        (loc.space().across(len("from")),   '<IDENTIFIER>'),
         #(loc.space().across(len("from")),   'from'),
-        #(loc.space().across(len("'-_-'")),  '<STRING>'),
+
+        (loc.space().across(len("'-_-'")),  '<STRING>'),
+        (loc.across(1),                    ';'),
     ]
     assert result[:len(expected)] == expected
