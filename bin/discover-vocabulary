@@ -32,13 +32,12 @@ from sensibility.language import language
 
 if __name__ == '__main__':
     corpus = Corpus(read_only=True)
-    pipeline = language.pipeline
 
     unique_entries = set()
     for filehash in filehashes():
         source = corpus.get_source(filehash)
-        for token in pipeline.execute(source):
-            unique_entries.add(token)
+        for vocab_entry in language.vocabularize(source):
+            unique_entries.add(vocab_entry)
 
     vocab = list(sorted(unique_entries))
     print('ENTRIES =', end=' ')

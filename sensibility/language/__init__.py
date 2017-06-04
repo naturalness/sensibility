@@ -88,7 +88,14 @@ class Language(ABC):
         vocabulary entries) to be insterted into a language model.
         """
         stream = self.vocabularize_tokens(self._as_tokens(source))
-        return (tok for _, tok in stream)
+        return (tok for _loc, tok in stream)
+
+    def vocabularize_with_locations(self, source: Union[SourceCode, Tokens]
+                                    ) -> Iterable[Tuple[Location, str]]:
+        """
+        As with vocabularize, but also emits locations.
+        """
+        return self.vocabularize_tokens(self._as_tokens(source))
 
     # TODO: Vocabulary?
 
@@ -111,7 +118,7 @@ class Language(ABC):
         """
         Given tokens, this should produce a stream of normalized types (string
         representations of vocabulary entries) to be insterted into a language
-        model.
+        model, attached with their location in the original source.
         """
 
     def _as_tokens(self, source: Union[SourceCode, Tokens]) -> Tokens:

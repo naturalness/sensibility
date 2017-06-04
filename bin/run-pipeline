@@ -30,11 +30,9 @@ from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
 from sensibility.language import language
 
-pipeline = language.pipeline
-
 
 def print_sentence(source: bytes) -> None:
-      tokens = list(pipeline.execute(source))
+      tokens = list(language.vocabularize(source))
       assert all(' ' not in t and '\n' not in t for t in tokens)
       print(' '.join(tokens))
 

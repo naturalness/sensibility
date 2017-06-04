@@ -173,7 +173,7 @@ class Python(Language):
         return SourceSummary(sloc=len(unique_lines), n_tokens=len(tokens))
 
     def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
-        return self.pipeline.execute_with_locations(pource)  # type: ignore
+        return self.pipeline.execute_with_locations(source)  # type: ignore
 
 
 python: Language = Python()
