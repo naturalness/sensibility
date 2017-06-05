@@ -11,11 +11,11 @@ def slurp(filename):
 
 setup(
     name='sensibility',
-    version='0.2.dev0',
+    version='0.3.dev0',
 
-    description='Syntax error detecter and fixer',
+    description='Syntax error finder and fixer',
     long_description=slurp(path.join(here, 'README.rst')),
-    url='https://github.com/eddieantonio/training-grammar-guru',
+    url='https://github.com/naturalness/sensibility',
 
     author='Eddie Antonio Santos',
     author_email='easantos@ualberta.ca',
@@ -39,7 +39,7 @@ setup(
     zip_safe=False,
 
     install_requires=[
-        # TODO: upgrade to 2.x!
+        # TODO: upgrade to Keras 2.x!
         'Keras>=1.2.2',
         'SQLAlchemy>=1.1.9',
         'blessings',
