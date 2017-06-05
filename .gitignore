@@ -62,20 +62,33 @@ docs/_build/
 .python-version
 
 # virtualenv
-.venv/
 venv/
 ENV/
+
+# PyCharm
+/.idea/
 
 # Rope project settings
 .ropeproject
 
+# KenLM
+*.arpa
+*.binary
+*.list
+*.sentences
+unparsed
+
 ### Local ###
+
+/.token
 
 # Databases
 *.sqlite3
+dump.rdb
 
 # Log files
 failures.txt
+*.log
 
 # Results files
 results.*.csv
