@@ -12,8 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Putting the n in n-gram:
+ORDER = 4
+
 # How many training folds?
 FOLDS = 5
+
+# Augment path wih applications in ./bin/
+PATH := $(PWD)/bin:$(PATH)
+
+# KenLM stuff. Assumes KenLM executables are installed in ~/.kenlm/bin
+KENLMBIN = $(HOME)/.kenlm/bin
+ESTIMATENGRAM = $(KENLMBIN)/lmplz
+BUILDBINARY = $(KENLMBIN)/build_binary
+
+# Old training stuff!
 
 # 75 million, which is a semi-arbitrarily chosen number.
 # My last training phase used 9 folds of around 7.5 million tokens each; hencem
@@ -44,6 +57,11 @@ SPLIT = $(shell which gsplit || which split)
 
 all: results
 
+parse: unparsed.list
+	parallel --pipepart --round-robin parse-and-insert-all :::: $<
+
+lm: corpus.binary
+
 # This will include a LOT of rules to make models, mutations, and results.
 include extra-rules.mk
 # So many in fact, I've written a script to generate all the rules.
@@ -67,3 +85,29 @@ $(TEST_SET): $(VECTORS) $(SOURCES)
 # From: http://stackoverflow.com/a/3077254/6626414
 $(TEST_SET)%0 $(TEST_SET)%1 $(TEST_SET)%2 $(TEST_SET)%3 $(TEST_SET)%4: $(TEST_SET)
 	$(SPLIT) --number=l/$(FOLDS) -d --suffix-length=1 $(TEST_SET) $(TEST_SET).
+
+################################################################################
+
+# Create a binary n-gram model with modkn backoffs, for querying.
+%.binary: %.arpa
+	$(BUILDBINARY) $< $@
+
+# Estimate an n-gram langauge model from sentences
+%.arpa: %.sentences
+	$(ESTIMATENGRAM) -o $(ORDER) <$< >$@
+
+corpus.sentences: corpus.list
+	parallel --pipepart --line-buffer --round-robin vocabularize :::: $< > $@
+
+unparsed.list:
+	list-unparsed-sources > $@
+
+vocabulary.py:
+	list-elligible-sources | discover-vocabulary > $@
+
+corpus.list:
+	list-elligible-sources | $(SHUF) | head -n10000 > $@
+
+
+.PHONY: all parse lm
+.INTERMEDIATE: unparsed
