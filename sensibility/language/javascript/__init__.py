@@ -24,7 +24,7 @@ import subprocess
 import tempfile
 from io import StringIO, IOBase
 from pathlib import Path
-from typing import Any, Callable, IO, Iterable, Sequence, Tuple, Union
+from typing import Any, Callable, IO, Iterable, Optional, Sequence, Tuple, Union
 from typing import cast
 
 from sensibility.language import Language, SourceSummary
@@ -83,18 +83,18 @@ class SafeSourceFile:
 
     def __init__(self, source: Union[str, bytes, IO[bytes]]) -> None:
         self.source = source
-        self._owned: IO[bytes] = None
-        self._foreign: IO[bytes] = None
+        self._owned: Optional[IO[bytes]] = None
+        self._foreign: Optional[IO[bytes]] = None
 
     def __enter__(self) -> IO[bytes]:
         if isinstance(self.source, (str, bytes)):
             self._owned = synthetic_file(self.source)
+            return self._owned
         elif isinstance(self.source, IOBase):
             self._foreign = self.source
+            return self.source
         else:
             raise ValueError(self.source)
-
-        return self._owned or self._foreign
 
     def __exit__(self, *exc_info: Any) -> None:
         if self._owned is not None:

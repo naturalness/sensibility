@@ -23,7 +23,9 @@ Represents a language and actions you can do to its source code.
 import os
 import logging
 from operator import attrgetter
-from typing import Any, IO, NamedTuple, Iterable, Sequence, Set, Tuple, Union
+from typing import (
+    Any, IO, NamedTuple, Iterable, Sequence, Set, Tuple, Optional, Union
+)
 from typing import no_type_check, cast, overload
 from abc import ABC, abstractmethod
 
@@ -152,7 +154,7 @@ class LanguageProxy(Language):
     """
 
     def __init__(self) -> None:
-        self._language: Language = None
+        self._language: Optional[Language] = None
 
     @property
     def is_initialized(self) -> bool:
