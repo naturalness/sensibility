@@ -19,14 +19,15 @@
 Access to the corpus.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Set
+from pathlib import PurePosixPath
 
 from sqlalchemy import create_engine, event, MetaData  # type: ignore
 from sqlalchemy.engine import Engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
 from .connection import get_sqlite3_path
-from .models import RepositoryMetadata, SourceFileInRepository
+from .models import RepositoryMetadata, SourceFileInRepository, MockSourceFile
 from ._schema import (
     failure, meta, repository, repository_source, source_file, source_summary,
     metadata
@@ -34,17 +35,66 @@ from ._schema import (
 
 from sensibility.language import SourceSummary
 
+class UniquenessError(RuntimeError):
+    pass
+
 
 class NewCorpusError(Exception):
     pass
 
 
+class FileInfo:
+    def __init__(self, mappings: Set[SourceFileInRepository],
+                 summary: SourceSummary) -> None:
+        assert len(mappings) > 0
+        self._mappings = mappings
+        self.summary = summary
+
+    @property
+    def filehash(self) -> str:
+        return self._any.filehash
+
+    @property
+    def owner(self) -> str:
+        return self._any.owner
+
+    @property
+    def name(self) -> str:
+        return self._any.name
+
+    @property
+    def href(self) -> str:
+        return self._any.href
+
+    @property
+    def license(self) -> str:
+        return self._any.license
+
+    @property
+    def n_tokens(self) -> int:
+        return self.summary.n_tokens
+
+    @property
+    def sloc(self) -> int:
+        return self.summary.sloc
+
+    @property
+    def is_unique(self) -> bool:
+        return len(self._mappings) == 1
+
+    @property
+    def _any(self) -> SourceFileInRepository:
+        return next(iter(self._mappings))
+
+
 class Corpus:
-    def __init__(self, engine=None, read_only=False) -> None:
+    def __init__(self, engine=None, url: str=None, read_only=False) -> None:
         if engine is not None:
             self.engine = engine
         else:
-            self.engine = create_engine(f"sqlite:///{get_sqlite3_path()}")
+            if url is None:
+                url = f"sqlite:///{get_sqlite3_path()}"
+            self.engine = create_engine(url)
 
         self._initialize_sqlite3(read_only)
 
@@ -66,7 +116,6 @@ class Corpus:
             raise NewCorpusError
         else:
             return result[meta.c.value]
-
 
     @property
     def empty(self) -> bool:
@@ -141,6 +190,40 @@ class Corpus:
             .where(source_file.c.hash == filehash)
         result, = self.conn.execute(query)
         return result[source_file.c.source]
+
+    def get_info(self, filehash: str) -> FileInfo:
+        # Do an intense query, combining multiple tables.
+        query = select([source_summary, repository_source, repository]).select_from(
+            source_file.join(source_summary)\
+            .join(repository_source)\
+            .join(repository)
+        ).where(source_summary.c.hash == filehash)
+        results = self.conn.execute(query).fetchall()
+
+        # TODO: what if it's not found?
+
+        mock_file = MockSourceFile(filehash)
+        repos = {
+            (row[repository.c.owner], row[repository.c.name]): RepositoryMetadata(
+                owner=row[repository.c.owner],
+                name=row[repository.c.name],
+                license=row[repository.c.license],
+                revision=row[repository.c.revision],
+                commit_date=row[repository.c.commit_date]
+            ) for row in results
+        }
+        mappings = set(
+            SourceFileInRepository(
+                repository=repos[row[repository.c.owner], row[repository.c.name]],
+                source_file=mock_file,
+                path=PurePosixPath(row[repository_source.c.path])
+            ) for row in results
+        )
+
+        row, *_ = results
+        summary = SourceSummary(sloc=row[source_summary.c.sloc],
+                                n_tokens=row[source_summary.c.n_tokens])
+        return FileInfo(mappings, summary)
 
     def _initialize_sqlite3(self, read_only: bool) -> None:
         """

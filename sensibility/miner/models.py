@@ -28,7 +28,7 @@ import re
 import hashlib
 import datetime
 from pathlib import PurePosixPath
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 
 __all__ = [
@@ -87,6 +87,19 @@ class SourceFile:
         return f"SourceFile({self.filehash!r}, source=...)"
 
 
+class MockSourceFile(SourceFile):
+    def __init__(self, filehash: str) -> None:
+        self._filehash = filehash
+
+    @property
+    def source(self):
+        raise AttributeError('Does not contain source code')
+
+    @property
+    def filehash(self) -> str:
+        return self._filehash
+
+
 class _SourceFileInRepository(NamedTuple):
     repository: RepositoryMetadata
     source_file: SourceFile
@@ -105,3 +118,21 @@ class SourceFileInRepository(_SourceFileInRepository):
     @property
     def filehash(self) -> str:
         return self.source_file.filehash
+
+    @property
+    def revision(self) -> str:
+        return self.repository.revision
+
+    @property
+    def license(self) -> str:
+        return self.repository.license
+
+    @property
+    def href(self) -> str:
+        """
+        Return a GitHub URL.
+        """
+        return (
+            f"https://github.com/{self.owner}/{self.name}"
+            f"/blob/{self.revision}/{self.path}"
+        )
