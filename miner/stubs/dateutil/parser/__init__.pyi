@@ -1,0 +1,3 @@
+import datetime
+
+def parse(timestr: str) -> datetime.datetime: ...

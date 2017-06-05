@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Wraps the invocation of index.js such that it automatically NPM installs on
+# the first invocation.
+
+set -e
+
+script_dir=$(dirname "$0")
+
+(
+    cd "$script_dir"
+    if [ ! -d node_modules ] ; then
+        npm install > /dev/null
+    fi
+)
+
+exec node "$script_dir/index.js" "$@"
