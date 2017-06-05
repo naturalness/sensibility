@@ -53,7 +53,7 @@ class Edit(metaclass=ABCMeta):
     index: int
     _subclasses: Dict[str, Type['Edit']] = {}
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls: Type['Edit']) -> None:
         """
         Registers each subclass (Insertion, Deletion, Substitution) with a
         single-letter code. Used for serialization and deserialization.
