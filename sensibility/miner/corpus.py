@@ -71,6 +71,10 @@ class FileInfo:
         return self._any.license
 
     @property
+    def path(self) -> PurePosixPath:
+        return self._any.path
+
+    @property
     def n_tokens(self) -> int:
         return self.summary.n_tokens
 

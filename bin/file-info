@@ -22,7 +22,9 @@ Usage:
       file-info [--db=DATABASE] FILEHASH
 """
 
+import sys
 import argparse
+
 from sensibility.miner.corpus import Corpus, FileInfo
 
 
@@ -35,6 +37,7 @@ parser.add_argument('-d', '--database', default=None)
 
 def print_unique(info: FileInfo) -> None:
       print(f"""
+Name:   {info.path.name}
 Hash:   {info.filehash}
 Repo:   {info.owner}/{info.name}
 Terms:  {info.license}
@@ -45,17 +48,13 @@ SLOC:   {info.sloc}
 """.strip())
 
 
-def print_multiple(info: FileInfo) -> None:
-      raise NotImplemented
-
-
 if __name__ == '__main__':
       args = parser.parse_args()
       # TODO: determine through command-line arguments
       corpus = Corpus(read_only=True)
       info = corpus.get_info(args.filehash)
 
-      if info.is_unique:
-            print_unique(info)
-      else:
-            print_multiple(info)
+      if not info.is_unique:
+            print(f"Warning: File exists in {len(info._mappings)}",
+                  "paths/repos in the corpus", file=sys.stderr)
+      print_unique(info)
