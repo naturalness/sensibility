@@ -3,11 +3,16 @@
 
 import pytest  # type: ignore
 
-from sensibility.language import Language
+from sensibility import Language
 from sensibility.language.javascript import javascript
-from sensibility.lexical_analysis import Position
+from sensibility import Position
 
 from location_factory import LocationFactory
+
+slow = pytest.mark.skipif(
+        not pytest.config.getoption("--runslow"),
+        reason="need --runslow option to run"
+)
 
 test_file = r"""#!/usr/bin/env node
 /*!
@@ -18,6 +23,7 @@ import {ಠ_ಠ} from "-_-";
 
 /* TODO: crazy ES2017 features. */
 """
+
 
 def test_sanity_check() -> None:
     assert isinstance(javascript, Language)
@@ -65,3 +71,50 @@ def test_vocabularize() -> None:
         (loc.across(1),                    ';'),
     ]
     assert result[:len(expected)] == expected
+
+
+def test_javascript_vocabulary():
+    """
+    Tests random properties of the JavaScript vocabulary.
+    """
+    vocabulary = javascript.vocabulary
+    LENGTH = 101  # includes <UNK>, <s>, </s>
+    assert len(vocabulary) == LENGTH
+    assert vocabulary.to_text(0) == vocabulary.unk_token
+    assert vocabulary.to_text(1) == vocabulary.start_token
+    assert vocabulary.to_text(2) == vocabulary.end_token
+
+
+@slow
+def test_round_trip():
+    """
+    This very slow test ensures that (nearly) all tokens can go from
+    vocabulary entries, to their stringified text, and back.
+    """
+    # TODO: rewrite this for new vocabulary or remove
+
+    # Iterate throught all entries EXCEPT special-cased start and end entries.
+    for entry_id in range(vocabulary.start_token_index + 1, vocabulary.end_token_index):
+        # Ensure that the text cooresponds to the ID and vice-versa.
+        entry_text = vocabulary.to_text(entry_id)
+        assert vocabulary.to_index(entry_text) == entry_id
+
+        # HACK: This is a bug in Esprima?
+        # https://github.com/jquery/esprima/issues/1772
+        if entry_text in ('/', '/='):
+            continue
+
+        # These will never work being tokenized without context.
+        if entry_text in ('`template-start${', '}template-middle${', '}template-tail`'):
+            continue
+
+        tokens = tokenize(entry_text)
+        assert len(tokens) == 1, (
+            'Unexpected number of tokens for entry {:d}: {!r}'.format(
+                entry_id, entry_text
+            )
+        )
+        # TODO: do not rely on id_to_token to make Token instances for you.
+        entry_token = id_to_token(entry_id)
+        assert stringify_token(entry_token) == entry_text
+
