@@ -29,7 +29,7 @@ def generated_vector(tokens):
         try:
             yield vocabulary.to_index(stringify_token(token))
         except KeyError:
-            warnings.warn(f'Casting unknown {token} to <UNK>')
+            warnings.warn(f'Casting unknown lexeme {token!r} to <UNK>')
             yield 0  # Unk
 
 

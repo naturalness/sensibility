@@ -191,15 +191,25 @@ def open_closed_tokens(token: Lexeme) -> str:
     }
 
     if token.name == 'NAME':
+        # Special case for NAMES, because they can also be keywords.
         if iskeyword(token.value):
             return token.value
         else:
-            return 'IDENTIFIER'
+            return '<IDENTIFIER>'
     elif token.name in VERBATIM_CLASSES:
+        # These tokens should be mapped verbatim to their names.
         assert ' ' not in token.value
         return token.value
+    elif token.name in {'NUMBER', 'STRING'}:
+        # These tokens should be abstracted.
+        # Use the <ANGLE-BRACKET> notation to signify these classes.
+        return f'<{token.name.upper()}>'
     else:
-        # Note: includes NUMBER and STRING
+        # Use these token's name verbatim.
+        assert token.name in {
+            'NEWLINE', 'INDENT', 'DEDENT',
+            'ENDMARKER', 'ENCODING', 'COMMENT', 'NL', 'ERRORTOKEN'
+        }
         return token.name
 
 

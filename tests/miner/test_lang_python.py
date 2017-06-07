@@ -48,12 +48,12 @@ def test_vocabularize() -> None:
     result = list(python.vocabularize_with_locations(test_file))
     assert len(result) == 20
     assert result[:7] == [
-        (loc.until(Position(line=6, column=3)),     'STRING'),
+        (loc.until(Position(line=6, column=3)),     '<STRING>'),
         (loc.newline(),                             'NEWLINE'),
         (loc.next_line().across(len("from")),       'from'),
-        (loc.space().across(len("__future__")),     'IDENTIFIER'),
+        (loc.space().across(len("__future__")),     '<IDENTIFIER>'),
         (loc.space().across(len("import")),         'import'),
-        (loc.space().across(len("print_function")), 'IDENTIFIER'),
+        (loc.space().across(len("print_function")), '<IDENTIFIER>'),
         (loc.newline(),                             'NEWLINE'),
     ]
     # TODO: Test more locations?
