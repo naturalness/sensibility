@@ -20,6 +20,8 @@ Proxies to the common connections.
 """
 
 import sqlite3
+import warnings
+from functools import lru_cache
 
 import redis
 import github3
@@ -33,7 +35,7 @@ __all__ = [
     'get_sqlite3_connection', 'get_sqlite3_path',
 ]
 
-
+@lru_cache(maxsize=1)
 def get_redis_client() -> redis.StrictRedis:
     """
     The default Redis client.
@@ -48,13 +50,16 @@ def get_sqlite3_path() -> str:
     return f'{language.id}-sources.sqlite3'
 
 
+@lru_cache(maxsize=1)
 def get_sqlite3_connection() -> sqlite3.Connection:
     """
     The SQLite3 database for the active language.
     """
+    warnings.warn("Connecting to raw SQLite3 database.")
     return sqlite3.connect(get_sqlite3_path())
 
 
+@lru_cache(maxsize=1)
 def get_github_client() -> github3.GitHub:
     """
     The default GitHub connection.
@@ -62,6 +67,7 @@ def get_github_client() -> github3.GitHub:
     return github3.login(token=str(get_github_token()))
 
 
+@lru_cache(maxsize=1)
 def get_github_token() -> str:
     """
     The GitHub token.
