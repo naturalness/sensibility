@@ -20,8 +20,7 @@ import datetime
 import logging
 import time
 
-from .connection import github
-
+from .connection import get_github_client
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ def wait_for_rate_limit(resource='core') -> None:
     threshold.
     """
     assert resource in ('core', 'search')
-    response = github.rate_limit()
+    response = get_github_client().rate_limit()
     limit_info = response['resources'][resource]
 
     remaining = limit_info['remaining']

@@ -31,7 +31,7 @@ import argparse
 from typing import Iterator, Iterable
 
 from sensibility.miner.rate_limit import wait_for_rate_limit
-from sensibility.miner.connection import github
+from sensibility.miner.connection import get_github_client
 
 logger = logging.getLogger('search_worker')
 
@@ -67,7 +67,7 @@ class LanguageQuery(Iterable[str]):
         query = self._make_query()
         logger.info('Issuing query: %r', query)
         wait_for_rate_limit('search')
-        result_set = list(github.search_repositories(query, sort='stars'))
+        result_set = list(get_github_client().search_repositories(query, sort='stars'))
 
         if not result_set:
             self._done = True
@@ -96,4 +96,5 @@ def main() -> None:
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    github = get_github_client()
     main()

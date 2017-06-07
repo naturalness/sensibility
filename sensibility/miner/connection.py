@@ -20,18 +20,15 @@ Proxies to the common connections.
 """
 
 import sqlite3
-import sys
-from types import ModuleType
 
 import redis
 import github3
-from lazy_object_proxy import Proxy
 
 from ..language import language
 
 
 __all__ = [
-    'github', 'github_token',
+    'get_github_client', 'get_github_token',
     'get_redis_client',
     'get_sqlite3_connection', 'get_sqlite3_path',
 ]
@@ -48,7 +45,7 @@ def get_sqlite3_path() -> str:
     """
     Path to the SQLite3 database for the active language.
     """
-    return f'{language!s}-sources.sqlite3'
+    return f'{language.id}-sources.sqlite3'
 
 
 def get_sqlite3_connection() -> sqlite3.Connection:
@@ -58,10 +55,12 @@ def get_sqlite3_connection() -> sqlite3.Connection:
     return sqlite3.connect(get_sqlite3_path())
 
 
-github = Proxy(lambda: github3.login(token=str(get_github_token())))
-"""
-The default GitHub connection.
-"""
+def get_github_client() -> github3.GitHub:
+    """
+    The default GitHub connection.
+    """
+    return github3.login(token=str(get_github_token()))
+
 
 def get_github_token() -> str:
     """
