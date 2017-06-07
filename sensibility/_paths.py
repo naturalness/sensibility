@@ -31,6 +31,8 @@ assert (REPOSITORY_ROOT / '.git').exists()
 DATA_DIR = REPOSITORY_ROOT / 'data'
 MODEL_DIR = REPOSITORY_ROOT / 'models'
 
+EVALUATION_DIR = REPOSITORY_ROOT / 'evaluation'
+
 # Paths to specific databases.
 SOURCES_PATH = DATA_DIR / 'javascript-sources.sqlite3'
 VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'

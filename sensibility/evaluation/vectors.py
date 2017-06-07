@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Goals: instantiate this automatically via language.
+"""
+
+import os
+import sqlite3
+from pathlib import Path
+from typing import Optional
+
+from ..lexical_analysis import Lexeme
+from ..source_vector import SourceVector
+from ..vocabulary import vocabulary
+from .._paths import EVALUATION_DIR
+
+
+
+assert len(vocabulary) < 256
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS vector(
+    filehash    TEXT PRIMARY KEY,
+    array       BLOB NOT NULL       -- the array, as a blob.
+);
+"""
+
+
+class Vectors:
+    """
+    Stores vectors on disk, with the posibility of mmapping it all in memory.
+    """
+
+    def __init__(self, conn: Optional[sqlite3.Connection]=None) -> None:
+        if conn is None:
+            self.conn = determine_from_language()
+        else:
+            self.conn = conn
+        self._instantiate_schema()
+
+    def _instantiate_schema(self) -> None:
+        self.conn.executescript(SCHEMA)
+
+    def disconnect(self) -> None:
+        self.conn.close()
+
+    def __getitem__(self, filehash: str) -> bytes:
+        cur = self.conn.execute("""
+            SELECT array FROM vector WHERE filehash = ?
+         """, (filehash,))
+        item = cur.fetchone()
+        if item is None:
+            raise KeyError(filehash)
+        else:
+            return item[0]
+
+    def __setitem__(self, filehash: str, byte_string: bytes) -> None:
+        """
+        Insert tokens in the database of vectors.
+        """
+        with self.conn:
+            self.conn.execute("""
+                INSERT INTO vector(filehash, array)
+                     VALUES (?, ?)
+             """, (filehash, byte_string))
+
+
+def determine_from_language() -> sqlite3.Connection:
+    from ..language import language
+    path = os.fspath(EVALUATION_DIR / language.id / f'vectors.sqlite3')
+    return sqlite3.connect(path)
