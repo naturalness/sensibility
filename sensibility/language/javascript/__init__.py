@@ -27,8 +27,10 @@ from pathlib import Path
 from typing import Any, Callable, IO, Iterable, Optional, Sequence, Tuple, Union
 from typing import cast
 
-from sensibility.language import Language, SourceSummary
-from sensibility.lexical_analysis import Token, Lexeme, Location, Position
+from .. import Language, SourceSummary
+from ...lexical_analysis import Token, Lexeme, Location, Position
+from ...vocabulary import Vocabulary
+
 
 here = Path(__file__).parent
 esprima_bin = here / 'esprima-interface'
@@ -36,7 +38,12 @@ assert esprima_bin.exists()
 
 
 class JavaScript(Language):
+    """
+    Defines the JavaScript language.
+    """
+
     extensions = {'.js'}
+    vocabulary = Vocabulary.from_json_file(here / 'vocabulary.json')
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """

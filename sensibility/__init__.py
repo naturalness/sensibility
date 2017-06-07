@@ -18,24 +18,27 @@
 Sensibility --- detect and fix syntax errors in source code.
 """
 
+from .agreement import Agreement
 from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
+from .language import Language
+from .lexical_analysis import Token, Location, Position
 from .loop_batches import LoopBatchesEndlessly
+from .sentences import Sentence, forward_sentences, backward_sentences
 from .source_file import SourceFile
 from .source_vector import SourceVector
-from .lexical_analysis import Token, Location, Position
 from .vectorize_tokens import serialize_tokens
 from .vectors import Vectors
 from .vocabulary import Vind, LegacyVocabulary, vocabulary
-from .sentences import Sentence, forward_sentences, backward_sentences
-from .agreement import Agreement
 
+# TODO: Temporary?
 from .fix import Sensibility, FixResult
 
 __all__ = [
     'Corpus',  # TODO: NO!
     'Edit', 'Insertion', 'Deletion', 'Substitution',
     'LoopBatchesEndlessly',  # TODO: NO!
+    'Language',
     'SourceFile',  # Heh?
     'Vind', 'LegacyVocabulary',
     'vocabulary',

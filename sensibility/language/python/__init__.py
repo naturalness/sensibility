@@ -20,13 +20,18 @@ import token
 import tokenize
 from io import BytesIO
 from keyword import iskeyword
-from typing import AnyStr, IO, Iterable, Optional, Sequence, Tuple, Union
-
+from pathlib import Path
+from typing import (
+    Any, AnyStr, Callable, IO, Iterable, Optional, Sequence, Tuple, Union,
+    overload,
+)
 
 from .. import Language, SourceSummary
 from ...lexical_analysis import Lexeme, Location, Position, Token
+from ...vocabulary import Vocabulary
 
-from typing import Any, Callable, overload
+
+here = Path(__file__).parent
 
 
 class Python(Language):
@@ -35,6 +40,8 @@ class Python(Language):
     """
 
     extensions = {'.py'}
+    vocabulary = Vocabulary.from_json_file(Path(__file__).parent /
+                                           'vocabulary.json')
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """
