@@ -21,9 +21,11 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from .loop_batches import one_hot_batch
-from .vocabulary import Vind
+from ..loop_batches import one_hot_batch
+from ..vocabulary import Vind
 
+
+# TODO: extend this for both LSTM and NGram models.
 
 class Model:
     """

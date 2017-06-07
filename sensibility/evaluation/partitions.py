@@ -218,7 +218,3 @@ def main():
             '{}-folds did not acheive minimum token length: '
             '{}'.format(folds, min_tokens)
         )
-
-
-if __name__ == '__main__':
-    main()
