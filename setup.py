@@ -45,7 +45,6 @@ setup(
         'blessings',
         'github3.py==0.9.6',
         'h5py>=2.6.0',
-        'lazy-object-proxy>=1.3.1',
         'more-itertools>=2.3',
         'numpy>=1.11.0',
         'numpy>=1.11.0',
