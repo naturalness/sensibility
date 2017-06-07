@@ -35,7 +35,7 @@ import dateutil.parser
 from sensibility.language import language
 from .rqueue import Queue, WorkQueue
 from .names import DOWNLOAD_QUEUE
-from .connection import github_token, get_redis_client
+from .connection import get_redis_client, get_github_token
 from .rate_limit import wait_for_rate_limit, seconds_until
 from .models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
@@ -114,7 +114,7 @@ class Downloader:
         wait_for_rate_limit()
         resp = requests.get(url, headers={
             'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
-            'Authorization': f"token {github_token}"
+            'Authorization': f"token {get_github_token()}"
         })
         resp.raise_for_status()
 
@@ -212,7 +212,7 @@ class GitHubGraphQLClient:
 
         self.wait_for_rate_limit()
         resp = requests.post(self.endpoint, headers={
-            'Authorization': f"bearer {github_token}",
+            'Authorization': f"bearer {get_github_token()}",
             'Accept': 'application/json',
             'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
         }, json={

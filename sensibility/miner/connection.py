@@ -58,13 +58,12 @@ def get_sqlite3_connection() -> sqlite3.Connection:
     return sqlite3.connect(get_sqlite3_path())
 
 
-github = Proxy(lambda: github3.login(token=str(github_token)))
+github = Proxy(lambda: github3.login(token=str(get_github_token())))
 """
 The default GitHub connection.
 """
 
-@Proxy
-def github_token() -> str:
+def get_github_token() -> str:
     """
     The GitHub token.
     """
