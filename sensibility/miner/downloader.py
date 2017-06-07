@@ -35,7 +35,7 @@ import dateutil.parser
 from sensibility.language import language
 from .rqueue import Queue, WorkQueue
 from .names import DOWNLOAD_QUEUE
-from .connection import redis_client, github_token
+from .connection import github_token, get_redis_client
 from .rate_limit import wait_for_rate_limit, seconds_until
 from .models import (
     RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
@@ -48,6 +48,7 @@ logger = logging.getLogger('download_worker')
 
 class Downloader:
     def __init__(self) -> None:
+        redis_client = get_redis_client()
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)

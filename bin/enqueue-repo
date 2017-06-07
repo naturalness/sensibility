@@ -29,7 +29,7 @@ import re
 import sys
 from typing import Iterator
 
-from sensibility.miner.connection import redis_client
+from sensibility.miner.connection import get_redis_client
 from sensibility.miner.names import DOWNLOAD_QUEUE
 from sensibility.miner.rqueue import Queue
 from sensibility.miner.models import RepositoryID
@@ -41,6 +41,7 @@ parser.add_argument('repositories', nargs='*', type=RepositoryID.parse,
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    redis_client = get_redis_client()
     if len(args.repositories) > 0:
          repos = args.repositories
     else:
