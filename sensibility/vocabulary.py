@@ -15,9 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import json
 import warnings
-from typing import NewType, Sized, List, cast, Tuple, Dict
+from os import PathLike
+from typing import NewType, Sized, List, cast, Tuple, Dict, Iterable
 
 
 # A vocabulary index that gets in your face.
@@ -30,9 +31,25 @@ END_TOKEN = '/*<END>*/'
 
 class Vocabulary(Sized):
     """
+    A vocabulary contains all the contents for a file.
+    """
+    def __init__(self, entries: Iterable[str]) -> None:
+        raise NotImplementedError
+
+    @classmethod
+    def from_json_file(cls, filename: PathLike) -> 'Vocabulary':
+        with open(filename) as json_file:
+            return cls(json.load(json_file))
+
+    def __len__(self) -> int:
+        raise NotImplementedError
+
+
+class LegacyVocabulary(Sized):
+    """
     One-to-one mapping of vocabulary strings to vocabulary indices (Vinds).
 
-    >>> v = Vocabulary([START_TOKEN, 'var', '$identifier', ';', END_TOKEN])
+    >>> v = LegacyVocabulary([START_TOKEN, 'var', '$identifier', ';', END_TOKEN])
     >>> v.to_text(2)
     '$identifier'
     >>> v.to_index('var')
@@ -44,6 +61,7 @@ class Vocabulary(Sized):
     __slots__ = ('_text2index', '_index2text')
 
     def __init__(self, array: List[str]) -> None:
+        warnings.warn('deprecated', DeprecationWarning)
         assert array[0] == START_TOKEN
         assert array[-1] == END_TOKEN
         self._index2text = tuple(array)
@@ -80,14 +98,6 @@ class Vocabulary(Sized):
         """
         return self.to_text(self.end_token_index)
 
-
-class LegacyVocabulary(Vocabulary):
-    """
-    Deprecating the old vocabulary...
-    """
-    def __init__(self, *args, **kwargs):
-        warnings.warn('deprecated', DeprecationWarning)
-        super().__init__(*args, **kwargs)
 
 try:
     from .js_vocabulary import VOCAB

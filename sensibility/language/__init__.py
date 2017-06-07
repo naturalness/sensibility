@@ -22,13 +22,13 @@ Represents a language and actions you can do to its source code.
 
 import os
 import logging
-from operator import attrgetter
 from typing import (
     Any, IO, NamedTuple, Iterable, Sequence, Set, Tuple, Optional, Union
 )
 from typing import no_type_check, cast, overload
 from abc import ABC, abstractmethod
 
+from ..vocabulary import Vocabulary
 from ..lexical_analysis import Token, Location
 
 
@@ -51,6 +51,7 @@ class Language(ABC):
     ############################################################################
 
     extensions: Set[str]
+    vocabulary: Vocabulary
 
     @property
     def id(self) -> str:
