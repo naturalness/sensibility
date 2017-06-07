@@ -103,8 +103,7 @@ def check_syntax_file(source_file: TextIO) -> bool:
     AssertionError
     """
     warnings.warn("deprecated", DeprecationWarning)
-    status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
-    return status.returncode == 0
+    return javascript.check_syntax(source_file)  # type: ignore
 
 
 def id_to_token(token_id: Vind) -> Optional[Lexeme]:
@@ -117,11 +116,12 @@ def id_to_token(token_id: Vind) -> Optional[Lexeme]:
     >>> token.name
     'Keyword'
     >>> token.value
-    'function'
+    'extends'
     >>> id_to_token(0) is None
     True
     """
-    warnings.warn("deprecated", DeprecationWarning)
+    warnings.warn("deprecated: use vocabulary index instead",
+                  DeprecationWarning)
     if token_id not in range(1, 101):
         return None
     with synthetic_file(vocabulary.to_text(token_id)) as file_obj:

@@ -39,8 +39,8 @@ def serialize_tokens(tokens: Sequence[Lexeme]) -> SourceVector:
 
     >>> toks = [Lexeme(value='var', name='Keyword')]
     >>> serialize_tokens(toks)
-    SourceVector([86])
+    SourceVector([90])
     >>> serialize_tokens(toks).to_bytes()
-    b'V'
+    b'Z'
     """
     return SourceVector(tuple(generated_vector(tokens)))

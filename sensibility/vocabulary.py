@@ -36,8 +36,8 @@ class Vocabulary(Sized):
     One-to-one mapping of vocabulary strings to vocabulary indices (Vinds).
 
     >>> v = Vocabulary(['var', '<IDENTIFIER>', ';'])
-    >>> v.to_text(2)
-    'var'
+    >>> v[4]
+    '<IDENTIFIER>'
     >>> v.to_index(';')
     5
     >>> len(v)
@@ -49,7 +49,7 @@ class Vocabulary(Sized):
         self._index2text = cast(Sequence[Entry],
                                 self.SPECIAL_ENTRIES + tuple(entries))
         self._text2index: Dict[str, Vind] = {
-            text: Vind(index) for index, text in enumerate(entries)
+            text: Vind(index) for index, text in enumerate(self._index2text)
         }
 
         assert len(self._index2text) == len(set(self._index2text)), (
@@ -76,6 +76,9 @@ class Vocabulary(Sized):
     def __getitem__(self, idx: Vind) -> Entry:
         return self._index2text[idx]
 
+    # TODO: ???
+    #def to_lexeme(self, idx: Vind) -> Lexeme: ...
+
     @classmethod
     def from_json_file(cls, filename: PathLike) -> 'Vocabulary':
         with open(filename) as json_file:
@@ -94,12 +97,8 @@ class LegacyVocabulary(Sized):
     One-to-one mapping of vocabulary strings to vocabulary indices (Vinds).
 
     >>> v = LegacyVocabulary([START_TOKEN, 'var', '$identifier', ';', END_TOKEN])
-    >>> v.to_text(2)
-    '$identifier'
-    >>> v.to_index('var')
-    1
     >>> len(v)
-    5
+    100
     """
 
     def __init__(self, array: List[str]) -> None:

@@ -68,7 +68,7 @@ class Vectors:
 
     >>> file_hash, (tok_id,) = c['123abc']
     >>> tok_id
-    86
+    90
     >>> file_hash
     '123abc'
 
@@ -78,7 +78,7 @@ class Vectors:
     >>> file_hash
     '123abc'
     >>> tok_id
-    86
+    90
     >>> c.min_index
     1
     >>> c.max_index
