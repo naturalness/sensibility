@@ -53,6 +53,10 @@ class Downloader:
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
         self.corpus = Corpus()
+        self._headers = {
+            'User-Agent': 'eddieantonio-sensibility/0.3.0',
+            'Authorization': f"token {get_github_token()}"
+        }
 
         # Ensure the corpus is initialized.
         # If it's initialized with a different language, bail.
@@ -112,10 +116,7 @@ class Downloader:
 
         logger.debug('Downloading %s', url)
         wait_for_rate_limit()
-        resp = requests.get(url, headers={
-            'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
-            'Authorization': f"token {get_github_token()}"
-        })
+        resp = requests.get(url, headers=self._headers)
         resp.raise_for_status()
 
         # Open zip file
@@ -165,6 +166,11 @@ class GitHubGraphQLClient:
         self._requests_remaining = 11  # One more than min
         # todo: datetime?
         self._ratelimit_reset = 0.0
+        self._headers = {
+            'Authorization': f"bearer {get_github_token()}",
+            'Accept': 'application/json',
+            'User-Agent': 'eddieantonio-sensibility/0.3.0'
+        }
 
     def fetch_repository(self, repo: RepositoryID) -> RepositoryMetadata:
         """
@@ -211,11 +217,7 @@ class GitHubGraphQLClient:
         logger.debug("Performing query with vars: %r", variables)
 
         self.wait_for_rate_limit()
-        resp = requests.post(self.endpoint, headers={
-            'Authorization': f"bearer {get_github_token()}",
-            'Accept': 'application/json',
-            'User-Agent': 'eddieantonio-ad-hoc-miner/0.2.0',
-        }, json={
+        resp = requests.post(self.endpoint, headers=self._headers, json={
             "query": query,
             "variables": variables
         })
