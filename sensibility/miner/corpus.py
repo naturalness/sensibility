@@ -35,9 +35,6 @@ from ._schema import (
 
 from sensibility.language import SourceSummary
 
-class UniquenessError(RuntimeError):
-    pass
-
 
 class NewCorpusError(Exception):
     pass
@@ -240,6 +237,8 @@ class Corpus:
             cur.execute('PRAGMA encoding = "UTF-8"')
             cur.execute('PRAGMA foreign_keys = ON')
             if not read_only:
-                cur.execute('PRAGMA journal_mode = WAL')
-                cur.execute('PRAGMA synchronous = NORMAL')
+                cur.executescript('''
+                    PRAGMA journal_mode = WAL;
+                    PRAGMA synchronous = NORMAL;
+                ''')
             cur.close()

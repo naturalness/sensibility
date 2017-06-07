@@ -22,7 +22,6 @@ import pytest  # type: ignore
 from sqlalchemy import create_engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
-# This is the WRONG place to store the WordCount class!
 from sensibility.language import SourceSummary
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.models import (
@@ -31,7 +30,7 @@ from sensibility.miner.models import (
 )
 
 
-def test_create(engine):
+def test_create():
     db = empty_corpus()
 
 
