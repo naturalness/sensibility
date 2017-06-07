@@ -19,6 +19,7 @@
 Manages a vector of files with fold assignments.
 """
 
+import warnings
 import sqlite3
 from pathlib import Path
 from typing import Union, Tuple, Sequence, Iterable
@@ -122,6 +123,7 @@ class Vectors:
     """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
+        warnings.warn("deprecated", DeprecationWarning)
         self.conn = conn
         self._maybe_instantiate_schema()
 

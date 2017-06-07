@@ -18,8 +18,6 @@
 """
 A SourceVector is a sequence of Vind (vocabulary indices) that all allows for
 mutations.
-
-TODO: rename to SourceVector --- it's less confusing that way.
 """
 
 import sys

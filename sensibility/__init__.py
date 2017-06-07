@@ -26,7 +26,7 @@ from .source_vector import SourceVector
 from .lexical_analysis import Token, Location, Position
 from .vectorize_tokens import serialize_tokens
 from .vectors import Vectors
-from .vocabulary import Vind, vocabulary
+from .vocabulary import Vind, Vocabulary, vocabulary
 from .sentences import Sentence, forward_sentences, backward_sentences
 from .agreement import Agreement
 
@@ -37,6 +37,8 @@ __all__ = [
     'Edit', 'Insertion', 'Deletion', 'Substitution',
     'LoopBatchesEndlessly',  # TODO: NO!
     'SourceFile',  # Heh?
+    'Vind', 'Vocabulary',
+    'vocabulary',
     'SourceVector',  # TODO: NO!
     'Lexeme', 'Token', 'Location', 'Position',
     'serialize_tokens',  # TODO: NO!

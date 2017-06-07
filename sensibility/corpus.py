@@ -21,6 +21,7 @@ goodness.
 """
 
 import sqlite3
+import warnings
 from pathlib import Path
 from typing import Sequence, Iterable, Tuple, Sized, Union
 
@@ -34,6 +35,7 @@ class Corpus(Iterable[str], Sized):
     """
 
     def __init__(self, connection: sqlite3.Connection) -> None:
+        warnings.warn("deprecated: use sensibility.miner.corpus instead", DeprecationWarning)
         self.conn = connection
 
     def __iter__(self):

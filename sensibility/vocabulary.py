@@ -81,9 +81,17 @@ class Vocabulary(Sized):
         return self.to_text(self.end_token_index)
 
 
+class LegacyVocabulary(Vocabulary):
+    """
+    Deprecating the old vocabulary...
+    """
+    def __init__(self, *args, **kwargs):
+        warnings.warn('deprecated', DeprecationWarning)
+        super().__init__(*args, **kwargs)
+
 try:
     from .js_vocabulary import VOCAB
 except ImportError:
     warnings.warn("Could not load generated vocabulary.")
 else:
-    vocabulary = Vocabulary(VOCAB)
+    vocabulary = LegacyVocabulary(VOCAB)
