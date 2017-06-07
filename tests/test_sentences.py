@@ -21,25 +21,15 @@ Tests the generation of sentences.
 
 import pytest
 
-from sensibility import Token, serialize_tokens, vocabulary
+from sensibility import vocabulary
 from sensibility.sentences import forward_sentences, backward_sentences
+from sensibility.language.javascript import javascript
 
 
-FILE = serialize_tokens([
-    Token(value='(', type='Punctuator', loc=None),
-    Token(value='name', type='Identifier', loc=None),
-    Token(value=')', type='Punctuator', loc=None),
-    Token(value='=>', type='Punctuator', loc=None),
-    Token(value='console', type='Identifier', loc=None),
-    Token(value='.', type='Punctuator', loc=None),
-    Token(value='log', type='Identifier', loc=None),
-    Token(value='(', type='Punctuator', loc=None),
-    Token(value='`Hello, ${', type='Template', loc=None),
-    Token(value='name', type='Identifier', loc=None),
-    Token(value='}!`', type='Template', loc=None),
-    Token(value=')', type='Punctuator', loc=None),
-    Token(value=';', type='Punctuator', loc=None)
-])
+FILE = list(javascript.vocabularize(r'''
+    (name) => console.log(`Hello, ${name}!`);
+'''))
+
 
 assert len(FILE) == 13
 

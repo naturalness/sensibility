@@ -23,7 +23,7 @@ from .edit import Edit, Insertion, Deletion, Substitution
 from .loop_batches import LoopBatchesEndlessly
 from .source_file import SourceFile
 from .source_vector import SourceVector
-from .token_utils import Token, Location, Position
+from .lexical_analysis import Token, Location, Position
 from .vectorize_tokens import serialize_tokens
 from .vectors import Vectors
 from .vocabulary import Vind, vocabulary
