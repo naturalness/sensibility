@@ -23,8 +23,8 @@ from keyword import iskeyword
 from typing import AnyStr, IO, Iterable, Optional, Sequence, Tuple, Union
 
 
-from . import Language, SourceSummary
-from ..lexical_analysis import Lexeme, Location, Position, Token
+from .. import Language, SourceSummary
+from ...lexical_analysis import Lexeme, Location, Position, Token
 
 from typing import Any, Callable, overload
 
