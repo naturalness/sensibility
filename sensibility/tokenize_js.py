@@ -26,12 +26,15 @@ will automatically install all required Node.JS dependencies through NPM.
 import json
 import subprocess
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Optional, Sequence, TextIO, cast
 
-from .token_utils import Token
+from .language.javascript import javascript
+from .lexical_analysis import Token, Lexeme
 from .vocabulary import vocabulary, Vind
 
+warnings.warn("deprecated", DeprecationWarning)
 
 THIS_DIRECTORY = Path(__file__).parent
 TOKENIZE_JS_BIN = (str(THIS_DIRECTORY / 'tokenize-js' / 'wrapper.sh'),)
@@ -59,6 +62,7 @@ def tokenize(text: str) -> Sequence[Token]:
     >>> isinstance(tokens[0], Token)
     True
     """
+    warnings.warn("deprecated", DeprecationWarning)
     with synthetic_file(text) as f:
         return tokenize_file(f)
 
@@ -72,6 +76,7 @@ def check_syntax(source: str) -> bool:
     >>> check_syntax('function name() }')
     False
     """
+    warnings.warn("deprecated", DeprecationWarning)
     with synthetic_file(source) as source_file:
         return check_syntax_file(source_file)
 
@@ -80,21 +85,9 @@ def tokenize_file(file_obj: TextIO) -> Sequence[Token]:
     """
     Tokenizes the given JavaScript file.
 
-    >>> with synthetic_file('$("hello");') as f:
-    ...     tokens = tokenize_file(f)
-    >>> len(tokens)
-    5
-    >>> isinstance(tokens[0], Token)
-    True
     """
-    status = subprocess.run(TOKENIZE_JS_BIN,
-                            check=True,
-                            stdin=file_obj,
-                            stdout=subprocess.PIPE)
-    return [
-        Token.from_json(raw_token)
-        for raw_token in json.loads(status.stdout.decode('UTF-8'))
-    ]
+    warnings.warn("deprecated", DeprecationWarning)
+    return javascript.tokenize(file_obj)  # type: ignore
 
 
 def check_syntax_file(source_file: TextIO) -> bool:
@@ -109,24 +102,26 @@ def check_syntax_file(source_file: TextIO) -> bool:
         ...
     AssertionError
     """
+    warnings.warn("deprecated", DeprecationWarning)
     status = subprocess.run(CHECK_SYNTAX_BIN, stdin=source_file)
     return status.returncode == 0
 
 
-def id_to_token(token_id: Vind) -> Optional[Token]:
+def id_to_token(token_id: Vind) -> Optional[Lexeme]:
     """
     Return a synthetic token for the given token ID.
 
     Returns None if the token is not representable in code.
 
     >>> token = id_to_token(70)
-    >>> token.type
+    >>> token.name
     'Keyword'
     >>> token.value
     'function'
     >>> id_to_token(0) is None
     True
     """
+    warnings.warn("deprecated", DeprecationWarning)
     if token_id not in range(1, 101):
         return None
     with synthetic_file(vocabulary.to_text(token_id)) as file_obj:

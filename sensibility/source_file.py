@@ -20,7 +20,7 @@ from typing import Sequence, Sized, Optional
 from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
 from .source_vector import SourceVector
-from .token_utils import Token
+from .lexical_analysis import Token
 from .vectors import Vectors
 from .tokenize_js import tokenize
 

@@ -15,81 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .token_utils import Token
+import warnings
 
-"""
->>> stringify_token(Token(value='**=', type='Punctuator', loc=None))
-'**='
->>> stringify_token(Token(value='var', type='Keyword', loc=None))
-'var'
->>> stringify_token(Token(value='false', type='Boolean', loc=None))
-'false'
->>> stringify_token(Token(value='NULL', type='Null', loc=None))
-'null'
->>> stringify_token(Token(value='``', type='Template', loc=None))
-'`standalone-template`'
->>> stringify_token(Token(value='``', type='Template', loc=None))
-'`standalone-template`'
->>> stringify_token(Token(value='`${', type='Template', loc=None))
-'`template-head${'
->>> stringify_token(Token(value='}`', type='Template', loc=None))
-'}template-tail`'
->>> stringify_token(Token(value='}  ${', type='Template', loc=None))
-'}template-middle${'
->>> stringify_token(Token(value='"hello world"', type='String', loc=None))
-'"string"'
->>> stringify_token(Token(value='💩', type='Identifier', loc=None))
-'Identifier'
-"""
+from .lexical_analysis import Lexeme
+from .language.javascript import stringify_lexeme
 
 
-def singleton(cls):
-    return cls()
+warnings.warn("deprecated", DeprecationWarning)
 
 
-@singleton
-class stringify_token:
-    def __call__(self, token):
-        try:
-            fn = getattr(self, token.type)
-        except AttributeError:
-            raise TypeError('Unhandled type: %s' % (token.type,))
-        return fn(token.value)
-
-    def Boolean(self, text):
-        return text
-
-    def Identifier(self, text):
-        return 'Identifier'
-
-    def Keyword(self, text):
-        return text
-
-    def Null(self, text):
-        return 'null'
-
-    def Numeric(self, text):
-        return '/*number*/0'
-
-    def Punctuator(self, text):
-        return text
-
-    def String(self, text):
-        return '"string"'
-
-    def RegularExpression(self, text):
-        return '/regexp/'
-
-    def Template(self, text):
-        assert len(text) >= 2
-        if text.startswith('`'):
-            if text.endswith('`'):
-                return '`standalone-template`'
-            elif text.endswith('${'):
-                return '`template-head${'
-        elif text.startswith('}'):
-            if text.endswith('`'):
-                return '}template-tail`'
-            elif text.endswith('${'):
-                return '}template-middle${'
-        raise TypeError('Unhandled template literal: ' + text)
+def stringify_token(token: Lexeme) -> str:
+    warnings.warn("deprecated", DeprecationWarning)
+    return stringify_lexeme(token)

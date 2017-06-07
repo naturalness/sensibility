@@ -14,27 +14,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import array
 import warnings
-from typing import Sized, Sequence, Iterator, cast
+from typing import Sequence
 
-from .token_utils import Token
+from .lexical_analysis import Lexeme
 from .source_vector import SourceVector
-from .vocabulary import vocabulary, Vind, START_TOKEN, END_TOKEN
+from .vocabulary import vocabulary
 from .stringify_token import stringify_token
 
 
 def generated_vector(tokens):
     for token in tokens:
-        yield vocabulary.to_index(stringify_token(token))
+        # XXX: HACK!
+        try:
+            yield vocabulary.to_index(stringify_token(token))
+        except KeyError:
+            warnings.warn(f'Casting unknown {token} to <UNK>')
+            yield 0  # Unk
 
 
-def serialize_tokens(tokens: Sequence[Token]) -> SourceVector:
+def serialize_tokens(tokens: Sequence[Lexeme]) -> SourceVector:
     """
     Return an (unsigned) byte array of tokens, useful for storage.
 
-    >>> toks = [Token(value='var', type='Keyword', loc=None)]
+    >>> toks = [Lexeme(value='var', name='Keyword')]
     >>> serialize_tokens(toks)
     SourceVector([86])
     >>> serialize_tokens(toks).to_bytes()

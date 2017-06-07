@@ -23,7 +23,7 @@ import sqlite3
 from pathlib import Path
 from typing import Union, Tuple, Sequence, Iterable
 
-from .token_utils import Token
+from .lexical_analysis import Lexeme
 from .source_vector import SourceVector
 from .vectorize_tokens import serialize_tokens
 from .vocabulary import vocabulary
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS fold_assignment(
 );
 """
 
+# TODO: Remove responsibility of fold assignment from Vectors
 
 class Vectors:
     """
@@ -59,7 +60,7 @@ class Vectors:
     Can get results by rowid (ONE-INDEXED!) or by file SHA 256 hash.
 
     >>> c = Vectors.connect_to(':memory:')
-    >>> tokens = (Token(value='var', type='Keyword', loc=None),)
+    >>> tokens = (Lexeme(value='var', name='Keyword'),)
     >>> c.insert('123abc', tokens)
 
     Accessing using the SHA-256:
@@ -83,8 +84,8 @@ class Vectors:
     1
 
     >>> tokens = (
-    ...     Token(value='var', type='Keyword', loc=None),
-    ...     Token(value='foo', type='Identifier', loc=None)
+    ...     Lexeme(value='var', name='Keyword'),
+    ...     Lexeme(value='foo', name='Identifier')
     ... )
     >>> c.insert('foobar', tokens)
     >>> c.max_index
@@ -216,7 +217,7 @@ class Vectors:
         else:
             return self.get_result_by_rowid(key)
 
-    def insert(self, file_hash: str, tokens: Sequence[Token]) -> None:
+    def insert(self, file_hash: str, tokens: Sequence[Lexeme]) -> None:
         """
         Insert tokens in the database of vectors.
         """
