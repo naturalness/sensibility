@@ -31,3 +31,17 @@ from .sentences import Sentence, forward_sentences, backward_sentences
 from .agreement import Agreement
 
 from .fix import Sensibility, FixResult
+
+__all__ = [
+    'Corpus',  # TODO: NO!
+    'Edit', 'Insertion', 'Deletion', 'Substitution',
+    'LoopBatchesEndlessly',  # TODO: NO!
+    'SourceFile',  # Heh?
+    'SourceVector',  # TODO: NO!
+    'Lexeme', 'Token', 'Location', 'Position',
+    'serialize_tokens',  # TODO: NO!
+    'Vectors',   # TODO: NO!
+    'Sentence', 'forward_sentences', 'backward_sentences',  # TODO: maybe?
+    'Agreement',
+    'Sensibility', 'FixResult'
+]
