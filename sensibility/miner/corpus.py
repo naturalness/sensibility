@@ -20,15 +20,17 @@ Access to the corpus.
 """
 
 import os
-from typing import Any, Dict, Set, Union
+from typing import Any, Dict, Iterator, Set, Tuple, Union
 from pathlib import PurePosixPath
 
 from sqlalchemy import create_engine, event, MetaData  # type: ignore
 from sqlalchemy.engine import Engine  # type: ignore
-from sqlalchemy.sql import select  # type: ignore
+from sqlalchemy.sql import select, text  # type: ignore
 
 from .connection import get_sqlite3_path
-from .models import RepositoryMetadata, SourceFileInRepository, MockSourceFile
+from .models import (
+    RepositoryMetadata, SourceFileInRepository, MockSourceFile, RepositoryID
+)
 from ._schema import (
     failure, meta, repository, repository_source, source_file, source_summary,
     metadata
@@ -231,9 +233,30 @@ class Corpus:
                                 n_tokens=row[source_summary.c.n_tokens])
         return FileInfo(mappings, summary)
 
+    def get_repositories_with_n_tokens(self) -> Iterator[Tuple[RepositoryID, int]]:
+        """
+        An incredibly specific method to return repositories, along with how
+        many tokens that repository contains. This number may include
+        duplicates.
+        """
+        # TODO: create "eligible sources" view.
+        cursor = self.conn.execute(text("""
+            SELECT repository.owner, repository.name, SUM(n_tokens)
+            FROM repository JOIN repository_source
+            GROUP BY repository.owner, repository.name
+        """))
+        for owner, name, n_tokens in cursor:
+            yield RepositoryID(owner, name), n_tokens
+
+    def get_hashes_in_repo(self, repo: RepositoryID) -> Iterator[str]:
+        query = select([repository_source.c.filehash])\
+            .where(repository_source.c.owner == repo.owner)\
+            .where(repository_source.c.name == repo.name)
+        return self.conn.execute(query)
+
     def _initialize_sqlite3(self, read_only: bool) -> None:
         """
-        Set some pragmas for initialy creating the SQLite3 database.
+        Set some pragmas for initially creating the SQLite3 database.
         """
 
         @event.listens_for(Engine, "connect")

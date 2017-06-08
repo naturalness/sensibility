@@ -56,165 +56,152 @@ Places files into partitions attempting to equalize the token length.
                                               ,,,                         ,
                                                                            +
 
+
+    Partions:   |  0   |   1   |   2   |   3   |   4   |
+
+    Each partition is made of the following sets:
+
+    Sets:   | train set | validate set | test set |
+
 """
 
 import argparse
 import heapq
-import math
-import operator
 import random
-import statistics
 import sys
+import warnings
 
 from pathlib import Path
-from functools import partial
-from itertools import islice
-from fnmatch import fnmatch
+from functools import partial, total_ordering
+from typing import Set
 
 from tqdm import tqdm
 
-from sensibility import Corpus, Vectors
+from sensibility.miner.models import RepositoryID
+from sensibility.miner.corpus import Corpus
+from sensibility._paths import EVALUATION_DIR
+from sensibility.language import language
 
+PARTITIONS = 5
 stderr = partial(print, file=sys.stderr)
 
-parser = argparse.ArgumentParser(description='Divides the corpus into folds.')
-parser.add_argument('filename', type=Path, metavar='corpus')
-parser.add_argument('-o', '--offset', type=int, default=0, help='default: 0')
-parser.add_argument('-k', '--folds', type=int, default=10, help='default: 10')
-parser.add_argument('-n', '--min-tokens', type=int, default=None)
-parser.add_argument('-f', '--overwrite', action='store_true')
 
-MAIN_CORPUS = Path('data/javascript-sources.sqlite3')
+class Split:
+    def __init__(self, split: str) -> None:
+        train, validate, test = (int(n) for n in split.split('/'))
+        assert train + validate + test == 100
+        self.train = train / 100.0
+        self.validate = validate / 100.0
+        self.test = test / 100.0
 
 
-def main():
-    # Creates variables: filename, offset, folds, min_tokens, overwrite
-    globals().update(vars(parser.parse_args()))
-    assert filename.exists()
-    assert folds >= 1
-    assert offset >= 0
+parser = argparse.ArgumentParser(
+    description='Divides the corpus into partitions.'
+)
+parser.add_argument('-o', '--output-dir', type=Path, default=EVALUATION_DIR)
+parser.add_argument('-s', '--split', type=Split, default=Split('80/10/10'))
+parser.add_argument('-f', '--overwrite', type=bool, default=False)
 
-    vectors = Vectors.connect_to(str(filename))
-    corpus = Corpus.connect_to(str(MAIN_CORPUS))
 
-    # We will be assigning to these folds.
-    new_fold_ids = tuple(range(offset, offset + folds))
+def main() -> None:
+    args = parser.parse_args()
+    output_dir: Path = args.output_dir
+    overwrite: bool = args.overwrite
 
-    conflict = set(vectors.fold_ids) & set(new_fold_ids)
-    if conflict:
-        if overwrite:
-            vectors.destroy_fold_assignments()
-        else:
-            stderr('Not overwriting existing fold assignments:', conflict)
-            exit(-1)
+    # Magically get the corpus.
+    # TODO: from cmdline arguments
+    corpus = Corpus(read_only=True)
 
-    # We maintain a priority queue of folds. At the top of the heap is the
-    # fold with the fewest tokens.
-    heap = [(0, fold_no) for fold_no in new_fold_ids]
+    @total_ordering
+    class Partition:
+        def __init__(self, number: int) -> None:
+            self.n_tokens = 0
+            self.number = 0
+            self.repos: Set[RepositoryID] = set()
+            self.seen: Set[str] = set()
+
+        def __eq__(self, other):
+            return self.n_tokens == other.n_tokens
+
+        def __lt__(self, other) -> bool:
+            return self.n_tokens < other.n_tokens
+
+        def add_repo(self, repo: RepositoryID, tokens: int) -> None:
+            self.repos.add(repo)
+            self.n_tokens += tokens
+
+        def create_sets(self, splits: Split) -> None:
+            repos = list(self.repos)
+            random.shuffle(repos)
+
+            n_train = int(splits.train * len(repos))
+            self.training_repos = repos[:n_train]
+
+            n_validate = int(splits.validate * len(repos))
+            point = n_train + n_validate
+            self.validation_repos = repos[n_train:point]
+
+            n_test = int(splits.test * len(repos))
+            self.test_repos = repos[point:]
+
+        def save_to(self, path: Path) -> None:
+            # Create the path if it doesn't exist.
+            directory = path / str(self.number)
+            directory.mkdir(parents=True, exist_ok=True)
+
+            for set_name in 'training', 'validation', 'test':
+                self._commit_set(set_name, directory)
+
+        def _commit_set(self, set_name: str, directory: Path) -> None:
+            repos = getattr(self, f"{set_name}_repos")
+            # Add all hashes from these repos to this fold.
+            hashes: Set[str] = set()
+            for repo in repos:
+                for filehash in corpus.get_hashes_in_repo(repo):
+                    # Make sure we're not adding duplicates!
+                    if filehash in self.seen:
+                        warnings.warn(f'Already saw {filehash} in partition'
+                                      f'{self.number} when adding to {set_name}')
+                        continue
+                    hashes.add(filehash)
+
+            # Create the output file by shuffling the hashes.
+            hash_list = list(hashes)
+            random.shuffle(hash_list)
+            with open(directory / set_name, 'w') as set_file:
+                for filehash in hash_list:
+                    print(filehash, file=set_file)
+
+            # Add all the seen hashes.
+            self.seen.update(hashes)
+
+    # We maintain a priority queue of partitions. At the top of the heap is the
+    # partition with the fewest tokens.
+    heap = [Partition(part_no) for part_no in range(PARTITIONS)]
     heapq.heapify(heap)
-
-    # This is kinda dumb, but:
-    # Shuffle a list of ALL project...
-    stderr('Shuffling projects...')
-    shuffled_projects = list(corpus.projects)
-    random.shuffle(shuffled_projects)
-
-    hashes_seen = set()
-    previously_assigned = set()
-
-    # Add all existing fold assignments to hashes seen.
-    for fold_no in vectors.fold_ids:
-        for file_hash in vectors.hashes_in_fold(fold_no):
-            previously_assigned.add(file_hash)
-
-    # A series of helper functions.
-    def appropriate_files(project):
-        """
-        Yields a random project from the main corpus.
-        """
-        for file_hash, path in corpus.filenames_from_project(project):
-            # Although all files are only stored once in the database,
-            # multiple projects could have THE SAME FILE. Skip 'em if that's
-            # the case.
-            if file_hash in hashes_seen:
-                stderr('Ignoring duplicate file:', path, file_hash)
-                continue
-
-            if file_hash in previously_assigned:
-                # This project has already been assigned.
-                break
-
-            hashes_seen.add(file_hash)
-            try:
-                yield vectors[file_hash]
-            except TypeError:
-                stderr('Could not find', file_hash)
-                continue
-
-    def tokens_in_smallest_fold():
-        fewest_tokens, _ = heap[0]
-        return fewest_tokens
-
-    def normalish(getter=operator.itemgetter(0)):
-        """
-        Rule of thumb calculation for normality.
-        """
-        sample_mean = statistics.mean(map(getter, heap))
-        sample_sd = statistics.stdev(map(getter, heap))
-
-        progress.set_description("mean: {}, stddev: {}".format(
-            sample_mean, sample_sd
-        ))
-
-        def t_statisitic(observation):
-            return (observation - sample_mean) / sample_sd
-
-        # Check if the minimum is too far away (it probably isn't).
-        min_tokens, _ = heap[0]
-        if abs(t_statisitic(min_tokens)) >= 3.0:
-            return False
-
-        # Check if the maximum is too far away (it just might be).
-        max_tokens, _ = max(heap, key=getter)
-        if abs(t_statisitic(max_tokens)) >= 3.0:
-            return False
-
-        return True
 
     def pop():
         return heapq.heappop(heap)
 
-    def push(n_tokens, fold_no):
-        assert isinstance(fold_no, int)
-        return heapq.heappush(heap, (n_tokens, fold_no))
+    def push(partition: Partition):
+        return heapq.heappush(heap, partition)
 
-    if min_tokens is None:
-        # Use globals().update() to avoid an UnboundLocal error:
-        globals().update(min_tokens=math.inf)
+    # This is kinda dumb, but:
+    # Shuffle a list of ALL repositories...
+    stderr('Shuffling repositories...')
+    shuffled_repos = list(corpus.get_repositories_with_n_tokens())
+    random.shuffle(shuffled_repos)
 
-    # Assign a project to each fold...
-    for project in tqdm(shuffled_projects):
-        # Assign this project to the smallest fold
-        tokens_in_fold, fold_no = pop()
-        n_tokens = 0
+    # Assign a repository to each fold...
+    for repo, n_tokens in tqdm(shuffled_repos):
+        # Assign this project to the smallest partition
+        partition = pop()
+        partition.add_repo(repo, n_tokens)
+        push(partition)
 
-        # Add every file in the project...
-        for file_hash, tokens in appropriate_files(project):
-            # Skip empty files --- they exist! But are pointless!
-            if len(tokens) < 1:
-                continue
-            n_tokens += len(tokens)
-            vectors.add_to_fold(file_hash, fold_no)
-
-        # Push the fold back.
-        push(tokens_in_fold + n_tokens, fold_no)
-
-        if tokens_in_smallest_fold() >= min_tokens:
-            break
-
-    # Ensure we have enough tokens!
-    if min_tokens is not math.inf:
-        assert all(n_tokens > min_tokens for n_tokens, _ in heap), (
-            '{}-folds did not acheive minimum token length: '
-            '{}'.format(folds, min_tokens)
-        )
+    # Output structure
+    #   {output_dir}/{language}/partitions/{partition_no}/{set}
+    stderr('Shuffling writing sets for each partition...')
+    for partition in tqdm(heap):
+        partition.create_sets()
+        partition.save_to(output_dir / language.id / 'partitions')

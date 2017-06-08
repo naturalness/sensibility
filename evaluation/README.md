@@ -5,24 +5,56 @@ Files created during evaluation.
 
 Sample file structure:
 
+
     .
     ├── javascript
-    │   ├── folds
-    │   │   ├── test
-    │   │   │   └── {0..5}
-    │   │   ├── training
-    │   │   │   └── {0..5}
-    │   │   └── validation
-    │   │       └── {0..5}
+    │   ├── partitions
+    │   │   ├── 0
+    │   │   │   ├── test
+    │   │   │   ├── training
+    │   │   │   └── validation
+    │   │   ├── 1
+    │   │   │   ├── test
+    │   │   │   ├── training
+    │   │   │   └── validation
+    │   │   ├── 2
+    │   │   │   ├── test
+    │   │   │   ├── training
+    │   │   │   └── validation
+    │   │   ├── 3
+    │   │   │   ├── test
+    │   │   │   ├── training
+    │   │   │   └── validation
+    │   │   └── 4
+    │   │       ├── test
+    │   │       ├── training
+    │   │       └── validation
     │   ├── lstm
-    │   └── ngram
+    │   ├── ngram
+    │   └── vectors.sqlite3
     └── python
-        ├── folds
-        │   ├── test
-        │   │   └── {0..5}
-        │   ├── training
-        │   │   └── {0..5}
-        │   └── validation
-        │       └── {0..5}
+        ├── partitions
+        │   ├── 0
+        │   │   ├── test
+        │   │   ├── training
+        │   │   └── validation
+        │   ├── 1
+        │   │   ├── test
+        │   │   ├── training
+        │   │   └── validation
+        │   ├── 2
+        │   │   ├── test
+        │   │   ├── training
+        │   │   └── validation
+        │   ├── 3
+        │   │   ├── test
+        │   │   ├── training
+        │   │   └── validation
+        │   └── 4
+        │       ├── test
+        │       ├── training
+        │       └── validation
         ├── lstm
-        └── ngram
+        ├── ngram
+        └── vectors.sqlite3
+

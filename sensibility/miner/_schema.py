@@ -38,7 +38,7 @@ It is recommend to use DELETE mode when accessing the database read-only:
 """
 
 from sqlalchemy import (  # type: ignore
-    Table, Column,
+    Table, Column, Index,
     Integer, String, DateTime, LargeBinary,
     MetaData,
     ForeignKeyConstraint
@@ -91,6 +91,9 @@ repository_source = Table(
     Column('hash', String, primary_key=True),
     Column('path', String, primary_key=True),
 
+    # Makes accessing a filehash's information take O(log n) time.
+    Index('idx_filehash', 'hash'),
+
     ForeignKeyConstraint(*_to('repository', 'owner', 'name'),
                          **cascade_all),
     ForeignKeyConstraint(*_to('source_file', 'hash'),
@@ -119,9 +122,19 @@ source_summary = Table(
 failure = Table(
     'failure', metadata,
     Column('hash', String, primary_key=True),
+    # TODO: add a reason why
+    # Column('reason', String, default='Syntax error')
 
     ForeignKeyConstraint(*_to('source_file', 'hash'),
                          **cascade_all),
-
     #comment="Files that are syntacticall invalid."
 )
+
+# TODO: create elligible sources view
+"""
+CREATE VIEW elligible_sources AS
+SELECT * FROM source_summary
+WHERE n_tokens > 0 AND hash not in (
+    SELECT hash from failures
+)
+"""
