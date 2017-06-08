@@ -113,8 +113,7 @@ class LoopBatchesEndlessly(Iterable[Batch]):
 
 def one_hot_batch(batch, *,
                   batch_size: int,
-                  context_length: int,
-                  vocab_size: int=len(vocabulary)) -> Batch:
+                  context_length: int) -> Batch:
     """
     Creates one hot vectors (x, y arrays) of the batch.
 
@@ -130,6 +129,7 @@ def one_hot_batch(batch, *,
     >>> y[0, 48]
     1
     """
+    vocab_size = len(vocabulary)
     # Create empty one-hot vectors
     x = np.zeros((batch_size, context_length, vocab_size), dtype=np.bool)
     y = np.zeros((batch_size, vocab_size), dtype=np.bool)

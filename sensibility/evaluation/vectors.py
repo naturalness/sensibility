@@ -21,7 +21,7 @@ Goals: instantiate this automatically via language.
 import os
 import sqlite3
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, MutableMapping, Optional
 
 from ..lexical_analysis import Lexeme
 from ..source_vector import SourceVector
@@ -29,23 +29,21 @@ from ..vocabulary import vocabulary
 from .._paths import EVALUATION_DIR
 
 
-
-assert len(vocabulary) < 256
-
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS vector(
+CREATE TABLE IF NOT EXISTS vector (
     filehash    TEXT PRIMARY KEY,
     array       BLOB NOT NULL       -- the array, as a blob.
 );
 """
 
 
-class Vectors:
+class Vectors(MutableMapping[str, bytes]):
     """
     Stores vectors on disk, with the posibility of mmapping it all in memory.
     """
 
     def __init__(self, conn: Optional[sqlite3.Connection]=None) -> None:
+        assert len(vocabulary) < 256
         if conn is None:
             self.conn = determine_from_language()
         else:
@@ -57,6 +55,12 @@ class Vectors:
 
     def disconnect(self) -> None:
         self.conn.close()
+
+    def __len__(self) -> int:
+        raise NotImplementedError
+
+    def __iter__(self) -> Iterator[str]:
+        raise NotImplementedError
 
     def __getitem__(self, filehash: str) -> bytes:
         cur = self.conn.execute("""
@@ -77,6 +81,9 @@ class Vectors:
                 INSERT INTO vector(filehash, array)
                      VALUES (?, ?)
              """, (filehash, byte_string))
+
+    def __delitem__(self):
+        raise NotImplementedError
 
 
 def determine_from_language() -> sqlite3.Connection:

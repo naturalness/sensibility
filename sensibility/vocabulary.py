@@ -18,8 +18,10 @@
 import json
 import warnings
 from os import PathLike
-from typing import NewType, Sized, List, cast, Tuple, Dict, Iterable, Sequence
+from typing import Any, Dict, Iterable, List, NewType, Sequence, Sized, Tuple
+from typing import cast
 
+__all__ = 'Vocabulary', 'Entry', 'Vind', 'vocabulary'
 
 # A vocabulary index that gets in your face.
 Vind = NewType('Vind', int)
@@ -95,13 +97,9 @@ class Vocabulary(Sized):
 class LegacyVocabulary(Sized):
     """
     One-to-one mapping of vocabulary strings to vocabulary indices (Vinds).
-
-    >>> v = LegacyVocabulary([START_TOKEN, 'var', '$identifier', ';', END_TOKEN])
-    >>> len(v)
-    100
     """
 
-    def __init__(self, array: List[str]) -> None:
+    def __init__(self) -> None:
         warnings.warn('deprecated', DeprecationWarning)
         from sensibility.language.javascript import javascript
         self._vocab = javascript.vocabulary
@@ -130,9 +128,25 @@ class LegacyVocabulary(Sized):
     end_token = '/*<END>*/'
 
 
-try:
-    from .js_vocabulary import VOCAB
-except ImportError:
-    warnings.warn("Could not load generated vocabulary.")
-else:
-    vocabulary = LegacyVocabulary(VOCAB)
+# TODO: Once again with the proxy...?
+class VocabularyProxy:
+    """
+    Access to the vocabulary proxy.
+    """
+    def __getattr__(self, name: str) -> Any:
+        # Avoid accessing the proxy prematurely
+        if name == '__wrapped__':
+            raise AttributeError
+        from .language import language
+        # Delegate to the current language's vocabulary
+        return getattr(language.vocabulary, name)
+
+    def __len__(self) -> int:
+        # This method must be explicilty defined, probably due to some weird
+        # CPython reason.
+        from .language import language
+        # Delegate to the current language's vocabulary
+        return len(language.vocabulary)
+
+
+vocabulary = LegacyVocabulary()

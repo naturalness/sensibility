@@ -33,7 +33,6 @@ from .vocabulary import vocabulary
 # Results are always the hash and the source vector.
 Result = Tuple[str, SourceVector]
 
-assert len(vocabulary) < 256
 
 SCHEMA = """
 pragma FOREIGN_KEYS = on;
@@ -123,6 +122,7 @@ class Vectors:
     """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
+        assert len(vocabulary) < 256
         warnings.warn("deprecated", DeprecationWarning)
         self.conn = conn
         self._maybe_instantiate_schema()
