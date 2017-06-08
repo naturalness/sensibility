@@ -133,6 +133,10 @@ class Corpus:
         metadata.reflect(self.engine)
         return 'repository' not in metadata
 
+    @property
+    def eligible_sources(self) -> Iterator[SourceFile]:
+        return self.conn.execute(select([eligible_source.c.hash]))
+
     def __getitem__(self, filehash: str) -> bytes:
         """
         Returns a file from the corpus.
@@ -201,10 +205,6 @@ class Corpus:
         result, = self.conn.execute(query)
         return result[source_file.c.source]
 
-    @property
-    def eligible_sources(self) -> Iterator[SourceFile]:
-        return self.conn.execute(select([eligible_source.c.hash]))
-
     def get_info(self, filehash: str) -> FileInfo:
         # Do an intense query, combining multiple tables.
         query = select([source_summary, repository_source, repository]).select_from(
@@ -245,12 +245,12 @@ class Corpus:
         many tokens that repository contains. This number may include
         duplicates.
         """
-        # TODO: use "eligible_source" view.
-        cursor = self.conn.execute(text("""
-            SELECT repository.owner, repository.name, SUM(n_tokens)
-            FROM repository JOIN repository_source
-            GROUP BY repository.owner, repository.name
-        """))
+        query = text("""
+            SELECT owner, name, n_tokens
+            FROM repository_source JOIN source_file USING (hash)
+            GROUP BY owner, name
+        """)
+        cursor = self.conn.execute(query)
         for owner, name, n_tokens in cursor:
             yield RepositoryID(owner, name), n_tokens
 
