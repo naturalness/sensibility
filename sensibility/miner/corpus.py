@@ -34,6 +34,7 @@ from .models import (
 )
 from ._schema import (
     failure, meta, repository, repository_source, source_file, source_summary,
+    eligible_source,
     metadata
 )
 
@@ -201,8 +202,8 @@ class Corpus:
         return result[source_file.c.source]
 
     @property
-    def elligible_sources(self) -> Iterator[SourceFile]:
-        raise NotImplementedError
+    def eligible_sources(self) -> Iterator[SourceFile]:
+        return self.conn.execute(select([eligible_source.c.hash]))
 
     def get_info(self, filehash: str) -> FileInfo:
         # Do an intense query, combining multiple tables.
@@ -244,7 +245,7 @@ class Corpus:
         many tokens that repository contains. This number may include
         duplicates.
         """
-        # TODO: create "eligible sources" view.
+        # TODO: use "eligible_source" view.
         cursor = self.conn.execute(text("""
             SELECT repository.owner, repository.name, SUM(n_tokens)
             FROM repository JOIN repository_source

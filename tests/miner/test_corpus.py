@@ -73,6 +73,13 @@ def test_insert_duplicate(corpus: Corpus,
     corpus.insert_source_file_from_repo(repo_file2)
 
 
+def test_eligible_sources(populated_corpus: Corpus) -> None:
+    sources = list(populated_corpus.eligible_sources)
+    assert len(sources) > 0
+    # TODO: better tests, but it needs a populated test database.
+    # TODO: test a file  that has a summary but is also a FAILURE
+
+
 ################################## Fixtures ##################################
 
 @pytest.fixture
@@ -109,6 +116,17 @@ def corpus() -> Corpus:
     entry = repo_file()
     db.insert_repository(entry.repository)
     db.insert_source_file_from_repo(entry)
+
+    return db
+
+
+@pytest.fixture
+def populated_corpus() -> Corpus:
+    db = corpus()
+    db.insert_source_summary(
+        repo_file().filehash,
+        SourceSummary(2, 3)
+    )
     return db
 
 

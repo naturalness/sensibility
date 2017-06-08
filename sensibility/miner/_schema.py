@@ -37,14 +37,14 @@ It is recommend to use DELETE mode when accessing the database read-only:
 
 """
 
+from typing import Iterable, Any, Tuple
+
 from sqlalchemy import (  # type: ignore
     Table, Column, Index,
     Integer, String, DateTime, LargeBinary,
     MetaData,
     ForeignKeyConstraint
 )
-
-from typing import Iterable, Any, Tuple
 
 
 def _to(table_name, *columns):
@@ -123,18 +123,59 @@ failure = Table(
     'failure', metadata,
     Column('hash', String, primary_key=True),
     # TODO: add a reason why
-    # Column('reason', String, default='Syntax error')
+    Column('reason', String, default='Syntax error'),
 
     ForeignKeyConstraint(*_to('source_file', 'hash'),
                          **cascade_all),
-    #comment="Files that are syntacticall invalid."
+
+    #comment="Files that are syntactically invalid."
 )
 
-# TODO: create elligible sources view
-"""
-CREATE VIEW elligible_sources AS
-SELECT * FROM source_summary
-WHERE n_tokens > 0 AND hash not in (
-    SELECT hash from failures
+# Create view:
+# https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
+
+from sqlalchemy import select, literal_column
+from sqlalchemy.schema import DDLElement
+from sqlalchemy.sql import table
+from sqlalchemy.ext import compiler
+
+
+class CreateView(DDLElement):
+    def __init__(self, name, selectable):
+        self.name = name
+        self.selectable = selectable
+
+
+class DropView(DDLElement):
+    def __init__(self, name):
+        self.name = name
+
+
+@compiler.compiles(CreateView)
+def compile_create(element, compiler, **kw):
+    return "\nCREATE VIEW %s AS\n%s" % (element.name, compiler.sql_compiler.process(element.selectable))
+
+
+@compiler.compiles(DropView)
+def compile_drop(element, compiler, **kw):
+    return "DROP VIEW %s" % (element.name)
+
+
+def view(name, metadata, selectable):
+    t = table(name)
+
+    for c in selectable.c:
+        c._make_proxy(t)
+
+    CreateView(name, selectable).execute_at('after-create', metadata)
+    DropView(name).execute_at('before-drop', metadata)
+    return t
+
+
+eligible_source = view(
+    'eligible_source', metadata,
+    select([source_summary.c.hash, source_summary.c.n_tokens,
+            source_summary.c.sloc])\
+    .where(source_summary.c.n_tokens > literal_column("0"))\
+    .where(source_summary.c.hash.notin_(select([failure.c.hash])))
 )
-"""
