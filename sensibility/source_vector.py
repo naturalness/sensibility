@@ -24,7 +24,7 @@ import sys
 import random
 import array
 from itertools import zip_longest
-from typing import IO, Iterator, Sequence, Any, List, cast
+from typing import IO, Iterable, Iterator, Sequence, Any, List, cast
 
 from .vocabulary import vocabulary, Vind
 
@@ -35,8 +35,8 @@ class SourceVector(Sequence[Vind]):
     """
     __slots__ = ('tokens',)
 
-    def __init__(self, tokens: Sequence[Vind]) -> None:
-        self.tokens = tokens
+    def __init__(self, tokens: Iterable[Vind]) -> None:
+        self.tokens = tuple(tokens)
 
     def __eq__(self, other: Any) -> bool:
         """

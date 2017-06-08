@@ -21,7 +21,7 @@ Sensibility --- detect and fix syntax errors in source code.
 from .agreement import Agreement
 from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
-from .language import Language
+from .language import Language, language
 from .lexical_analysis import Token, Location, Position
 from .loop_batches import LoopBatchesEndlessly
 from .sentences import Sentence, forward_sentences, backward_sentences
@@ -35,17 +35,17 @@ from .vocabulary import Vind, LegacyVocabulary, vocabulary
 from .fix import Sensibility, FixResult
 
 __all__ = [
-    'Corpus',  # TODO: NO!
     'Edit', 'Insertion', 'Deletion', 'Substitution',
-    'LoopBatchesEndlessly',  # TODO: NO!
-    'Language',
-    'SourceFile',  # Heh?
-    'Vind', 'LegacyVocabulary',
-    'vocabulary',
-    'SourceVector',  # TODO: NO!
-    'Lexeme', 'Token', 'Location', 'Position',
+    'Language', 'language',
+    'SourceFile',  # heh?
+    'Vind',
+    'Corpus',  # TODO: NO!
+    'LegacyVocabulary',  # TODO: NO!
     'serialize_tokens',  # TODO: NO!
     'Vectors',   # TODO: NO!
+    'LoopBatchesEndlessly',  # TODO: NO!
+    'vocabulary',
+    'Lexeme', 'Token', 'Location', 'Position',
     'Sentence', 'forward_sentences', 'backward_sentences',  # TODO: maybe?
     'Agreement',
     'Sensibility', 'FixResult'

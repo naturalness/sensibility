@@ -29,7 +29,8 @@ from sqlalchemy.sql import select, text  # type: ignore
 
 from .connection import get_sqlite3_path
 from .models import (
-    RepositoryMetadata, SourceFileInRepository, MockSourceFile, RepositoryID
+    SourceFile, RepositoryMetadata, SourceFileInRepository, MockSourceFile,
+    RepositoryID
 )
 from ._schema import (
     failure, meta, repository, repository_source, source_file, source_summary,
@@ -198,6 +199,10 @@ class Corpus:
             .where(source_file.c.hash == filehash)
         result, = self.conn.execute(query)
         return result[source_file.c.source]
+
+    @property
+    def elligible_sources(self) -> Iterator[SourceFile]:
+        raise NotImplementedError
 
     def get_info(self, filehash: str) -> FileInfo:
         # Do an intense query, combining multiple tables.
