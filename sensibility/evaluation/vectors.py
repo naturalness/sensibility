@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS vector (
 """
 
 
-class Vectors(MutableMapping[str, bytes]):
+class Vectors(MutableMapping[str, SourceVector]):
     """
     Stores vectors on disk, with the posibility of mmapping it all in memory.
     """
@@ -62,7 +62,7 @@ class Vectors(MutableMapping[str, bytes]):
     def __iter__(self) -> Iterator[str]:
         raise NotImplementedError
 
-    def __getitem__(self, filehash: str) -> bytes:
+    def __getitem__(self, filehash: str) -> SourceVector:
         cur = self.conn.execute("""
             SELECT array FROM vector WHERE filehash = ?
          """, (filehash,))
@@ -70,12 +70,13 @@ class Vectors(MutableMapping[str, bytes]):
         if item is None:
             raise KeyError(filehash)
         else:
-            return item[0]
+            return SourceVector.from_bytes(item[0])
 
-    def __setitem__(self, filehash: str, byte_string: bytes) -> None:
+    def __setitem__(self, filehash: str, vector: SourceVector) -> None:
         """
         Insert tokens in the database of vectors.
         """
+        byte_string: bytes = vector.to_bytes()
         with self.conn:
             self.conn.execute("""
                 INSERT INTO vector(filehash, array)

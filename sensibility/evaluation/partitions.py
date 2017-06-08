@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Places files into folds attempting to equalize the token length.
+Places files into partitions attempting to equalize the token length.
 
                             ,                       :::
                                      ,:::::::        ::::,

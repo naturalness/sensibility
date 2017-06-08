@@ -19,7 +19,8 @@
 Access to the corpus.
 """
 
-from typing import Any, Dict, Set
+import os
+from typing import Any, Dict, Set, Union
 from pathlib import PurePosixPath
 
 from sqlalchemy import create_engine, event, MetaData  # type: ignore
@@ -89,12 +90,16 @@ class FileInfo:
 
 
 class Corpus:
-    def __init__(self, engine=None, url: str=None, read_only=False) -> None:
+    def __init__(self, engine=None,
+                 url: str=None, path: Union[os.PathLike, str]=None,
+                 read_only=False) -> None:
         if engine is not None:
             self.engine = engine
         else:
             if url is None:
-                url = f"sqlite:///{get_sqlite3_path()}"
+                if path is None:
+                    path = get_sqlite3_path() if path is None else path
+                url = f"sqlite:///{os.fspath(path)}"
             self.engine = create_engine(url)
 
         self._initialize_sqlite3(read_only)
