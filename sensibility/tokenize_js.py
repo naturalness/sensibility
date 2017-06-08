@@ -23,11 +23,8 @@ Requires Node.JS >= 4.0. The first invocation of any of the external commands
 will automatically install all required Node.JS dependencies through NPM.
 """
 
-import json
-import subprocess
 import tempfile
 import warnings
-from pathlib import Path
 from typing import Optional, Sequence, TextIO, cast
 
 from .language.javascript import javascript
@@ -35,10 +32,6 @@ from .lexical_analysis import Token, Lexeme
 from .vocabulary import vocabulary, Vind
 
 warnings.warn("deprecated", DeprecationWarning)
-
-THIS_DIRECTORY = Path(__file__).parent
-TOKENIZE_JS_BIN = (str(THIS_DIRECTORY / 'tokenize-js' / 'wrapper.sh'),)
-CHECK_SYNTAX_BIN = (*TOKENIZE_JS_BIN, '--check-syntax')
 
 
 def synthetic_file(text: str) -> TextIO:
