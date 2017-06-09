@@ -74,7 +74,7 @@ def test_insert_duplicate(corpus: Corpus,
 
 
 def test_eligible_sources(populated_corpus: Corpus) -> None:
-    sources = list(populated_corpus.eligible_sources)
+    sources = set(populated_corpus.eligible_sources)
     assert len(sources) > 0
     # TODO: better tests, but it needs a populated test database.
     # TODO: test a file  that has a summary but is also a FAILURE
@@ -104,8 +104,12 @@ def repository() -> RepositoryMetadata:
         owner='owner', name='name',
         revision='01b474d88e84cf745ab1d96405fd48279fcb5a11',
         license='mit',
-        commit_date=datetime.datetime.utcnow()
+        commit_date=now()
     )
+
+
+def now():
+    return datetime.datetime.utcnow()
 
 
 @pytest.fixture
@@ -122,11 +126,58 @@ def corpus() -> Corpus:
 
 @pytest.fixture
 def populated_corpus() -> Corpus:
-    db = corpus()
-    db.insert_source_summary(
-        repo_file().filehash,
-        SourceSummary(2, 3)
-    )
+    db = empty_corpus()
+
+    common_repo = dict(revision='d04f8fa1838ba69f49a12dbec3f0ce55a901cacf',
+                       license='unlicense',
+                       commit_date=now())
+
+    # At least two repos.
+    r1 = RepositoryMetadata(owner='foo', name='bar', **common_repo)
+    r2 = RepositoryMetadata(owner='herp', name='derp', **common_repo)
+
+    db.insert_repository(r1)
+    db.insert_repository(r2)
+
+    empty = SourceFile(b'')
+    f1 = SourceFile(b'print("hello, world")')
+    f2 = SourceFile(b'print "hello, world"')
+
+    # Duplicate files in the same repos.
+    db.insert_source_file_from_repo(SourceFileInRepository(
+        repository=r1,
+        source_file=empty,
+        path=PurePosixPath('bar/__init__.py')
+    ))
+    db.insert_source_file_from_repo(SourceFileInRepository(
+        repository=r1,
+        source_file=empty,
+        path=PurePosixPath('bar/baz/__init__.py')
+    ))
+    db.insert_source_summary(empty.filehash, SourceSummary(0, 0))
+
+    # Duplicate files in two repos.
+    db.insert_source_file_from_repo(SourceFileInRepository(
+        repository=r1,
+        source_file=f1,
+        path=PurePosixPath('bar/hello.py')
+    ))
+    db.insert_source_file_from_repo(SourceFileInRepository(
+        repository=r2,
+        source_file=f1,
+        path=PurePosixPath('derp/hello.py')
+    ))
+    db.insert_source_summary(f1.filehash, SourceSummary(sloc=1, n_tokens=4))
+
+    # A file in both summary and the failure table.
+    db.insert_source_file_from_repo(SourceFileInRepository(
+        repository=r2,
+        source_file=f2,
+        path=PurePosixPath('bar/hello.py')
+    ))
+    db.insert_source_summary(f2.filehash, SourceSummary(sloc=1, n_tokens=4))
+    db.insert_failure(f2.filehash)
+
     return db
 
 

@@ -135,7 +135,9 @@ class Corpus:
 
     @property
     def eligible_sources(self) -> Iterator[SourceFile]:
-        return self.conn.execute(select([eligible_source.c.hash]))
+        cursor = self.conn.execute(select([eligible_source.c.hash]))
+        for row in cursor:
+            yield row[eligible_source.c.hash]
 
     def __getitem__(self, filehash: str) -> bytes:
         """

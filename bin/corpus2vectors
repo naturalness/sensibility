@@ -40,5 +40,5 @@ if __name__ == '__main__':
     corpus = Corpus(read_only=True)
     vectors = Vectors()
 
-    for file in tqdm(corpus.elligible_sources):
+    for file in tqdm(corpus.eligible_sources):
         vectors[file.hash] = vectorize(file.source)
