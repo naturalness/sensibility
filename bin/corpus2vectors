@@ -41,4 +41,4 @@ if __name__ == '__main__':
     vectors = Vectors()
 
     for file in tqdm(corpus.eligible_sources):
-        vectors[file.hash] = vectorize(file.source)
+        vectors[file.filehash] = vectorize(file.source)
