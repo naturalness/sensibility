@@ -87,6 +87,7 @@ stderr = partial(print, file=sys.stderr)
 
 
 class Split:
+    "Define training/validation/test splits."
     def __init__(self, split: str) -> None:
         train, validate, test = (int(n) for n in split.split('/'))
         assert train + validate + test == 100
@@ -130,7 +131,8 @@ def main() -> None:
             self.repos.add(repo)
             self.n_tokens += tokens
 
-        def create_sets(self, splits: Split) -> None:
+        def create_sets(self) -> None:
+            splits = args.split
             repos = list(self.repos)
             random.shuffle(repos)
 

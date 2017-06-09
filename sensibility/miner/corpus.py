@@ -136,6 +136,8 @@ class Corpus:
     @property
     def eligible_sources(self) -> Iterator[SourceFile]:
         """
+        Yields source files eligible for training, validation, and testing
+        (source and filehash).
         """
         query = select([source_file.c.source])\
             .select_from(source_file.join(eligible_source))
@@ -252,7 +254,7 @@ class Corpus:
         """
         query = text("""
             SELECT owner, name, n_tokens
-            FROM repository_source JOIN source_file USING (hash)
+            FROM repository_source JOIN eligible_source USING (hash)
             GROUP BY owner, name
         """)
         cursor = self.conn.execute(query)
@@ -260,10 +262,14 @@ class Corpus:
             yield RepositoryID(owner, name), n_tokens
 
     def get_hashes_in_repo(self, repo: RepositoryID) -> Iterator[str]:
-        query = select([repository_source.c.filehash])\
+        """
+        Lists all file hashes in this repository.
+        """
+        query = select([repository_source.c.hash])\
             .where(repository_source.c.owner == repo.owner)\
             .where(repository_source.c.name == repo.name)
-        return self.conn.execute(query)
+        for row in self.conn.execute(query):
+            yield row[repository_source.c.hash]
 
     def _initialize_sqlite3(self, read_only: bool) -> None:
         """
