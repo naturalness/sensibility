@@ -75,9 +75,7 @@ def test_insert_duplicate(corpus: Corpus,
 
 def test_eligible_sources(populated_corpus: Corpus) -> None:
     sources = set(populated_corpus.eligible_sources)
-    assert len(sources) > 0
-    # TODO: better tests, but it needs a populated test database.
-    # TODO: test a file  that has a summary but is also a FAILURE
+    assert 1 <= len(sources) < 3
 
 
 ################################## Fixtures ##################################

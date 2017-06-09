@@ -24,6 +24,5 @@ set -e
 
 language=$("$(dirname "$0")"/language-id "$@")
 sqlite3 "${language}-sources.sqlite3" <<SQL
-    SELECT hash FROM source_summary
-     WHERE n_tokens > 0;
+    SELECT hash FROM eligible_source;
 SQL
