@@ -73,7 +73,7 @@ import warnings
 
 from pathlib import Path
 from functools import partial, total_ordering
-from typing import Set
+from typing import Iterable, Set
 
 from tqdm import tqdm
 
@@ -112,14 +112,19 @@ def main() -> None:
     # Magically get the corpus.
     # TODO: from cmdline arguments
     corpus = Corpus(read_only=True)
+    all_hashes_seen: Set[str] = set()
+
+    def write_hashes(path: Path, hashes: Iterable[str]) -> None:
+        with open(path, 'w') as set_file:
+            for filehash in hashes:
+                print(filehash, file=set_file)
 
     @total_ordering
     class Partition:
         def __init__(self, number: int) -> None:
             self.n_tokens = 0
-            self.number = 0
+            self.number = number
             self.repos: Set[RepositoryID] = set()
-            self.seen: Set[str] = set()
 
         def __eq__(self, other):
             return self.n_tokens == other.n_tokens
@@ -156,13 +161,14 @@ def main() -> None:
 
         def _commit_set(self, set_name: str, directory: Path) -> None:
             repos = getattr(self, f"{set_name}_repos")
+
             # Add all hashes from these repos to this fold.
             hashes: Set[str] = set()
             for repo in repos:
                 for filehash in corpus.get_hashes_in_repo(repo):
                     # Make sure we're not adding duplicates!
-                    if filehash in self.seen:
-                        warnings.warn(f'Already saw {filehash} in partition'
+                    if filehash in all_hashes_seen:
+                        warnings.warn(f'Already saw {filehash} in partition '
                                       f'{self.number} when adding to {set_name}')
                         continue
                     hashes.add(filehash)
@@ -170,12 +176,11 @@ def main() -> None:
             # Create the output file by shuffling the hashes.
             hash_list = list(hashes)
             random.shuffle(hash_list)
-            with open(directory / set_name, 'w') as set_file:
-                for filehash in hash_list:
-                    print(filehash, file=set_file)
+            write_hashes(directory / set_name, hashes)
+            print(f"Partition {self.number}/{set_name}: {len(hash_list)}")
 
             # Add all the seen hashes.
-            self.seen.update(hashes)
+            all_hashes_seen.update(hashes)
 
     # We maintain a priority queue of partitions. At the top of the heap is the
     # partition with the fewest tokens.
@@ -195,7 +200,8 @@ def main() -> None:
     random.shuffle(shuffled_repos)
 
     # Assign a repository to each fold...
-    for repo, n_tokens in tqdm(shuffled_repos):
+    stderr('Assigning repositories...')
+    for repo, n_tokens in shuffled_repos:
         # Assign this project to the smallest partition
         partition = pop()
         partition.add_repo(repo, n_tokens)
