@@ -19,6 +19,7 @@
 Paths for internal use.
 """
 
+from sensibility.language import language
 from pathlib import Path
 
 
@@ -38,3 +39,15 @@ SOURCES_PATH = DATA_DIR / 'javascript-sources.sqlite3'
 VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'
 MUTATIONS_PATH = DATA_DIR / 'javascript-mutations.sqlite3'
 PREDICTIONS_PATH = DATA_DIR / 'javascript-predictions.sqlite3'
+
+
+def get_validation_set_path(partition: int, language=language) -> Path:
+    return EVALUATION_DIR / language.id / str(partition) / 'validation'
+
+
+def get_training_set_path(partition: int, language=language) -> Path:
+    return EVALUATION_DIR / language.id / str(partition) / 'training'
+
+
+def get_test_set_path(partition: int, language=language) -> Path:
+    return EVALUATION_DIR / language.id / str(partition) / 'training'

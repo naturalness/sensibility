@@ -20,6 +20,7 @@ Trains an LSTM from sentences in the vectorized corpus.
 """
 
 import glob
+import logging
 import os
 import re
 import warnings
@@ -63,11 +64,20 @@ class ModelDescription:
         self.learning_rate = learning_rate
         self.vectors_path = vectors_path
 
+
         # The training and validation data. Note, each is provided explicitly,
         # but we ask for a partition for labelling purposes.
         self.partition = partition
         self.training_set = training_set
         self.validation_set = validation_set
+
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.info("Training %s", self.name)
+        logger.info("%d training files", len(self.training_set))
+        logger.info("%d validation files", len(self.validation_set))
+        logger.info("Loading file vectors from %s", self.vectors_path)
+        assert self.vectors_path.exists()
+
 
     @property
     def name(self) -> str:
@@ -102,8 +112,9 @@ class ModelDescription:
         training_batches, validation_batches = self.create_batches()
 
         self.save_summary(model)
-        print(f"Training on {training_batches.samples_per_epoch} samples",
-              f"using a batch size of {self.batch_size}")
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.info(f"Training on {training_batches.samples_per_epoch} samples",
+                    f"using a batch size of {self.batch_size}")
 
         from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping  # type: ignore
         try:
@@ -177,14 +188,14 @@ class ModelDescription:
         respectively.
         """
         training = LoopBatchesEndlessly(
-            filehashes={'<training>'},
+            filehashes=self.training_set,
             vectors_path=self.vectors_path,
             batch_size=self.batch_size,
             context_length=self.context_length,
             backwards=self.backwards
         )
         validation = LoopBatchesEndlessly(
-            filehashes={'<training>'},
+            filehashes=self.validation_set,
             vectors_path=self.vectors_path,
             batch_size=self.batch_size,
             context_length=self.context_length,

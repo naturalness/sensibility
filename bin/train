@@ -16,10 +16,15 @@
 # limitations under the License.
 
 import argparse
+import logging
+from typing import Set
 from pathlib import Path
 
+from sensibility.language import language
 from sensibility.model.lstm import ModelDescription, layers
-from sensibility._paths import EVALUATION_DIR
+from sensibility._paths import (
+    EVALUATION_DIR, get_validation_set_path, get_training_set_path
+)
 
 # TODO: Support multiple models?
 
@@ -31,15 +36,12 @@ CONTEXT_LENGTH = 20
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 512
 
-# Default place to dump and load models.
-MODEL_DIR = EVALUATION_DIR / 'models'
-
 # Create the argument parser.
 # TODO: infer from language.
 parser = argparse.ArgumentParser(description='Train from corpus '
                                  'of vectors, with fold assignments')
-parser.add_argument('-f', '--fold', type=int, required=True,
-                    help='which fold to use')
+parser.add_argument('-i', '--partition', type=int, required=True,
+                    help='which partition this is')
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--backwards', action='store_true')
 group.add_argument('--forwards', action='store_false', dest='backwards')
@@ -49,13 +51,29 @@ parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help=f"default: {CONTEXT_LENGTH}")
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
-parser.add_argument('--base-dir', type=Path, default=MODEL_DIR,
-                    help=f"default: {MODEL_DIR}")
-parser.add_argument('vectors_path', type=Path, metavar='vectors',
-                    help='corpus of vectors, with assigned folds')
+parser.add_argument('--base-dir', type=Path, default=EVALUATION_DIR,
+                    help=f"default: {EVALUATION_DIR}")
+
+
+def slurp(filename: Path) -> Set[str]:
+    with open(filename, 'r') as f:
+        return set(line.strip() for line in f if line.strip() != '')
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
-    model = ModelDescription(**vars(args))
+    # Determine language first!
+    model = ModelDescription(
+        partition=args.partition,
+        training_set=slurp(get_training_set_path(args.partition)),
+        validation_set=slurp(get_validation_set_path(args.partition)),
+        backwards=args.backwards,
+        base_dir=args.base_dir / language.id / 'models',
+        batch_size=args.batch_size,
+        context_length=args.context_length,
+        hidden_layers=args.hidden_layers,
+        vectors_path=args.base_dir / language.id / 'vectors.sqlite3'
+    )
+
     model.train()
