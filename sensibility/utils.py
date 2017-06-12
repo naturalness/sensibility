@@ -19,7 +19,7 @@
 import os
 from os import PathLike
 
-assert os.symlink in os.supports_dir_fd  # type: ignore # noqa https://github.com/python/typeshed/issues/1003
+assert os.symlink in os.supports_dir_fd
 
 
 def symlink_within_dir(
@@ -28,7 +28,7 @@ def symlink_within_dir(
     """
     Creates a symbolic link (symlink) relative to a directory.
     """
-    fd = os.open(os.fspath(directory), os.O_RDONLY | os.O_DIRECTORY)  # type: ignore # noqa https://github.com/python/typeshed/pull/991
+    fd = os.open(os.fspath(directory), os.O_RDONLY | os.O_DIRECTORY)
     try:
         os.symlink(source, target, dir_fd=fd)  # type: ignore # noqa https://github.com/python/typeshed/pull/991
     finally:
