@@ -7,6 +7,7 @@ from sensibility.language import language
 
 
 def test_environment_variables():
+    language.forget()
     os.environ['SENSIBILITY_LANGUAGE'] = 'JavaScript'
     assert not language.is_initialized
 

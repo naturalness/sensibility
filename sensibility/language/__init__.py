@@ -157,6 +157,9 @@ class LanguageProxy(Language):
     def __init__(self) -> None:
         self._language: Optional[Language] = None
 
+    def forget(self) -> None:
+        self._language = None
+
     @property
     def is_initialized(self) -> bool:
         return self._language is not None

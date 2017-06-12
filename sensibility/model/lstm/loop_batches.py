@@ -26,8 +26,7 @@ from typing import Iterable, Iterator, Sequence, Set, Tuple, cast
 import numpy as np
 from more_itertools import chunked
 
-# TODO: forget about Vectors class
-from sensibility.vectors import Vectors
+from sensibility.evaluation.vectors import Vectors
 from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
 from sensibility.language import language
 
@@ -39,8 +38,6 @@ class LoopBatchesEndlessly(Iterable[Batch]):
     """
     Loops batches of vectors endlessly from the given filehashes.
     """
-
-    samples_per_epoch: int
 
     def __init__(self, *,
                  vectors_path: Path,
@@ -60,7 +57,7 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         # Samples are number of tokens in the filehash set.
         # TODO: Get number of samples: sum the number of tokens
         # in each partition
-        self.samples_per_epoch = NotImplemented  # type: ignore
+        self.samples_per_epoch = get_samples_per_batches_hack(filehashes)
 
     def __iter__(self) -> Iterator[Batch]:
         batch_size = self.batch_size
@@ -74,7 +71,8 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         Yields all sentences from the corpus exactly once.
         """
         context_length = self.context_length
-        vectors = Vectors.connect_to(self.filename)
+        # XXX: determines from language
+        vectors = Vectors()
         for filehash in self.filehashes:
             tokens = vectors[filehash]
             yield from self.sentence_generator(
@@ -91,6 +89,28 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         while True:
             yield from chunked(self._yield_sentences_from_corpus(),
                                batch_size)
+
+
+def get_samples_per_batches_hack(hashes: Set[str]) -> int:
+    """
+    Temporary.
+
+    >>> from sensibility.language import language
+    >>> language.set_language('python')
+    LanguageProxy(...)
+    >>> s = {'7bd4a8a55e103450d99a049ac68daa0edee1646d416fbc96c97eeb73ff8a28d0'}
+    >>> get_samples_per_batches_hack(s)
+    252
+    """
+    # XXX: This should take from arguments, but relies on globals instead.
+    from sensibility.evaluation.vectors import determine_from_language
+    conn = determine_from_language()
+    query = r'SELECT length(array) FROM vector where filehash = ?'
+    n_tokens = 0
+    for filehash in hashes:
+        (count,), = conn.execute(query, (filehash,))
+        n_tokens += count
+    return n_tokens
 
 
 def one_hot_batch(batch, *,
