@@ -24,13 +24,10 @@ import os
 import re
 import warnings
 from pathlib import Path
-from typing import Optional, Tuple, Iterable, Sequence
+from typing import Optional, Tuple, Iterable, Sequence, Set
 
-# TODO: GET RID OF JAVASCRIPT HARDCODING: Vectors, vocabulary.
-from sensibility import Vectors, vocabulary
+from sensibility.language import language
 from sensibility.utils import symlink_within_dir
-
-from sensibility import language
 from .loop_batches import LoopBatchesEndlessly
 
 
@@ -45,28 +42,32 @@ class ModelDescription:
     This model is intended for evaluation, so it must belong to a "partition"
     of the full corpus.
     """
-    def __init__(
-            self, *,
-            backwards: bool,
-            base_dir: Path,
-            batch_size: int,
-            context_length: int,
-            partition: int,
-            hidden_layers: Sequence[int],
-            learning_rate: float=0.001,
-            vectors_path: Path,
-    ) -> None:
+    def __init__(self, *,
+                 backwards: bool,
+                 base_dir: Path,
+                 batch_size: int,
+                 context_length: int,
+                 partition: int,
+                 hidden_layers: Sequence[int],
+                 learning_rate: float=0.001,
+                 training_set: Set[str],
+                 validation_set: Set[str],
+                 vectors_path: Path) -> None:
         assert base_dir.exists()
         assert vectors_path.exists()
         self.backwards = backwards
         self.base_dir = base_dir
         self.batch_size = batch_size
         self.context_length = context_length
-        # TODO: Just give it the set of filehashes to train on/evaluate.
-        self.partition = partition
         self.hidden_layers = hidden_layers
         self.learning_rate = learning_rate
         self.vectors_path = vectors_path
+
+        # The training and validation data. Note, each is provided explicitly,
+        # but we ask for a partition for labelling purposes.
+        self.partition = partition
+        self.training_set = training_set
+        self.validation_set = validation_set
 
     @property
     def name(self) -> str:
@@ -136,6 +137,8 @@ class ModelDescription:
         from keras.layers import Dense, Activation  # type: ignore
         from keras.layers import LSTM  # type: ignore
         from keras.optimizers import RMSprop  # type: ignore
+
+        vocabulary = language.vocabulary
 
         model = Sequential()
         input_shape = (self.context_length, len(vocabulary))

@@ -40,6 +40,8 @@ class LoopBatchesEndlessly(Iterable[Batch]):
     Loops batches of vectors endlessly from the given filehashes.
     """
 
+    samples_per_epoch: int
+
     def __init__(self, *,
                  vectors_path: Path,
                  filehashes: Set[str],
@@ -55,9 +57,10 @@ class LoopBatchesEndlessly(Iterable[Batch]):
             backward_sentences if backwards else forward_sentences
         )
 
-        # Samples are number of tokens in the fold.
-        # TODO: Get number of samples
-        self.samples_per_epoch = 0
+        # Samples are number of tokens in the filehash set.
+        # TODO: Get number of samples: sum the number of tokens
+        # in each partition
+        self.samples_per_epoch = NotImplemented  # type: ignore
 
     def __iter__(self) -> Iterator[Batch]:
         batch_size = self.batch_size
