@@ -26,35 +26,32 @@ import warnings
 from pathlib import Path
 from typing import Optional, Tuple, Iterable, Sequence
 
+# TODO: GET RID OF JAVASCRIPT HARDCODING: Vectors, vocabulary,
+# propbably LoopBatchesEndlessly
 from sensibility import  Vectors, LoopBatchesEndlessly, vocabulary
 from sensibility.utils import symlink_within_dir
+
+from sensibility import language
 
 
 Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
 
 
-def layers(string: str) -> Sequence[int]:
-    """
-    Parse hidden layer notation.
-
-    >>> layers('2000')
-    (2000,)
-    >>> layers('300,300,300')
-    (300, 300, 300)
-    """
-    result = tuple(int(layer) for layer in string.split(','))
-    assert len(result) >= 1, "Must define at least one hidden layer!"
-    return result
-
-
 class ModelDescription:
+    """
+    Describes a trainable LSTM model, in a specified direction (forwards OR
+    backwards).
+
+    This model is intended for evaluation, so it must belong to a "partition"
+    of the full corpus.
+    """
     def __init__(
             self, *,
             backwards: bool,
             base_dir: Path,
             batch_size: int,
             context_length: int,
-            fold: int,
+            partition: int,
             hidden_layers: Sequence[int],
             learning_rate: float=0.001,
             vectors_path: Path,
@@ -65,7 +62,8 @@ class ModelDescription:
         self.base_dir = base_dir
         self.batch_size = batch_size
         self.context_length = context_length
-        self.fold = fold
+        # TODO: Just give it the set of filehashes to train on/evaluate.
+        self.partition = partition
         self.hidden_layers = hidden_layers
         self.learning_rate = learning_rate
         self.vectors_path = vectors_path
@@ -73,7 +71,7 @@ class ModelDescription:
     @property
     def name(self) -> str:
         direction = 'b' if self.backwards else 'f'
-        return f"javascript-{direction}{self.fold}"
+        return f"{language.id}-{direction}{self.partition}"
 
     @property
     def model_path(self) -> Path:
@@ -98,8 +96,6 @@ class ModelDescription:
         return self.base_dir / (self.name + '.interrupted.hdf5')
 
     def train(self) -> None:
-        self.ensure_fold_exists()
-
         # Compile the model and prepare the training and validation samples.
         model = self.compile_model()
         training_batches, validation_batches = self.create_batches()
@@ -184,21 +180,12 @@ class ModelDescription:
             backwards=self.backwards
         )
         training = LoopBatchesEndlessly.for_training(
-            fold=self.fold, **common_args
+            partition=self.partition, **common_args
         )
         validation = LoopBatchesEndlessly.for_validation(
-            fold=self.fold + 5, **common_args
+            partition=self.partition + 5, **common_args
         )
         return training, validation
-
-    def ensure_fold_exists(self) -> None:
-        vectors = Vectors.connect_to(self.vectors_path)
-        try:
-            assert self.fold in vectors.fold_ids, (
-                f"Requested fold {self.fold} is not in {vectors.fold_ids}"
-            )
-        finally:
-            vectors.disconnect()
 
     def save_summary(self, model: object) -> None:
         # We're ready to go!
@@ -206,6 +193,11 @@ class ModelDescription:
             print(model.to_json(), file=summary_file)  # type: ignore
 
     def update_symlink(self) -> None:
+        """
+        Symlinks the model to the saved model with the least validation loss,
+        i.e., the best model trained so far for this partition.
+        """
+        # Find all existing saved models.
         pattern = self.base_dir / f"{self.name}-*-*.hdf5"
         existing_models = glob.glob(str(pattern))
         if len(existing_models) == 0:
@@ -229,7 +221,9 @@ class ModelDescription:
 
 def validation_loss_by_filename(filename: str) -> float:
     """
-    >>> validation_loss_by_filename("models/javascript-f0-02-0.9375.hdf5")
+    Returns the validation loss as written in the filename.
+
+    >>> validation_loss_by_filename("models/python-f0-02-0.9375.hdf5")
     0.9375
     >>> validation_loss_by_filename("models/javascript-f0-02-1.125.hdf5")
     1.125
@@ -240,3 +234,17 @@ def validation_loss_by_filename(filename: str) -> float:
     else:
         warnings.warn(f"Could not determine loss of {filename}")
         return 0.0
+
+
+def layers(string: str) -> Sequence[int]:
+    """
+    Parse hidden layer notation.
+
+    >>> layers('2000')
+    (2000,)
+    >>> layers('300,300,300')
+    (300, 300, 300)
+    """
+    result = tuple(int(layer) for layer in string.split(','))
+    assert len(result) >= 1, "Must define at least one hidden layer!"
+    return result
