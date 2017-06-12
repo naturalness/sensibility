@@ -21,14 +21,15 @@ Loops batches for training and for validation (development) forever.
 
 import warnings
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence, cast, Tuple
+from typing import Iterable, Iterator, Sequence, Set, Tuple, cast
 
 import numpy as np
 from more_itertools import chunked
 
-from .vectors import Vectors
-from .vocabulary import vocabulary
-from .sentences import Sentence, T, forward_sentences, backward_sentences
+# TODO: forget about Vectors class
+from sensibility.vectors import Vectors
+from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
+from sensibility.language import language
 
 
 Batch = Tuple[np.ndarray, np.ndarray]
@@ -36,19 +37,18 @@ Batch = Tuple[np.ndarray, np.ndarray]
 
 class LoopBatchesEndlessly(Iterable[Batch]):
     """
-    Loops batches of vectors endlessly from the corpus for a given fold.
+    Loops batches of vectors endlessly from the given filehashes.
     """
 
-    def __init__(self,
-                 *,
+    def __init__(self, *,
                  vectors_path: Path,
-                 fold: int,
+                 filehashes: Set[str],
                  batch_size: int,
                  context_length: int,
                  backwards: bool) -> None:
         assert vectors_path.exists()
         self.filename = str(vectors_path)
-        self.fold = fold
+        self.filehashes = filehashes
         self.batch_size = batch_size
         self.context_length = context_length
         self.sentence_generator = (
@@ -56,9 +56,8 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         )
 
         # Samples are number of tokens in the fold.
-        vectors = Vectors.connect_to(self.filename)
-        self.samples_per_epoch = vectors.ntokens_in_fold(self.fold)
-        vectors.disconnect()
+        # TODO: Get number of samples
+        self.samples_per_epoch = 0
 
     def __iter__(self) -> Iterator[Batch]:
         batch_size = self.batch_size
@@ -73,8 +72,8 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         """
         context_length = self.context_length
         vectors = Vectors.connect_to(self.filename)
-        for file_hash in vectors.hashes_in_fold(self.fold):
-            _, tokens = vectors[file_hash]
+        for filehash in self.filehashes:
+            tokens = vectors[filehash]
             yield from self.sentence_generator(
                 cast(Sequence[int], tokens), context=context_length
             )
@@ -90,36 +89,18 @@ class LoopBatchesEndlessly(Iterable[Batch]):
             yield from chunked(self._yield_sentences_from_corpus(),
                                batch_size)
 
-    @classmethod
-    def for_training(cls, fold: int, **kwargs) -> 'LoopBatchesEndlessly':
-        """
-        Endlessly yields (X, Y) pairs from the corpus for training.
-        """
-        # XXX: hardcode a lot of stuff
-        # Assume there are 5 training folds.
-        assert 0 <= fold <= 4
-        return cls(fold=fold, **kwargs)
-
-    @classmethod
-    def for_validation(cls, fold: int, **kwargs) -> 'LoopBatchesEndlessly':
-        """
-        Endlessly yields (X, Y) pairs from the corpus for validation.
-        """
-        # XXX: hardcoded assumptions
-        # Assume there are 5 validation folds
-        assert 5 <= fold <= 9
-        return cls(fold=fold, **kwargs)
-
 
 def one_hot_batch(batch, *,
                   batch_size: int,
-                  context_length: int) -> Batch:
+                  context_length: int,
+                  vocabulary_size: int=None) -> Batch:
     """
     Creates one hot vectors (x, y arrays) of the batch.
 
     >>> x, y = one_hot_batch([(np.array([36]), 48)],
     ...                      batch_size=1024,
-    ...                      context_length=20)
+    ...                      context_length=20,
+    ...                      vocabulary_size=100)
     >>> x.shape
     (1, 20, 100)
     >>> x[0, 0, 36]
@@ -129,10 +110,11 @@ def one_hot_batch(batch, *,
     >>> y[0, 48]
     1
     """
-    vocab_size = len(vocabulary)
+    if vocabulary_size is None:
+        vocabulary_size= len(language.vocabulary)
     # Create empty one-hot vectors
-    x = np.zeros((batch_size, context_length, vocab_size), dtype=np.bool)
-    y = np.zeros((batch_size, vocab_size), dtype=np.bool)
+    x = np.zeros((batch_size, context_length, vocabulary_size), dtype=np.bool)
+    y = np.zeros((batch_size, vocabulary_size), dtype=np.bool)
 
     # Fill in the vectors.
     for sentence_id, (sentence, last_token_id) in enumerate(batch):
@@ -147,7 +129,7 @@ def one_hot_batch(batch, *,
 
     if samples_produced < batch_size:
         warnings.warn(f"less samples than batch size: {samples_produced}")
-        x = np.resize(x, ((samples_produced, context_length, vocab_size)))
-        y = np.resize(y, ((samples_produced, vocab_size)))
+        x = np.resize(x, ((samples_produced, context_length, vocabulary_size)))
+        y = np.resize(y, ((samples_produced, vocabulary_size)))
 
     return x, y

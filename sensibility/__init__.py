@@ -23,7 +23,6 @@ from .corpus import Corpus
 from .edit import Edit, Insertion, Deletion, Substitution
 from .language import Language, language
 from .lexical_analysis import Token, Location, Position
-from .loop_batches import LoopBatchesEndlessly
 from .sentences import Sentence, forward_sentences, backward_sentences
 from .source_file import SourceFile
 from .source_vector import SourceVector
@@ -43,7 +42,6 @@ __all__ = [
     'LegacyVocabulary',  # TODO: NO!
     'serialize_tokens',  # TODO: NO!
     'Vectors',   # TODO: NO!
-    'LoopBatchesEndlessly',  # TODO: NO!
     'vocabulary',
     'Lexeme', 'Token', 'Location', 'Position',
     'Sentence', 'forward_sentences', 'backward_sentences',  # TODO: maybe?

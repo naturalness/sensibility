@@ -21,7 +21,7 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from ..loop_batches import one_hot_batch
+from .lstm.loop_batches import one_hot_batch
 from ..vocabulary import Vind
 
 

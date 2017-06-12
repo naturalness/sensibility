@@ -26,12 +26,12 @@ import warnings
 from pathlib import Path
 from typing import Optional, Tuple, Iterable, Sequence
 
-# TODO: GET RID OF JAVASCRIPT HARDCODING: Vectors, vocabulary,
-# propbably LoopBatchesEndlessly
-from sensibility import  Vectors, LoopBatchesEndlessly, vocabulary
+# TODO: GET RID OF JAVASCRIPT HARDCODING: Vectors, vocabulary.
+from sensibility import Vectors, vocabulary
 from sensibility.utils import symlink_within_dir
 
 from sensibility import language
+from .loop_batches import LoopBatchesEndlessly
 
 
 Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
@@ -173,17 +173,19 @@ class ModelDescription:
         Return a tuple of infinite training and validation examples,
         respectively.
         """
-        common_args = dict(
+        training = LoopBatchesEndlessly(
+            filehashes={'<training>'},
             vectors_path=self.vectors_path,
             batch_size=self.batch_size,
             context_length=self.context_length,
             backwards=self.backwards
         )
-        training = LoopBatchesEndlessly.for_training(
-            partition=self.partition, **common_args
-        )
-        validation = LoopBatchesEndlessly.for_validation(
-            partition=self.partition + 5, **common_args
+        validation = LoopBatchesEndlessly(
+            filehashes={'<training>'},
+            vectors_path=self.vectors_path,
+            batch_size=self.batch_size,
+            context_length=self.context_length,
+            backwards=self.backwards
         )
         return training, validation
 
