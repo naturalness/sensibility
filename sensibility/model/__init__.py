@@ -57,7 +57,7 @@ class Model:
                       path: Path,
                       backwards: bool=False,
                       **kwargs) -> 'Model':
-        from keras.models import load_model
+        from keras.models import load_model  # type: ignore
         model = load_model(str(path))
 
         return cls(model, backwards=backwards, **kwargs)
@@ -67,7 +67,7 @@ def test():
     """
     I'd write this test if I had a model...
     """
-    from ._paths import MODEL_DIR
+    from sensibility._paths import MODEL_DIR
     model = Model.from_filename(MODEL_DIR / 'javascript-f0.hdf5')
     comma = vocabulary.to_index(',')
     answer = model.predict([comma] * 20)

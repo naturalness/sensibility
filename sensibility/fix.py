@@ -154,8 +154,8 @@ class Sensibility:
             )
 
             # Fetch predictions.
-            prefix_pred = np.array(self.predictions.predict_forwards(prefix))
-            suffix_pred = np.array(self.predictions.predict_backwards(suffix))
+            prefix_pred = np.array(self.predictions.predict_forwards(prefix))  # type: ignore
+            suffix_pred = np.array(self.predictions.predict_backwards(suffix))  # type: ignore
 
             result = IndexResult(index, file_vector, prefix_pred, suffix_pred)
             results.append(result)

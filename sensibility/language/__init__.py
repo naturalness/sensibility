@@ -131,9 +131,7 @@ class Language(ABC):
         if isinstance(source, (str, bytes, IO)):
             return self.tokenize(source)
         else:
-            # Mypy allows us to assume this is an iterable of tokens.
-            return cast(Tokens, source)
-
+            return source
 
 
 class LanguageNotSpecifiedError(Exception):

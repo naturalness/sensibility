@@ -1,0 +1,3 @@
+from numpy import ndarray, T
+
+def norm(x: ndarray[T], ord: int=None) -> T: ...

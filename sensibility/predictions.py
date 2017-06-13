@@ -64,7 +64,7 @@ class Predictions:
             except KeyError:
                 prediction = model.predict(tuple_context)
                 self.add_prediction(name, context, prediction)
-                return prediction
+                return prediction  # type: ignore
 
         # > SELECT MAX(n_tokens) FROM vectorized_source;
         # 1809948

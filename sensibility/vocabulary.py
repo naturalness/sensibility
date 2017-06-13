@@ -70,7 +70,7 @@ class Vocabulary(Sized):
         return self._index2text[index]
 
     def to_index(self, text: str) -> Vind:
-        return cast(Vind, self._text2index[text])
+        return self._text2index[text]
 
     def __len__(self) -> int:
         return len(self._index2text)

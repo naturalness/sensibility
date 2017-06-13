@@ -136,8 +136,8 @@ def one_hot_batch(batch, *,
     if vocabulary_size is None:
         vocabulary_size= len(language.vocabulary)
     # Create empty one-hot vectors
-    x = np.zeros((batch_size, context_length, vocabulary_size), dtype=np.bool)
-    y = np.zeros((batch_size, vocabulary_size), dtype=np.bool)
+    x: np.ndarray[bool] = np.zeros((batch_size, context_length, vocabulary_size), dtype=np.bool)
+    y: np.ndarray[bool] = np.zeros((batch_size, vocabulary_size), dtype=np.bool)
 
     # Fill in the vectors.
     for sentence_id, (sentence, last_token_id) in enumerate(batch):

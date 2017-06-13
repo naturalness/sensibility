@@ -134,10 +134,10 @@ failure = Table(
 # Create view:
 # https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
 
-from sqlalchemy import select, literal_column
-from sqlalchemy.schema import DDLElement
-from sqlalchemy.sql import table
-from sqlalchemy.ext import compiler
+from sqlalchemy import select, literal_column  # type: ignore
+from sqlalchemy.schema import DDLElement  # type: ignore
+from sqlalchemy.sql import table  # type: ignore
+from sqlalchemy.ext import compiler  # type: ignore
 
 
 class CreateView(DDLElement):
