@@ -114,7 +114,7 @@ class ModelDescription:
 
         self.save_summary(model)
         logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f"Training on {training_batches.samples_per_epoch} samples",
+        logger.info(f"Training on {training_batches.samples_per_epoch} samples"
                     f"using a batch size of {self.batch_size}")
 
         from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping  # type: ignore
