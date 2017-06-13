@@ -54,7 +54,8 @@ class ModelDescription:
                  training_set: Set[str],
                  validation_set: Set[str],
                  vectors_path: Path) -> None:
-        assert base_dir.exists()
+
+        base_dir.mkdir(parents=True, exist_ok=True)
         assert vectors_path.exists()
         self.backwards = backwards
         self.base_dir = base_dir
@@ -63,7 +64,6 @@ class ModelDescription:
         self.hidden_layers = hidden_layers
         self.learning_rate = learning_rate
         self.vectors_path = vectors_path
-
 
         # The training and validation data. Note, each is provided explicitly,
         # but we ask for a partition for labelling purposes.
