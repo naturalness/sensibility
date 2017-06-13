@@ -40,7 +40,7 @@ setup(
 
     install_requires=[
         # TODO: upgrade to Keras 2.x!
-        'Keras>=1.2.2',
+        'Keras>=2.0.0, < 3.0.0',
         'SQLAlchemy>=1.1.9',
         'blessings',
         'github3.py==0.9.6',
