@@ -261,11 +261,15 @@ class Corpus:
         for owner, name, n_tokens in cursor:
             yield RepositoryID(owner, name), n_tokens
 
-    def get_hashes_in_repo(self, repo: RepositoryID) -> Iterator[str]:
+    def get_eligible_hashes_in_repo(self, repo: RepositoryID, elligible=False) -> Iterator[str]:
         """
         Lists all file hashes in this repository.
         """
         query = select([repository_source.c.hash])\
+            .select_from(repository_source.join(
+                eligible_source,
+                repository_source.c.hash == eligible_source.c.hash
+            ))\
             .where(repository_source.c.owner == repo.owner)\
             .where(repository_source.c.name == repo.name)
         for row in self.conn.execute(query):

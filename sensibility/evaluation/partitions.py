@@ -165,7 +165,7 @@ def main() -> None:
             # Add all hashes from these repos to this fold.
             hashes: Set[str] = set()
             for repo in repos:
-                for filehash in corpus.get_hashes_in_repo(repo):
+                for filehash in corpus.get_eligible_hashes_in_repo(repo):
                     # Make sure we're not adding duplicates!
                     if filehash in all_hashes_seen:
                         warnings.warn(f'Already saw {filehash} in partition '
