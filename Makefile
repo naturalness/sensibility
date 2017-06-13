@@ -12,50 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Augment path wih applications in ./bin/
+PATH := $(PWD)/bin:$(PATH)
+
+# XXX: hardcode language here!
+SENSIBILITY_LANGUAGE ?= Python
+
 # Putting the n in n-gram:
 ORDER = 4
 
-# How many training folds?
-FOLDS = 5
-
-# Augment path wih applications in ./bin/
-PATH := $(PWD)/bin:$(PATH)
+HIDDEN_LAYERS = 300,300
+CONTEXT = 20
 
 # KenLM stuff. Assumes KenLM executables are installed in ~/.kenlm/bin
 KENLMBIN = $(HOME)/.kenlm/bin
 ESTIMATENGRAM = $(KENLMBIN)/lmplz
 BUILDBINARY = $(KENLMBIN)/build_binary
 
-# Old training stuff!
-
-# 75 million, which is a semi-arbitrarily chosen number.
-# My last training phase used 9 folds of around 7.5 million tokens each; hencem
-# this value is 10 times that (so the same amount of tokens, plus a few more).
-TOKENS_PER_FOLD_TRAINING = 75000000
-TOKENS_PER_FOLD_VALIDATION = 25000000
-
-HIDDEN_LAYERS = 300,300
-CONTEXT = 20
-
-DATA_DIR = data
-MODEL_DIR = models
-
-CORPUS = javascript
-SOURCES = $(DATA_DIR)/$(CORPUS)-sources.sqlite3
-VECTORS = $(DATA_DIR)/$(CORPUS)-vectors.sqlite3
-TEST_SET = $(DATA_DIR)/test_set_hashes
-
 # Always use the GNU versions of shuf(1) and split(1)
 # shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
 SHUF = $(shell which shuf || which gshuf)
-SPLIT = $(shell which gsplit || which split)
 
 # Make settings
 # See: https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
 .PHONY: all
 .SECONDARY:
 
-all: results
+all: models
 
 parse: unparsed.list
 	parallel --pipepart --round-robin parse-and-insert-all :::: $<
@@ -68,24 +51,6 @@ include extra-rules.mk
 %.mk: %.pl
 	perl $< > $@
 
-.PHONY: results
-results: results.csv
-results.%.csv:
-	bin/evaluate $*
-
-.PHONY: test-sets
-test-sets: $(TEST_SET).0 $(TEST_SET).1 $(TEST_SET).2 $(TEST_SET).3 $(TEST_SET).4
-# Create the entire test set.
-$(TEST_SET): $(VECTORS) $(SOURCES)
-	bin/print-test-set $(VECTORS) | $(SHUF) > $@
-
-# Split the giant test set into several files.
-# The pattern rule is a hack that allows one recipe to make several targets,
-# but does not run the recipe several times.
-# From: http://stackoverflow.com/a/3077254/6626414
-$(TEST_SET)%0 $(TEST_SET)%1 $(TEST_SET)%2 $(TEST_SET)%3 $(TEST_SET)%4: $(TEST_SET)
-	$(SPLIT) --number=l/$(FOLDS) -d --suffix-length=1 $(TEST_SET) $(TEST_SET).
-
 ################################################################################
 
 # Create a binary n-gram model with modkn backoffs, for querying.
@@ -96,15 +61,19 @@ $(TEST_SET)%0 $(TEST_SET)%1 $(TEST_SET)%2 $(TEST_SET)%3 $(TEST_SET)%4: $(TEST_SE
 %.arpa: %.sentences
 	$(ESTIMATENGRAM) -o $(ORDER) <$< >$@
 
+# Create a list of sentences from the corpus.
 corpus.sentences: corpus.list
 	parallel --pipepart --line-buffer --round-robin vocabularize :::: $< > $@
 
+# Create a list of unparsed sources.
 unparsed.list:
 	list-unparsed-sources > $@
 
+# Create the vocabulary.
 vocabulary.py:
 	list-elligible-sources | discover-vocabulary > $@
 
+# Create a list of file hashes.
 corpus.list:
 	list-elligible-sources | $(SHUF) | head -n10000 > $@
 

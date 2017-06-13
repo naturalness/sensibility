@@ -77,6 +77,7 @@ class ModelDescription:
         logger.info("%d validation files", len(self.validation_set))
         logger.info("Loading file vectors from %s", self.vectors_path)
         assert self.vectors_path.exists()
+        logger.info("Saving model to %s", self.model_path)
 
 
     @property

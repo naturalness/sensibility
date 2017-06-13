@@ -26,7 +26,6 @@ from sensibility._paths import (
     EVALUATION_DIR, get_validation_set_path, get_training_set_path
 )
 
-# TODO: Support multiple models?
 
 # Based on emprical findings: this one gets to min loss pretty quickly,
 # and is usable.
@@ -35,6 +34,11 @@ HIDDEN_LAYERS = (300, 300)
 CONTEXT_LENGTH = 20
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 512
+
+# TODO: Determine size of sets from partition files.
+# min(sets) * P, where p is a proportion.
+TRAINING_FILES = 20_000
+VALIDATION_FILES = 2_500
 
 # Create the argument parser.
 # TODO: infer from language.
@@ -55,19 +59,33 @@ parser.add_argument('--base-dir', type=Path, default=EVALUATION_DIR,
                     help=f"default: {EVALUATION_DIR}")
 
 
-def slurp(filename: Path) -> Set[str]:
+def slurp(filename: Path, trim :int=None) -> Set[str]:
     with open(filename, 'r') as f:
-        return set(line.strip() for line in f if line.strip() != '')
+        def create_set():
+            n = 0
+            for line in f:
+                if trim is not None and n > trim:
+                    break
+                line = line.strip()
+                if line == '':
+                    continue
+                yield line
+                n = n + 1
+        return set(create_set())
 
 
+# TODO: Support multiple models?
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
+
     # Determine language first!
     model = ModelDescription(
         partition=args.partition,
-        training_set=slurp(get_training_set_path(args.partition)),
-        validation_set=slurp(get_validation_set_path(args.partition)),
+        training_set=slurp(get_training_set_path(args.partition),
+                           trim=TRAINING_FILES),
+        validation_set=slurp(get_validation_set_path(args.partition),
+                             trim=VALIDATION_FILES),
         backwards=args.backwards,
         base_dir=args.base_dir / language.id / 'models',
         batch_size=args.batch_size,
