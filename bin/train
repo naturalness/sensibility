@@ -64,7 +64,7 @@ def slurp(filename: Path, trim :int=None) -> Set[str]:
         def create_set():
             n = 0
             for line in f:
-                if trim is not None and n > trim:
+                if trim is not None and n >= trim:
                     break
                 line = line.strip()
                 if line == '':

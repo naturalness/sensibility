@@ -15,9 +15,6 @@
 # Augment path wih applications in ./bin/
 PATH := $(PWD)/bin:$(PATH)
 
-# XXX: hardcode language here!
-SENSIBILITY_LANGUAGE ?= Python
-
 # Putting the n in n-gram:
 ORDER = 4
 
