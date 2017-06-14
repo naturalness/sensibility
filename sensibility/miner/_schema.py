@@ -45,6 +45,10 @@ from sqlalchemy import (  # type: ignore
     MetaData,
     ForeignKeyConstraint
 )
+from sqlalchemy import select, literal_column  # type: ignore
+from sqlalchemy.schema import DDLElement  # type: ignore
+from sqlalchemy.sql import table  # type: ignore
+from sqlalchemy.ext import compiler  # type: ignore
 
 
 def _to(table_name, *columns):
@@ -72,7 +76,7 @@ repository = Table(
     Column('commit_date', DateTime, nullable=False),
     Column('license', String),
 
-    #comment="A source code repository from GitHub at a particular revision"
+    # comment="A source code repository from GitHub at a particular revision"
 )
 
 source_file = Table(
@@ -81,7 +85,7 @@ source_file = Table(
 
     Column('source', LargeBinary, nullable=False),
 
-    #comment="A source file, divorced from any repo it may belong to"
+    # comment="A source file, divorced from any repo it may belong to"
 )
 
 repository_source = Table(
@@ -99,11 +103,11 @@ repository_source = Table(
     ForeignKeyConstraint(*_to('source_file', 'hash'),
                          **cascade_all),
 
-    #comment=(
-    #    "Relates a source file to a repository."
-    #    " A many-to-many relationship."
-    #    " Note: A file hash may be in the same repository twice!"
-    #)
+    # comment=(
+    #     "Relates a source file to a repository."
+    #     " A many-to-many relationship."
+    #     " Note: A file hash may be in the same repository twice!"
+    # )
 )
 
 source_summary = Table(
@@ -116,7 +120,7 @@ source_summary = Table(
     ForeignKeyConstraint(*_to('source_file', 'hash'),
                          **cascade_all),
 
-    #comment="Source files that are syntactically valid."
+    # comment="Source files that are syntactically valid."
 )
 
 failure = Table(
@@ -128,17 +132,12 @@ failure = Table(
     ForeignKeyConstraint(*_to('source_file', 'hash'),
                          **cascade_all),
 
-    #comment="Files that are syntactically invalid."
+    # comment="Files that are syntactically invalid."
 )
+
 
 # Create view:
 # https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
-
-from sqlalchemy import select, literal_column  # type: ignore
-from sqlalchemy.schema import DDLElement  # type: ignore
-from sqlalchemy.sql import table  # type: ignore
-from sqlalchemy.ext import compiler  # type: ignore
-
 
 class CreateView(DDLElement):
     def __init__(self, name, selectable):
@@ -175,7 +174,7 @@ def view(name, metadata, selectable):
 eligible_source = view(
     'eligible_source', metadata,
     select([source_summary.c.hash, source_summary.c.n_tokens,
-            source_summary.c.sloc])\
-    .where(source_summary.c.n_tokens > literal_column("0"))\
+            source_summary.c.sloc])
+    .where(source_summary.c.n_tokens > literal_column("0"))
     .where(source_summary.c.hash.notin_(select([failure.c.hash])))
 )

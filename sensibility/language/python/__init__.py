@@ -106,7 +106,7 @@ class Python(Language):
             # Child process. Let it crash!!!
             try:
                 compile(source, '<unknown>', 'exec')
-            except:
+            except Exception:
                 # Use _exit so it doesn't raise a SystemExit exception.
                 os._exit(-1)
             else:

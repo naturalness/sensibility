@@ -35,6 +35,7 @@ __all__ = [
     'get_sqlite3_connection', 'get_sqlite3_path',
 ]
 
+
 @lru_cache(maxsize=1)
 def get_redis_client() -> redis.StrictRedis:
     """

@@ -78,8 +78,9 @@ class Vocabulary(Sized):
     def __getitem__(self, idx: Vind) -> Entry:
         return self._index2text[idx]
 
-    # TODO: ???
-    #def to_lexeme(self, idx: Vind) -> Lexeme: ...
+    def to_lexeme(self, idx: Vind) -> None:
+        # TODO: return a lexeme
+        raise NotImplementedError
 
     @classmethod
     def from_json_file(cls, filename: PathLike) -> 'Vocabulary':

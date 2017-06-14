@@ -79,7 +79,6 @@ class ModelDescription:
         assert self.vectors_path.exists()
         logger.info("Saving model to %s", self.model_path)
 
-
     @property
     def name(self) -> str:
         direction = 'b' if self.backwards else 'f'

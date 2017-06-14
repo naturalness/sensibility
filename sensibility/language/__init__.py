@@ -36,6 +36,7 @@ from ..lexical_analysis import Token, Location
 Tokens = Iterable[Token]
 SourceCode = Union[str, bytes, IO[bytes]]
 
+
 class SourceSummary(NamedTuple):
     sloc: int
     n_tokens: int
@@ -74,6 +75,7 @@ class Language(ABC):
 
     @overload
     def summarize(self, source: Tokens) -> SourceSummary: ...
+
     @overload
     def summarize(self, source: SourceCode) -> SourceSummary: ...
 

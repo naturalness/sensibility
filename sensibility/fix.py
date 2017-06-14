@@ -144,7 +144,7 @@ class Sensibility:
         results: List[IndexResult] = []
 
         # These will hold the TOP predictions at a given point.
-        forwards_predictions: List[Vind] = []
+        forwards_predictions: List[Vind] = []  # XXX: https://github.com/PyCQA/pycodestyle/pull/640
         backwards_predictions: List[Vind] = []
         contexts = enumerate(self.contexts(file_vector))
 

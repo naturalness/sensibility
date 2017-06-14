@@ -177,13 +177,13 @@ class Corpus:
         trans = self.conn.begin()
         try:
             self.conn.execute((source_file.insert()
-                                .prefix_with('OR IGNORE', dialect='sqlite')),
+                               .prefix_with('OR IGNORE', dialect='sqlite')),
                               source=entry.source_file.source,
                               hash=entry.filehash)
             self.conn.execute(repository_source.insert(),
                               owner=entry.owner, name=entry.name,
                               hash=entry.filehash, path=str(entry.path))
-        except:
+        except Exception:
             trans.rollback()
             raise
         else:
@@ -215,8 +215,8 @@ class Corpus:
     def get_info(self, filehash: str) -> FileInfo:
         # Do an intense query, combining multiple tables.
         query = select([source_summary, repository_source, repository]).select_from(
-            source_file.join(source_summary)\
-            .join(repository_source)\
+            source_file.join(source_summary)
+            .join(repository_source)
             .join(repository)
         ).where(source_summary.c.hash == filehash)
         results = self.conn.execute(query).fetchall()

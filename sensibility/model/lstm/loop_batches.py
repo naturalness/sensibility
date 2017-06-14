@@ -134,7 +134,7 @@ def one_hot_batch(batch, *,
     1
     """
     if vocabulary_size is None:
-        vocabulary_size= len(language.vocabulary)
+        vocabulary_size = len(language.vocabulary)
     # Create empty one-hot vectors
     x: np.ndarray[bool] = np.zeros((batch_size, context_length, vocabulary_size), dtype=np.bool)
     y: np.ndarray[bool] = np.zeros((batch_size, vocabulary_size), dtype=np.bool)
