@@ -40,14 +40,18 @@ VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'
 MUTATIONS_PATH = DATA_DIR / 'javascript-mutations.sqlite3'
 PREDICTIONS_PATH = DATA_DIR / 'javascript-predictions.sqlite3'
 
+
 def get_partitions_path(language=language) -> Path:
     return EVALUATION_DIR / language.id / 'partitions'
+
 
 def get_validation_set_path(partition: int, language=language) -> Path:
     return get_partitions_path(language) / str(partition) / 'validation'
 
+
 def get_training_set_path(partition: int, language=language) -> Path:
     return get_partitions_path(language) / str(partition) / 'training'
+
 
 def get_test_set_path(partition: int, language=language) -> Path:
     return get_partitions_path(language) / str(partition) / 'test'

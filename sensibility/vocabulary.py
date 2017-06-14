@@ -133,6 +133,7 @@ class VocabularyProxy:
     """
     Access to the vocabulary proxy.
     """
+
     def __getattr__(self, name: str) -> Any:
         # Avoid accessing the proxy prematurely
         if name == '__wrapped__':

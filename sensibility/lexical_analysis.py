@@ -82,6 +82,7 @@ class Location:
     Represents the exact location of a token in a file.
     """
     __slots__ = 'start', 'end'
+
     def __init__(self, *, start: Position, end: Position) -> None:
         self.start = start
         self.end = end

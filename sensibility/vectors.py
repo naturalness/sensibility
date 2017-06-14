@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS fold_assignment(
 
 # TODO: Remove responsibility of fold assignment from Vectors
 
+
 class Vectors:
     """
     Represents a corpus with condensed tokens according to a vocabulary.
