@@ -34,7 +34,7 @@ def symlink_within_dir(
         target.unlink()
     fd = os.open(os.fspath(directory), os.O_RDONLY | os.O_DIRECTORY)
     try:
-        os.symlink(source, target, dir_fd=fd)
+        os.symlink(source, target, dir_fd=fd)  # type: ignore
     except FileExistsError:
         pass
     finally:
