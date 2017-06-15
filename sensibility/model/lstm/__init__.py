@@ -107,7 +107,7 @@ class ModelDescription:
     def interrupted_path(self) -> Path:
         return self.base_dir / (self.name + '.interrupted.hdf5')
 
-    def batches_per_sample(self, training_samples: int) -> int:
+    def batches_per_epoch(self, training_samples: int) -> int:
         """
         Number of batches per sample.
         """
@@ -128,8 +128,7 @@ class ModelDescription:
         try:
             model.fit_generator(
                 iter(training_batches),
-                # Total number of BATCHES per sample
-                self.batches_per_sample(training_batches.samples_per_epoch),
+                self.batches_per_epoch(training_batches.samples_per_epoch),
                 epochs=2**31 - 1,  # Train indefinitely
                 validation_data=iter(validation_batches),
                 callbacks=[
