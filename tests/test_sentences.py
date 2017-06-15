@@ -19,9 +19,8 @@
 Tests the generation of sentences.
 """
 
-import pytest
+import pytest  # type: ignore
 
-from sensibility import vocabulary
 from sensibility.sentences import forward_sentences, backward_sentences
 from sensibility.language.javascript import javascript
 
@@ -34,7 +33,7 @@ FILE = list(javascript.vocabularize(r'''
 assert len(FILE) == 13
 
 
-def test_forward_sentences():
+def test_forward_sentences(vocabulary) -> None:
     """
     Test creating padded forward sentences.
     """
@@ -60,7 +59,7 @@ def test_forward_sentences():
     assert list(forward_sentences(FILE, sentence=n)) == sentences
 
 
-def test_forward_sentences_too_big():
+def test_forward_sentences_too_big(vocabulary) -> None:
     """
     test for when sentence size is LARGER than file
     """
@@ -85,7 +84,7 @@ def test_forward_sentences_too_big():
     assert all(index == vocabulary.start_token_index for index in padding)
 
 
-def test_backward_sentences():
+def test_backward_sentences(vocabulary) -> None:
     """
     Test creating padded backwards sentences.
     """
@@ -124,3 +123,8 @@ def test_both_sentences():
     # Check if both adjacent are THE SAME.
     for (_, t1), (_, t2) in combined:
         assert t1 == t2
+
+
+@pytest.fixture
+def vocabulary():
+    return javascript.vocabulary
