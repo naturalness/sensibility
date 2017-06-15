@@ -24,6 +24,7 @@ import logging
 import os
 import re
 import warnings
+import typing
 from pathlib import Path
 from typing import Optional, Tuple, Iterable, Sequence, Set
 
@@ -106,6 +107,13 @@ class ModelDescription:
     def interrupted_path(self) -> Path:
         return self.base_dir / (self.name + '.interrupted.hdf5')
 
+    def batches_per_sample(self, training_samples: int) -> int:
+        """
+        Number of batches per sample.
+        """
+        return (training_samples // self.batch_size +
+                bool(training_samples % self.batch_size))
+
     def train(self) -> None:
         # Compile the model and prepare the training and validation samples.
         model = self.compile_model()
@@ -113,27 +121,26 @@ class ModelDescription:
 
         self.save_summary(model)
         logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f"Training on {training_batches.samples_per_epoch} samples"
+        logger.info(f"Training on {training_batches.samples_per_epoch} samples "
                     f"using a batch size of {self.batch_size}")
 
-        from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping  # type: ignore
+        from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
         try:
-            model.fit_generator(  # type: ignore
+            model.fit_generator(
                 iter(training_batches),
-                nb_epoch=2**31 - 1,  # Train indefinitely
-                samples_per_epoch=training_batches.samples_per_epoch,
+                # Total number of BATCHES per sample
+                self.batches_per_sample(training_batches.samples_per_epoch),
+                epochs=2**31 - 1,  # Train indefinitely
                 validation_data=iter(validation_batches),
-                nb_val_samples=(
-                    validation_batches.samples_per_epoch // self.batch_size
-                ),
                 callbacks=[
                     ModelCheckpoint(
                         str(self.weight_path_pattern),
                         save_best_only=False,
-                        save_weights_only=False
+                        save_weights_only=False,
+                        mode='auto'
                     ),
                     CSVLogger(str(self.log_path), append=True),
-                    EarlyStopping(patience=3)
+                    EarlyStopping(patience=3, mode='auto')
                 ],
                 verbose=1,
                 pickle_safe=True,
@@ -143,11 +150,14 @@ class ModelDescription:
         finally:
             self.update_symlink()
 
-    def compile_model(self) -> object:
-        from keras.models import Sequential  # type: ignore
-        from keras.layers import Dense, Activation  # type: ignore
-        from keras.layers import LSTM  # type: ignore
-        from keras.optimizers import RMSprop  # type: ignore
+    if typing.TYPE_CHECKING:
+        from keras.models import Sequential
+
+    def compile_model(self) -> 'Sequential':
+        from keras.models import Sequential
+        from keras.layers import Dense, Activation
+        from keras.layers import LSTM
+        from keras.optimizers import RMSprop
 
         vocabulary = language.vocabulary
 

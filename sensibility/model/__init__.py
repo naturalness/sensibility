@@ -32,10 +32,10 @@ class Model:
     A wrapper for accessing an individual Keras-defined model, for prediction
     only!
     """
-    def __init__(self, model: Any, *,
+    # TODO: correct type for Keras model declared as Any type.
+    def __init__(self, model, *,
                  backwards: bool=False,
                  context_length: int=20) -> None:
-        # XXX: Keras model declared as Any type.
         self.model = model
         self.backwards = backwards
         self.context_length = context_length
@@ -57,7 +57,7 @@ class Model:
                       path: Path,
                       backwards: bool=False,
                       **kwargs) -> 'Model':
-        from keras.models import load_model  # type: ignore
+        from keras.models import load_model
         model = load_model(str(path))
 
         return cls(model, backwards=backwards, **kwargs)
