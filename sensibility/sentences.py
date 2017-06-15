@@ -22,7 +22,7 @@ Yields contexts in both forwards and backwards directions.
 from itertools import chain, repeat
 from typing import Sequence, TypeVar, Iterable, Tuple
 
-from .vocabulary import vocabulary
+from .language import language
 
 
 # Types
@@ -44,7 +44,7 @@ def forward_sentences(
     if context is None:
         context = sentence - adjacent
 
-    padding_token = vocabulary.start_token_index
+    padding_token = language.vocabulary.start_token_index
 
     # Generate a sentence for each element in the vector.
     for i, element in enumerate(vector):
@@ -74,7 +74,7 @@ def backward_sentences(
     if context is None:
         context = sentence - adjacent
 
-    padding_token = vocabulary.end_token_index
+    padding_token = language.vocabulary.end_token_index
     vector_length = len(vector)
 
     # Generate a sentence for each element in the vector.
