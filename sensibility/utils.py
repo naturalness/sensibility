@@ -18,19 +18,25 @@
 
 import os
 from os import PathLike
+from pathlib import Path
 
 assert os.symlink in os.supports_dir_fd
 
 
 def symlink_within_dir(
-        *, directory: PathLike, source: PathLike, target: PathLike
+        *, directory: PathLike, source: PathLike, target: Path
 ) -> None:
     """
     Creates a symbolic link (symlink) relative to a directory.
     """
+    # Clobber the existing symlink.
+    if target.exists():
+        target.unlink()
     fd = os.open(os.fspath(directory), os.O_RDONLY | os.O_DIRECTORY)
     try:
-        os.symlink(source, target, dir_fd=fd)  # type: ignore # noqa https://github.com/python/typeshed/pull/991
+        os.symlink(source, target, dir_fd=fd)
+    except FileExistsError:
+        pass
     finally:
         os.close(fd)
 

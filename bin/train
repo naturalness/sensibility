@@ -37,8 +37,8 @@ BATCH_SIZE = 512
 
 # TODO: Determine size of sets from partition files.
 # min(sets) * P, where p is a proportion.
-TRAINING_FILES = 20_000
-VALIDATION_FILES = 2_500
+TRAINING_FILES = 100
+VALIDATION_FILES = 10
 
 # Create the argument parser.
 # TODO: infer from language.

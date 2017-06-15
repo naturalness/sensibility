@@ -131,6 +131,7 @@ class ModelDescription:
                 self.batches_per_epoch(training_batches.samples_per_epoch),
                 epochs=2**31 - 1,  # Train indefinitely
                 validation_data=iter(validation_batches),
+                validation_steps=self.batches_per_epoch(validation_batches.samples_per_epoch),
                 callbacks=[
                     ModelCheckpoint(
                         str(self.weight_path_pattern),
