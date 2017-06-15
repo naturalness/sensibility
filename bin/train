@@ -33,7 +33,7 @@ HIDDEN_LAYERS = (300, 300)
 # Based on White et al. 2015
 CONTEXT_LENGTH = 20
 # This is arbitrary, but it should be fairly small.
-BATCH_SIZE = 512
+BATCH_SIZE = 64
 
 # TODO: Determine size of sets from partition files.
 # min(sets) * P, where p is a proportion.

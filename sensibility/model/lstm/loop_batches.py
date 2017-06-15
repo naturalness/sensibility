@@ -19,7 +19,6 @@
 Loops batches for training and for validation (development) forever.
 """
 
-import warnings
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence, Set, Tuple, cast
 
@@ -151,7 +150,6 @@ def one_hot_batch(batch, *,
     samples_produced = sentence_id + 1
 
     if samples_produced < batch_size:
-        warnings.warn(f"less samples than batch size: {samples_produced}")
         x = np.resize(x, ((samples_produced, context_length, vocabulary_size)))
         y = np.resize(y, ((samples_produced, vocabulary_size)))
 
