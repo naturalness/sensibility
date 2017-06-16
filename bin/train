@@ -17,7 +17,8 @@
 
 import argparse
 import logging
-from typing import Set
+import re
+from typing import List, Set, Optional, cast
 from pathlib import Path
 
 from sensibility.language import language
@@ -35,19 +36,52 @@ CONTEXT_LENGTH = 20
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 64
 
-# TODO: Determine size of sets from partition files.
-# min(sets) * P, where p is a proportion.
-TRAINING_FILES = 100
-VALIDATION_FILES = 10
+# Match these names
+name_pattern = re.compile(r"""
+    ^
+    (?P<language>\w+)
+    -
+    (?P<direction>[fb])
+    (?P<partition>\d+)
+    [.]hdf5
+    $
+""", re.VERBOSE)
+
+
+def infer_args(args: argparse.Namespace) -> argparse.Namespace:
+    """
+    >>> args = infer_args(parser.parser_args(['-o', 'python-b2.hdf5']))
+    >>> from sensibility.language import language
+    >>> language.id
+    'python'
+    >>> args.backwards
+    True
+    >>> args.partition
+    2
+    """
+    path: Optional[Path] = args.output
+    if not path:
+        return args
+    match = name_pattern.match(path.name)
+    if not match:
+        raise ValueError(f"cannot infer params from: {path}")
+
+    language_id = match.groupdict()['language']
+    language.set_language(language_id)  # type: ignore
+    backwards = match.groupdict()['direction'] == 'b'
+    setattr(args, 'backwards', backwards)
+    partition = int(match.groupdict()['partition'])
+    setattr(args, 'partition', partition)
+    return args
+
 
 # Create the argument parser.
 # TODO: infer from language.
 parser = argparse.ArgumentParser(description='Train from corpus '
                                  'of vectors, with fold assignments')
-parser.add_argument('-i', '--partition', type=int, required=True,
-                    help='which partition this is')
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument('--backwards', action='store_true')
+parser.add_argument('-i', '--partition', type=int, help='which partition this is')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('--backwards', action='store_true', default=False)
 group.add_argument('--forwards', action='store_false', dest='backwards')
 parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
                     help=f"default: {HIDDEN_LAYERS}")
@@ -57,35 +91,46 @@ parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
 parser.add_argument('--base-dir', type=Path, default=EVALUATION_DIR,
                     help=f"default: {EVALUATION_DIR}")
+parser.add_argument('--proportion', '-p', type=float, default=1.0,
+                    help=f"default: 1.0")
+parser.add_argument('--output', '-o', type=Path,
+                    help=f"Where to output.  Infers the rest of the arguments from this one")
 
 
-def slurp(filename: Path, trim :int=None) -> Set[str]:
+def slurp(filename: Path, trim :int=None) -> List[str]:
     with open(filename, 'r') as f:
         def create_set():
-            n = 0
             for line in f:
-                if trim is not None and n >= trim:
-                    break
                 line = line.strip()
-                if line == '':
-                    continue
-                yield line
-                n = n + 1
-        return set(create_set())
+                if line != '':
+                    yield line
+        return list(create_set())
+
+
+def subset(xs: List[str], proportion: float) -> Set[str]:
+    return set(xs[:int(len(xs) * proportion)])
 
 
 # TODO: Support multiple models?
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    args = parser.parse_args()
+    args = infer_args(parser.parse_args())
+
+    if args.partition is None:
+        parser.error('Require --partitions or --output')
+
+    logging.info('Proportion: %g', args.proportion)
+    partition = cast(int, args.partition)
+
+    training_set = slurp(get_training_set_path(partition))
+    validation_set = slurp(get_validation_set_path(partition))
+
 
     # Determine language first!
     model = ModelDescription(
-        partition=args.partition,
-        training_set=slurp(get_training_set_path(args.partition),
-                           trim=TRAINING_FILES),
-        validation_set=slurp(get_validation_set_path(args.partition),
-                             trim=VALIDATION_FILES),
+        partition=partition,
+        training_set=subset(training_set, args.proportion),
+        validation_set=subset(validation_set, args.proportion),
         backwards=args.backwards,
         base_dir=args.base_dir / language.id / 'models',
         batch_size=args.batch_size,
