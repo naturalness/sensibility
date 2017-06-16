@@ -20,7 +20,6 @@ ORDER = 4
 
 HIDDEN_LAYERS = 300,300
 CONTEXT = 20
-LANGUAGE := $(shell bin/language-id)
 
 # KenLM stuff. Assumes KenLM executables are installed in ~/.kenlm/bin
 KENLMBIN = $(HOME)/.kenlm/bin
