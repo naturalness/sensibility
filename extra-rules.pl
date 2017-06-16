@@ -50,6 +50,7 @@ sub model_rules {
             my $filename = model_filename $language, $dir, $part;
             print "$filename:\n";
             print "\tenv train -o $filename ";
+            print "--proportion=\$(PROPORTION) ";
             print "--hidden-layers=\$(HIDDEN_LAYERS) ";
             print "--context-length=\$(CONTEXT)\n";
         }

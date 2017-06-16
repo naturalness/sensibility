@@ -21,6 +21,9 @@ ORDER = 4
 HIDDEN_LAYERS = 300,300
 CONTEXT = 20
 
+# What proportion of files to train on.
+PROPORTION = $(shell echo "scale=5; 1/4" |bc )
+
 # KenLM stuff. Assumes KenLM executables are installed in ~/.kenlm/bin
 KENLMBIN = $(HOME)/.kenlm/bin
 ESTIMATENGRAM = $(KENLMBIN)/lmplz
