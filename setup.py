@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages  # type: ignore
 from os import path
 
 here = path.abspath(path.dirname(__file__))
@@ -39,8 +39,8 @@ setup(
     zip_safe=False,
 
     install_requires=[
-        # TODO: upgrade to Keras 2.x!
         'Keras>=2.0.0, < 3.0.0',
+        'Theano>=0.8.0, < 0.10.0',
         'SQLAlchemy>=1.1.9',
         'blessings',
         'github3.py==0.9.6',
