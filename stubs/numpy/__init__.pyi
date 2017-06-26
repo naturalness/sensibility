@@ -6,6 +6,7 @@ Shape = Union[int, Sequence[int]]
 
 bool = ...  # type: DataType
 float32 = ...  # type: DataType
+float64 = ...  # type: DataType
 
 class ndarray(Sized, Iterable[T]):
     def __setitem__(self, *i: Any) -> None: ...

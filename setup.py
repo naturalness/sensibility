@@ -45,6 +45,7 @@ setup(
         'blessings',
         'github3.py==0.9.6',
         'h5py>=2.6.0',
+        'jenkspy>= 0.1.3, <0.2.0',
         'more-itertools>=2.3',
         'numpy>=1.11.0',
         'numpy>=1.11.0',

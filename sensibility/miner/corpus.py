@@ -144,6 +144,18 @@ class Corpus:
         for row in self.conn.execute(query):
             yield SourceFile(row[source_file.c.source])
 
+    @property
+    def source_summaries(self) -> Iterator[Tuple[str, SourceSummary]]:
+        """
+        Yields sources with computed summaries.
+        """
+        query = select([source_summary.c.hash, source_summary.c.n_tokens,
+                        source_summary.c.sloc])
+        for row in self.conn.execute(query):
+            yield (row[source_summary.c.hash],
+                   SourceSummary(sloc=row[source_summary.c.sloc],
+                                 n_tokens=row[source_summary.c.n_tokens]))
+
     def __getitem__(self, filehash: str) -> bytes:
         """
         Returns a file from the corpus.
