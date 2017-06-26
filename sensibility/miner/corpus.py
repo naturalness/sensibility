@@ -217,7 +217,7 @@ class Corpus:
         Can add an optional reason, and choose to ignore
         """
         self.conn.execute((failure.insert().prefix_with('OR IGNORE')
-                           if ignore else failure.insert),
+                           if ignore else failure.insert()),
                           hash=filehash, reason=reason)
 
     def get_source(self, filehash: str) -> bytes:
