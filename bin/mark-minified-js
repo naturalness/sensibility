@@ -16,14 +16,18 @@
 # limitations under the License.
 
 """
-Finds minified JavaScripts files and marks them as failures (such that they
-are no longer eligible sources).
+Finds minified JavaScript files and marks them as failures (such that they are
+no longer eligible sources).
 """
+
+import logging
 
 from sensibility.language import language
 from sensibility.miner.corpus import Corpus
 from sensibility.evaluation.cluster import SummaryWithHash, find_break_point
 
+
+logging.basicConfig(level=logging.DEBUG)
 
 # This only makes sense for JavaScript (I think).
 language.set_language('JavaScript')
@@ -31,8 +35,10 @@ language.set_language('JavaScript')
 corpus = Corpus()
 
 # Get a list of all parsed source files.
+logging.debug('Retrieving source summaries')
 files = list(SummaryWithHash(filehash, summary)
-             for filehash, summary in corpus.source_summaries)
+             for filehash, summary in corpus.source_summaries
+             if summary.n_tokens > 0)
 break_point = find_break_point(files)
 
 reason = f"minified:<{break_point:.1f}"

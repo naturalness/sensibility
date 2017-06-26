@@ -36,12 +36,15 @@ class SummaryWithHash:
 
     def __init__(self, filehash: str, summary: SourceSummary) -> None:
         self.filehash = filehash
+        if summary.n_tokens == 0:
+            raise ValueError(f"Not enough tokens: {filehash}")
+        assert summary.sloc > 0
         self.n_tokens = summary.n_tokens
         self.sloc = summary.sloc
 
     @property
-    def ratio(self):
-        return self.ntokens / self.sloc
+    def ratio(self) -> float:
+        return self.n_tokens / self.sloc
 
 
 def dump(breakpoint: float, files: Sequence[SummaryWithHash]) -> None:
@@ -63,6 +66,6 @@ def find_break_point(files: Sequence[SummaryWithHash]) -> float:
     logger.debug("Computing break")
     breaks: Tuple[float, ...] = jenkspy.jenks_breaks(xs, nb_class=2)
     start, break_point, end = (exp(p) for p in breaks)
-    logger.info('# {break_point:.1f} [{start}, {end}]', file=sys.stderr)
+    logger.info(f'# {break_point:.1f} [{start}, {end}]')
 
     return break_point
