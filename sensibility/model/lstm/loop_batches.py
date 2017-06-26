@@ -95,8 +95,7 @@ def get_samples_per_batches_hack(hashes: Set[str]) -> int:
     Temporary.
 
     >>> from sensibility.language import language
-    >>> language.set_language('python')
-    LanguageProxy(...)
+    >>> language.set_language('python') and None
     >>> s = {'7bd4a8a55e103450d99a049ac68daa0edee1646d416fbc96c97eeb73ff8a28d0'}
     >>> get_samples_per_batches_hack(s)
     252

@@ -151,17 +151,17 @@ class LanguageNotSpecifiedError(Exception):
 
 class LanguageProxy(Language):
     """
-    Provides uniform access to the language
+    Defines a uniform interface to access the currently active language.
     """
 
     def __init__(self) -> None:
         self._language: Optional[Language] = None
 
-    def forget(self) -> None:
-        self._language = None
-
     @property
     def is_initialized(self) -> bool:
+        """
+        Is a language currently defined?
+        """
         return self._language is not None
 
     @property
@@ -173,16 +173,11 @@ class LanguageProxy(Language):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self._language!r})"
 
-    @no_type_check
-    def __getattr__(self, name: str) -> Any:
+    def forget(self) -> None:
         """
-        Delegate to wrapped_language.
+        Unsets the active language.
         """
-        # Workaround for nosy inspect.unwrap():
-        if name == '__wrapped__':
-            raise AttributeError
-
-        return getattr(self.wrapped_language, name)
+        self._language = None
 
     def set_language(self, name: str) -> 'LanguageProxy':
         """
@@ -237,6 +232,21 @@ class LanguageProxy(Language):
         return self.wrapped_language.vocabularize_tokens(*args, **kwargs)
 
 
-# TODO: Use even MORE redirection to expose LanguageProxy interface,
-#       but let __getattr__ exist in a different class.
-language: Language = LanguageProxy()
+class ConcreteLanguageProxy(LanguageProxy):
+    """
+    __getattr__() is defined here so that mypy doesn't think the LanguageProxy
+    interface can respond to ANY method; however, __getattr__() does the
+    delegation to underlying active language object.
+    """
+    def __getattr__(self, name: str) -> Any:
+        """
+        Delegate to wrapped_language.
+        """
+        # Workaround for nosy inspect.unwrap():
+        if name == '__wrapped__':
+            raise AttributeError
+
+        return getattr(self.wrapped_language, name)
+
+
+language: LanguageProxy = ConcreteLanguageProxy()
