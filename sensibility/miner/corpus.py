@@ -209,11 +209,16 @@ class Corpus:
                           hash=filehash,
                           sloc=summary.sloc, n_tokens=summary.n_tokens)
 
-    def insert_failure(self, filehash: str, reason: str=None) -> None:
+    def insert_failure(self, filehash: str, reason: str=None,
+                       ignore: bool=False) -> None:
         """
         Insert the word count into the source summary.
+
+        Can add an optional reason, and choose to ignore
         """
-        self.conn.execute(failure.insert(), hash=filehash, reason=reason)
+        self.conn.execute((failure.insert().prefix_with('OR IGNORE')
+                           if ignore else failure.insert),
+                          hash=filehash, reason=reason)
 
     def get_source(self, filehash: str) -> bytes:
         """

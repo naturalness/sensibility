@@ -20,11 +20,14 @@ Finds minified JavaScript files and marks them as failures (such that they are
 no longer eligible sources).
 """
 
+import fnmatch
 import logging
+import sqlite3
 
 from sensibility.language import language
 from sensibility.miner.corpus import Corpus
 from sensibility.evaluation.cluster import SummaryWithHash, find_break_point
+from sensibility.miner.connection import get_sqlite3_path
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -46,3 +49,15 @@ for source in files:
     if source.ratio < break_point:
         continue
     corpus.insert_failure(source.filehash, reason=reason)
+
+
+logging.debug('Marking files that match glob `*[.-]min.js`')
+conn = sqlite3.connect(get_sqlite3_path())
+reason = f"minified:.min.js"
+query =  r'''
+    SELECT hash FROM repository_source
+     WHERE lower(path) GLOB '*[.-]min.js'
+'''
+
+for filehash, in conn.execute(query):
+    corpus.insert_failure(filehash, reason=reason, ignore=True)
