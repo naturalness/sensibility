@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from hypothesis import given, assume
-from hypothesis.strategies import (
+from hypothesis import given, assume  # type: ignore
+from hypothesis.strategies import (  # type: ignore
     composite, integers, lists, random_module, sampled_from
 )
 

@@ -3,8 +3,8 @@
 
 import io
 
-from hypothesis import given
-from hypothesis.strategies import random_module
+from hypothesis import given  # type: ignore
+from hypothesis.strategies import random_module  # type: ignore
 
 from strategies import programs
 

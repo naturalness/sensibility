@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-from hypothesis import given, assume
-from hypothesis.strategies import random_module, sampled_from
+from hypothesis import given, assume  # type: ignore
+from hypothesis.strategies import random_module, sampled_from  # type: ignore
 
 from strategies import programs
 
