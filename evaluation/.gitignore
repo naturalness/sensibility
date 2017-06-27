@@ -5,3 +5,4 @@ training
 *.sqlite3-shm
 *.sqlite3-wal
 *.squashfs
+*.xz
