@@ -25,13 +25,16 @@ module.exports.checkSyntax = checkSyntax;
 
 
 if (require.main === module) {
-  const source = fs.readFileSync('/dev/stdin', 'utf8');
-  const shouldCheckSyntax =
-    process.argv.slice(2).indexOf('--check-syntax') >= 0;
-  if (shouldCheckSyntax) {
-    process.exit(checkSyntax(source) ? 0 : 1);
+  const args = process.argv.slice(2);
+  if (args.includes('--server')) {
+    server(args[args.indexOf('--server') + 1]);
   } else {
-    console.log(JSON.stringify(tokenize(source)));
+    const source = fs.readFileSync('/dev/stdin', 'utf8');
+    if (args.includes('--check-syntax')) {
+      process.exit(checkSyntax(source) ? 0 : 1);
+    } else {
+      console.log(JSON.stringify(tokenize(source)));
+    }
   }
 }
 
@@ -40,7 +43,6 @@ function tokenize(source) {
   source = removeShebangLine(source);
 
   /* TODO: retry on illegal tokens. */
-
   const sourceType = deduceSourceType(source);
   const tokens = esprima.tokenize(source, {
     sourceType,
@@ -64,12 +66,79 @@ function checkSyntax(source) {
 }
 
 /**
+ * Start a server on the given bind address.
+ * It should be UNIX domain socket.
+ */
+function server(bind_address) {
+  const zmq = require('zmq');
+
+  const responder = zmq.socket('rep');
+
+  responder.on('message', (request) => {
+    const resp = doRequest(request);
+    responder.send(JSON.stringify(resp));
+  });
+
+  responder.bind(bind_address, (err) => {
+    if (err) {
+      console.error(err);
+      process.exit(-1);
+    } else {
+      console.log(`Listening on ${bind_address}`);
+    }
+  });
+
+  process.on('SIGINT', () => responder.close());
+}
+
+/**
+ * Handle an arbitrary request.
+ */
+function doRequest(request) {
+  const type = parseType(request);
+
+  switch (type) {
+  case 'tokenize':
+    return tokenize(getSource(request));
+  case 'check':
+    return checkSyntax(getSource(request));
+  case 'exit':
+    /* Shutdown gracefully. */
+    process.kill(process.pid, 'SIGINT');
+    return true;
+  default:
+    console.error('Got invalid message');
+    return;
+  }
+}
+
+/**
+ * Parse the type code from the first byte of the request.
+ */
+function parseType(request) {
+  const typeCode = String.fromCharCode(request[0]);
+  return {
+    t: 'tokenize',
+    c: 'check',
+    x: 'exit'
+  }[typeCode];
+}
+
+/**
+ * Return the source as a string.
+ */
+function getSource(request) {
+  const sourceBytes = Buffer.from(request.buffer, 1);
+  /* XXX: Should handle the encoding properly, somehow. */
+  return sourceBytes.toString('utf8');
+}
+
+/**
  * Remove the shebang line, if there is one.
  */
 function removeShebangLine(source) {
   return source.replace(/^#![^\r\n]+/, '');
 }
-
 
 /*
   Adapted from: http://esprima.org/demo/parse.js

@@ -51,6 +51,7 @@ setup(
         'numpy>=1.11.0',
         'python-dateutil>=2.6.0',
         'redis>=2.10.5',
+        'pyzmq>=16.0.2, <17.0.0',
         'requests==2.13.0',
         'tqdm',
     ],
