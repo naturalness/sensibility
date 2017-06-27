@@ -44,7 +44,9 @@ files = list(SummaryWithHash(filehash, summary)
              if summary.n_tokens > 0)
 break_point = find_break_point(files)
 
-reason = f"minified:<{break_point:.1f}"
+# Corrected the comparison from `<`, but the corpus was processed before the
+# fix.
+reason = f"minified:>={break_point:.1f}"
 for source in files:
     if source.ratio < break_point:
         continue
