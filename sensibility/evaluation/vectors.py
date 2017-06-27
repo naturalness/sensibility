@@ -49,9 +49,15 @@ class Vectors(MutableMapping[str, SourceVector]):
         else:
             self.conn = conn
         self._instantiate_schema()
+        self._mmap()
 
     def _instantiate_schema(self) -> None:
         self.conn.executescript(SCHEMA)
+
+    def _mmap(self) -> None:
+        # XXX: Hardcoded amount to mmap.
+        size = 2 * 1024 * 1024  # 2 GiB
+        self.conn.execute(f'PRAGMA mmap_size={size:d}')
 
     def disconnect(self) -> None:
         self.conn.close()
