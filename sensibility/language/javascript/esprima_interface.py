@@ -1,20 +1,49 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Provides an interface to Esprima, implemented in Node.JS.
+"""
+
 import warnings
 import atexit
 import os
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, IO, Optional, Iterator
 
 import zmq  # type: ignore
 
+
 here = Path(__file__).parent.absolute()
+esprima_bin = here / 'esprima-interface'
+assert esprima_bin.exists()
 
 
-class ParseServer:
+class Server:
+    """
+    Provides a convenient interface for accessing the Esprima interface
+    server.
+
+    All that's required is a the path of the UNIX domain socket where the
+    already instantiated server is running.
+    """
+
     def __init__(self, socket_path: Path) -> None:
         context = zmq.Context()
         socket = self._socket = context.socket(zmq.REQ)
@@ -23,7 +52,7 @@ class ParseServer:
     def check_syntax(self, source: bytes) -> bool:
         return self._communicate(b'c', source)
 
-    def tokenize(self, source: bytes) -> Any:
+    def tokenize(self, source: bytes) -> Iterator[Any]:
         return self._communicate(b't', source)
 
     def exit(self) -> None:
@@ -37,16 +66,22 @@ class ParseServer:
 
 
 # A global instance of the parse server.
-_instance: Optional[ParseServer] = None
+_instance: Optional[Server] = None
 
 
-def get_instance() -> ParseServer:
+def get_server() -> Server:
+    """
+    Retrieves the global server instance.
+    """
     if _instance is None:
         return start()
     return _instance
 
 
-def start() -> ParseServer:
+def start() -> Server:
+    """
+    Starts the global server instance.
+    """
     global _instance
     argv0 = str(here / 'esprima-interface')
     socket_path = Path(f'/tmp/esprima-server.{os.getpid()}')
@@ -55,7 +90,7 @@ def start() -> ParseServer:
                      stderr=subprocess.DEVNULL,
                      shell=False)
 
-    _instance = ParseServer(socket_path)
+    _instance = Server(socket_path)
 
     @atexit.register
     def cleanup():
@@ -68,10 +103,30 @@ def start() -> ParseServer:
     return _instance
 
 
+def tokenize(file_obj: IO[bytes]) -> Iterator[Any]:
+    """
+    Tokenizes a (real!) bytes file using Esprima.
+    """
+    status = subprocess.run([str(esprima_bin)],
+                            check=True,
+                            stdin=file_obj,
+                            stdout=subprocess.PIPE)
+    return json.loads(status.stdout.decode('UTF-8'))
+
+
+def check_syntax(source_file: IO[bytes]) -> bool:
+    status = subprocess.run((str(esprima_bin), '--check-syntax'),
+                            check=False,
+                            stdin=source_file,
+                            stdout=subprocess.PIPE)
+    return status.returncode == 0
+
+
+# Tests the server.
 if __name__ == '__main__':
     from sensibility.language.javascript import javascript
     # Time how many times I can tokenize the source code of the server itself.
-    parser = get_instance()
+    parser = get_server()
     import timeit
     with open(here / 'index.js', 'rb') as source_file:
         source = source_file.read()

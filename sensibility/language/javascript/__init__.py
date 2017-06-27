@@ -19,10 +19,8 @@
 Language definition for JavaScript.
 """
 
-import json
-import subprocess
 import tempfile
-from io import StringIO, IOBase
+from io import IOBase
 from pathlib import Path
 from typing import Any, Callable, IO, Iterable, Optional, Sequence, Tuple, Union
 from typing import cast
@@ -30,11 +28,10 @@ from typing import cast
 from .. import Language, SourceSummary
 from ...lexical_analysis import Token, Lexeme, Location, Position
 from ...vocabulary import Vocabulary
+from .esprima_interface import Server, get_server, tokenize, check_syntax
 
 
-here = Path(__file__).parent
-esprima_bin = here / 'esprima-interface'
-assert esprima_bin.exists()
+here = Path(__file__).parent.absolute()
 
 
 class JavaScript(Language):
@@ -55,20 +52,11 @@ class JavaScript(Language):
         """
 
         with SafeSourceFile(source) as source_file:
-            status = _tokenize(source_file)
-
-        return [
-            from_esprima_format(tok)
-            for tok in json.loads(status.stdout.decode('UTF-8'))
-        ]
+            return esprima_to_tokens(tokenize(source_file))
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
         with SafeSourceFile(source) as source_file:
-            status = subprocess.run((str(esprima_bin), '--check-syntax'),
-                                    check=False,
-                                    stdin=source_file,
-                                    stdout=subprocess.PIPE)
-        return status.returncode == 0
+            return check_syntax(source_file)
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
         tokens = list(source)
@@ -80,6 +68,32 @@ class JavaScript(Language):
     def vocabularize_tokens(self, tokens: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
         for token in tokens:
             yield token.location, stringify_lexeme(token)
+
+
+class JavaScriptWithServer(JavaScript):
+    fullname = 'JavaScript'
+
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
+        tokens = get_server().tokenize(ensure_bytes(source))
+        return esprima_to_tokens(tokens)
+
+    def check_syntax(self, source: Union[str, bytes]) -> bool:
+        return get_server().check_syntax(ensure_bytes(source))
+
+
+def ensure_bytes(source: Union[str, bytes, IO[bytes]]) -> bytes:
+    if isinstance(source, str):
+        return source.encode('UTF-8')
+    elif isinstance(source, bytes):
+        return source
+    else:
+        # Hack: we don't trust the IO[bytes] signature, so ensure bytes once
+        # more, just in case.
+        return ensure_bytes(source.read())
+
+
+def esprima_to_tokens(raw_tokens: Iterable[Any]) -> Sequence[Token]:
+    return [from_esprima_format(tok) for tok in raw_tokens]
 
 
 class SafeSourceFile:
@@ -122,16 +136,6 @@ def synthetic_file(source: Union[str, bytes]) -> IO[bytes]:
     file_obj.flush()
     file_obj.seek(0)
     return file_obj
-
-
-def _tokenize(file_obj: IO[bytes]) -> subprocess.CompletedProcess:
-    """
-    Tokenizes a (real!) bytes file using Esprima.
-    """
-    return subprocess.run([str(esprima_bin)],
-                          check=True,
-                          stdin=file_obj,
-                          stdout=subprocess.PIPE)
 
 
 def from_esprima_format(token) -> Token:
@@ -224,5 +228,5 @@ class StringifyLexeme:
 
 
 # The main exports.
-javascript = JavaScript()
+javascript = JavaScriptWithServer()
 stringify_lexeme = cast(Callable[[Lexeme], str], StringifyLexeme())
