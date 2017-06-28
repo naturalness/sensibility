@@ -261,10 +261,16 @@ def unescape_unicode(text: str) -> str:
     'if'
     >>> unescape_unicode(r'\u{0066}or')
     'for'
+    >>> unescape_unicode(r'\u{110000}')
+    Traceback (most recent call last):
+        ...
+    ValueError: chr() arg not in range(0x110000)
+    >>> unescape_unicode(r'\u{01f4A9}')
+    '💩'
     """
     # Match:
     # https://www.ecma-international.org/ecma-262/#prod-UnicodeEscapeSequence
-    return re.sub(r'\\u([0-9a-fA-F]{4}|[{][0-9a-fA-F]{4}[}])',
+    return re.sub(r'\\u([0-9a-fA-F]{4}|[{][0-9a-fA-F]+[}])',
                   lambda m: chr(int(m.group(1).strip('{}'), 16)),
                   text)
 
