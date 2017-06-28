@@ -19,6 +19,7 @@
 Language definition for JavaScript.
 """
 
+import re
 import tempfile
 from io import IOBase
 from pathlib import Path
@@ -152,14 +153,20 @@ def from_esprima_format(token) -> Token:
 
 
 class StringifyLexeme:
-    """
+    r"""
     Converts a Lexeme to its vocabularized form.
 
     >>> stringify_lexeme(Lexeme(value='**=', name='Punctuator'))
     '**='
+    >>> stringify_lexeme(Lexeme(value='\\u002e', name='Punctuator'))
+    '.'
     >>> stringify_lexeme(Lexeme(value='var', name='Keyword'))
     'var'
+    >>> stringify_lexeme(Lexeme(value='\\u0069f', name='Keyword'))
+    'if'
     >>> stringify_lexeme(Lexeme(value='false', name='Boolean'))
+    'false'
+    >>> stringify_lexeme(Lexeme(value='\\u0066alse', name='Boolean'))
     'false'
     >>> stringify_lexeme(Lexeme(value='null', name='Null'))
     'null'
@@ -182,6 +189,9 @@ class StringifyLexeme:
     """
 
     def __call__(self, token) -> str:
+        # This is essentially my attempt to hack-in pattern matching in
+        # Python. There's a fixed number of Token#name that we match on, and
+        # decide what string to output.
         try:
             fn = getattr(self, token.name)
         except AttributeError:
@@ -189,13 +199,18 @@ class StringifyLexeme:
         return fn(token.value)
 
     def Boolean(self, text):
-        return text
+        return unescape_unicode(text)
 
     def Identifier(self, text):
         return '<IDENTIFIER>'
 
     def Keyword(self, text):
-        return text
+        # Note: this also handles keywords in identifier position.
+        # e.g.,
+        #   blah.\u0069f = 1;
+        #
+        # See: https://git.io/vQCh6
+        return unescape_unicode(text)
 
     def Null(self, text):
         return 'null'
@@ -204,7 +219,7 @@ class StringifyLexeme:
         return '<NUMBER>'
 
     def Punctuator(self, text):
-        return text
+        return unescape_unicode(text)
 
     def String(self, text):
         return '<STRING>'
@@ -225,6 +240,27 @@ class StringifyLexeme:
             elif text.endswith('${'):
                 return '<TEMPLATE-MIDDLE>'
         raise TypeError('Unhandled template literal: ' + text)
+
+
+def unescape_unicode(text: str) -> str:
+    r"""
+    Unescapes \uhhhh sequences in the string.
+
+    Needed because according to the ECMAScript standard:
+
+        In string literals, regular expression literals, template literals and
+        identifiers, any Unicode code point may also be expressed using
+        Unicode escape sequences that explicitly express a code point's
+        numeric value
+
+    https://www.ecma-international.org/ecma-262/#sec-source-text
+
+    >>> unescape_unicode(r'\u0069\u0066')
+    'if'
+    """
+    return re.sub(r'\\u([0-9a-fA-F]{4})',
+                  lambda m: chr(int(m.group(1), 16)),
+                  text)
 
 
 # The main exports.
