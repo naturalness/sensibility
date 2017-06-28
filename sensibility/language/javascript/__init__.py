@@ -164,6 +164,8 @@ class StringifyLexeme:
     'var'
     >>> stringify_lexeme(Lexeme(value='\\u0069f', name='Keyword'))
     'if'
+    >>> stringify_lexeme(Lexeme(value='yie\\u{006C}d', name='Keyword'))
+    'yield'
     >>> stringify_lexeme(Lexeme(value='false', name='Boolean'))
     'false'
     >>> stringify_lexeme(Lexeme(value='\\u0066alse', name='Boolean'))
@@ -257,9 +259,13 @@ def unescape_unicode(text: str) -> str:
 
     >>> unescape_unicode(r'\u0069\u0066')
     'if'
+    >>> unescape_unicode(r'\u{0066}or')
+    'for'
     """
-    return re.sub(r'\\u([0-9a-fA-F]{4})',
-                  lambda m: chr(int(m.group(1), 16)),
+    # Match:
+    # https://www.ecma-international.org/ecma-262/#prod-UnicodeEscapeSequence
+    return re.sub(r'\\u([0-9a-fA-F]{4}|[{][0-9a-fA-F]{4}[}])',
+                  lambda m: chr(int(m.group(1).strip('{}'), 16)),
                   text)
 
 
