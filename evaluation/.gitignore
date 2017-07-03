@@ -1,8 +1,22 @@
+# Partitions
 test
 validation
 training
+
+# Databases
 *.sqlite3
 *.sqlite3-shm
 *.sqlite3-wal
+
+# Compressed files
 *.squashfs
 *.xz
+*.tar.[bgx]z
+
+# LSTM model files
+*-[fb][01234]*.hdf5
+*-[fb][01234].json
+*-[fb][01234].csv
+
+# n-gram model files
+*.arpa
