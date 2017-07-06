@@ -102,6 +102,30 @@ class Location:
     def __repr__(self) -> str:
         return f"Location(start={self.start!r}, end={self.end!r})"
 
+    @classmethod
+    def from_string(self, text: str, *, line: int, column: int) -> 'Location':
+        r"""
+        Determine the location from the size of the string.
+
+        >>> Location.from_string("from", line=2, column=13)
+        Location(start=Position(line=2, column=13), end=Position(line=2, column=17))
+        >>> code = "'''hello,\nworld\n'''"
+        >>> Location.from_string(code, line=14, column=6)
+        Location(start=Position(line=14, column=6), end=Position(line=16, column=3))
+        """
+        start = Position(line=line, column=column)
+        # How many lines are in the token?
+        # NOTE: this may be different than what the tokenizer thinks is the
+        # last line, due to handling of CR, LF, and CRLF, but I won't worry
+        # too much about it.
+        lines = text.split('\n')
+        end_line = start.line + len(lines) - 1
+        end_col = len(lines[-1])
+        if len(lines) == 1:
+            end_col += start.column
+        end = Position(line=end_line, column=end_col)
+        return Location(start=start, end=end)
+
 
 class Token(Lexeme):
     """
