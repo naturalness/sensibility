@@ -26,6 +26,8 @@ from typing import (
     overload,
 )
 
+import javalang  # type: ignore
+
 from .. import Language, SourceSummary
 from ...lexical_analysis import Lexeme, Location, Position, Token
 from ...vocabulary import Vocabulary
@@ -44,10 +46,15 @@ class Java(Language):
                                            'vocabulary.json')
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
+        tokens = javalang.tokenizer.tokenize('System.out.println("Hello " + "world");')
         raise NotImplementedError
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
-        raise NotImplementedError
+        try:
+            tree = javalang.parse.parse(source)
+            return True
+        except javalang.parser.JavaSyntaxError:
+            return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
         raise NotImplementedError
