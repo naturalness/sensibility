@@ -13,7 +13,7 @@ from location_factory import LocationFactory
 
 test_file_good = r"""package ca.ualberta.cs.emplab.example;
 
-class Example {
+class Example // This will still compile:\u000A{
 }
 """
 
@@ -34,6 +34,38 @@ class Example {
 """
 
 
+def test_sanity_check() -> None:
+    assert java.id == 'java'
+
+
 def test_check_syntax():
     assert java.check_syntax(test_file_good)
     assert not java.check_syntax(test_file_bad)
+
+
+@pytest.mark.skip
+def test_summarize() -> None:
+    summary = java.summarize(test_file_good)
+    assert summary.sloc == 1
+    assert summary.n_tokens == 7
+
+
+@pytest.mark.skip(reason="Column numbers are wonky.")
+def test_vocabularize() -> None:
+    loc = LocationFactory(Position(line=1, column=0))
+    result = list(java.vocabularize_with_locations(test_file_bad))
+    expected = [
+        (loc.across(len("package")),            'package'),
+        (loc.space().across(len('ca')),         '<IDENTIFIER>'),
+        (loc.space().across(1),                 '.'),
+        (loc.space().across(len('ualberta')),    '<IDENTIFIER>'),
+        (loc.space().across(1),                 '.'),
+        (loc.space().across(len('cs')),         '<IDENTIFIER>'),
+        (loc.space().across(1),                 '.'),
+        (loc.space().across(len('emplab')),     '<IDENTIFIER>'),
+        (loc.space().across(1),                 '.'),
+        (loc.space().across(len('example')),    '<IDENTIFIER>'),
+        (loc.space().across(1),                 ';'),
+        (loc.next_line().next_line().across(5), 'class'),
+    ]
+    assert result[:len(expected)] == expected

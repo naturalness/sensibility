@@ -22,7 +22,7 @@ from io import BytesIO
 from keyword import iskeyword
 from pathlib import Path
 from typing import (
-    Any, AnyStr, Callable, IO, Iterable, Optional, Sequence, Tuple, Union,
+    Any, AnyStr, Callable, IO, Iterable, Optional, Tuple, Union,
     overload,
 )
 
@@ -45,22 +45,88 @@ class Java(Language):
     vocabulary = Vocabulary.from_json_file(Path(__file__).parent /
                                            'vocabulary.json')
 
-    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
-        tokens = javalang.tokenizer.tokenize('System.out.println("Hello " + "world");')
-        raise NotImplementedError
+    def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
+        tokens = javalang.tokenizer.tokenize(source)
+        for token in tokens:
+            loc = Location.from_string(token.value,
+                                       line=token.position[0],
+                                       column=token.position[1])
+            yield Token(name=type(token).__name__,
+                        value=token.value,
+                        start=loc.start, end=loc.end)
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
         try:
-            tree = javalang.parse.parse(source)
+            javalang.parse.parse(source)
             return True
         except javalang.parser.JavaSyntaxError:
             return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
-        raise NotImplementedError
+        raise NotImplemented
 
     def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
-        raise NotImplementedError
+        for token in source:
+            yield token.location, java2sensibility(token)
+
+
+RESERVED_WORDS = {
+   'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch',
+   'char', 'class', 'const', 'continue', 'default', 'do', 'double',
+   'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto',
+   'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long',
+   'native', 'new', 'package', 'private', 'protected', 'public', 'return',
+   'short', 'static', 'strictfp', 'super', 'switch', 'synchronized',
+   'this', 'throw', 'throws', 'transient', 'try', 'void', 'volatile',
+   'while', 'abstract', 'default', 'final', 'native', 'private',
+   'protected', 'public', 'static', 'strictfp', 'synchronized',
+   'transient', 'volatile', 'boolean', 'byte', 'char', 'double', 'float',
+   'int', 'long', 'short', 'true', 'false', 'null'
+}
+SYMBOLS = {
+    '>>>=', '>>=', '<<=',  '%=', '^=', '|=', '&=', '/=',
+    '*=', '-=', '+=', '<<', '--', '++', '||', '&&', '!=',
+    '>=', '<=', '==', '%', '^', '|', '&', '/', '*', '-',
+    '+', ':', '?', '~', '!', '<', '>', '=', '...', '->', '::',
+    '(', ')', '{', '}', '[', ']', ';', ',', '.'
+}
+CLOSED_CLASSES = {
+    'Keyword', 'Modifier', 'BasicType', 'Boolean', 'Null',
+    'Separator', 'Operator', 'Annotation', 'EndOfInput'
+}
+
+INTEGER_LITERALS = {
+    'Integer',
+    'DecimalInteger', 'OctalInteger', 'BinaryInteger', 'HexInteger',
+}
+FLOATING_POINT_LITERALS = {
+    'FloatingPoint',
+    'DecimalFloatingPoint', 'HexFloatingPoint',
+}
+STRING_LITERALS = {
+    'Character', 'String',
+}
+OPEN_CLASSES = (
+    INTEGER_LITERALS | FLOATING_POINT_LITERALS | STRING_LITERALS |
+   {'Identifier'}
+)
+
+
+def java2sensibility(lex: Lexeme) -> str:
+    if lex.name == 'EndOfInput':
+        return '</s>'
+    if lex.name in CLOSED_CLASSES:
+        assert lex.value in RESERVED_WORDS | SYMBOLS
+        return lex.value
+    else:
+        assert lex.name in OPEN_CLASSES
+        if lex.name in INTEGER_LITERALS | FLOATING_POINT_LITERALS:
+            return '<NUMBER>'
+        elif lex.name in STRING_LITERALS:
+            return '<STRING>'
+        else:
+            assert lex.name == 'Identifier'
+            return '<IDENTIFIER>'
 
 
 java: Language = Java()
