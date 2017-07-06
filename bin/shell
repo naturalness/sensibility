@@ -31,10 +31,13 @@ fi
 # Set the language.
 export SENSIBILITY_LANGUAGE
 
+here="$(dirname "$0")"
+langid="$("$here"/language-id)"
+
 # Augment path
-PATH="$PATH:$(realpath "$(dirname "$0")")"
+PATH="$PATH:$(realpath "$here")"
 export PATH
 
-echo "Using $(tput bold)${SENSIBILITY_LANGUAGE}$(tput sgr0)"
+echo "Using $(tput bold)${langid}$(tput sgr0)"
 echo "Type \`exit\` to return to your normal shell."
 exec "$SHELL" -i
