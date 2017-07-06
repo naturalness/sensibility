@@ -108,10 +108,10 @@ class Location:
         Determine the location from the size of the string.
 
         >>> Location.from_string("from", line=2, column=13)
-        Location(start=Position(line=2, column=13), end=Position(line=2, column=17))
+        Location(start=Position(line=2, column=13), end=Position(line=2, column=16))
         >>> code = "'''hello,\nworld\n'''"
         >>> Location.from_string(code, line=14, column=6)
-        Location(start=Position(line=14, column=6), end=Position(line=16, column=3))
+        Location(start=Position(line=14, column=6), end=Position(line=16, column=2))
         """
         start = Position(line=line, column=column)
         # How many lines are in the token?
@@ -120,7 +120,7 @@ class Location:
         # too much about it.
         lines = text.split('\n')
         end_line = start.line + len(lines) - 1
-        end_col = len(lines[-1])
+        end_col = len(lines[-1]) - 1
         if len(lines) == 1:
             end_col += start.column
         end = Position(line=end_line, column=end_col)
