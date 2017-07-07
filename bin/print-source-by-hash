@@ -17,7 +17,7 @@
 
 
 """
-Prints hashes of files that have been downloaded, but have not been parsed.
+Prints the source code of a file, given its hash.
 
 Usage:
 
