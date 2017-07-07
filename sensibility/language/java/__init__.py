@@ -63,7 +63,9 @@ class Java(Language):
             return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
-        raise NotImplemented
+        toks = [tok for tok in source if tok.name != 'EndOfInput']
+        slines = set(line for tok in toks for line in tok.lines)
+        return SourceSummary(n_tokens=len(toks), sloc=len(slines))
 
     def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
         for token in source:
@@ -71,17 +73,17 @@ class Java(Language):
 
 
 RESERVED_WORDS = {
-   'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch',
-   'char', 'class', 'const', 'continue', 'default', 'do', 'double',
-   'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto',
-   'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long',
-   'native', 'new', 'package', 'private', 'protected', 'public', 'return',
-   'short', 'static', 'strictfp', 'super', 'switch', 'synchronized',
-   'this', 'throw', 'throws', 'transient', 'try', 'void', 'volatile',
-   'while', 'abstract', 'default', 'final', 'native', 'private',
-   'protected', 'public', 'static', 'strictfp', 'synchronized',
-   'transient', 'volatile', 'boolean', 'byte', 'char', 'double', 'float',
-   'int', 'long', 'short', 'true', 'false', 'null'
+    'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch',
+    'char', 'class', 'const', 'continue', 'default', 'do', 'double',
+    'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto',
+    'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long',
+    'native', 'new', 'package', 'private', 'protected', 'public', 'return',
+    'short', 'static', 'strictfp', 'super', 'switch', 'synchronized',
+    'this', 'throw', 'throws', 'transient', 'try', 'void', 'volatile',
+    'while', 'abstract', 'default', 'final', 'native', 'private',
+    'protected', 'public', 'static', 'strictfp', 'synchronized',
+    'transient', 'volatile', 'boolean', 'byte', 'char', 'double', 'float',
+    'int', 'long', 'short', 'true', 'false', 'null'
 }
 SYMBOLS = {
     '>>>=', '>>=', '<<=',  '%=', '^=', '|=', '&=', '/=',
@@ -108,11 +110,16 @@ STRING_LITERALS = {
 }
 OPEN_CLASSES = (
     INTEGER_LITERALS | FLOATING_POINT_LITERALS | STRING_LITERALS |
-   {'Identifier'}
+    {'Identifier'}
 )
 
 
 def java2sensibility(lex: Lexeme) -> str:
+    # > Except for comments (§3.7), identifiers, and the contents of character
+    # > and string literals (§3.10.4, §3.10.5), all input elements (§3.5) in a
+    # > program are formed only from ASCII characters (or Unicode escapes (§3.3)
+    # > which result in ASCII characters).
+    # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html
     if lex.name == 'EndOfInput':
         return '</s>'
     if lex.name in CLOSED_CLASSES:

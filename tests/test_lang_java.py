@@ -13,7 +13,7 @@ from location_factory import LocationFactory
 
 test_file_good = r"""package ca.ualberta.cs.emplab.example;
 
-class Example // This will still compile:\u000A{
+cl\u0061ss Example // This will still compile:\u000A{
 }
 """
 
@@ -43,11 +43,13 @@ def test_check_syntax():
     assert not java.check_syntax(test_file_bad)
 
 
-@pytest.mark.skip
 def test_summarize() -> None:
     summary = java.summarize(test_file_good)
-    assert summary.sloc == 1
-    assert summary.n_tokens == 7
+    assert summary.n_tokens == 15
+    # Return the PHYSICAL number of lines of code.
+    # The tokenizer may split more logical lines on \u000a escapes, but those
+    # are dumb.
+    assert summary.sloc == 4
 
 
 @pytest.mark.skip(reason="Column numbers are wonky.")
