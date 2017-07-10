@@ -232,13 +232,11 @@ class Corpus:
     def get_info(self, filehash: str) -> FileInfo:
         # Do an intense query, combining multiple tables.
         query = select([source_summary, repository_source, repository]).select_from(
-            source_file.join(source_summary)
-            .join(repository_source)
+            source_file.join(repository_source)
             .join(repository)
-        ).where(source_summary.c.hash == filehash)
+            .join(source_summary, isouter=True)
+        ).where(source_file.c.hash == filehash)
         results = self.conn.execute(query).fetchall()
-
-        # TODO: what if it's not found?
 
         mock_file = MockSourceFile(filehash)
         repos = {
@@ -258,6 +256,7 @@ class Corpus:
             ) for row in results
         )
 
+        # TODO: what if it's not found?
         row, *_ = results
         summary = SourceSummary(sloc=row[source_summary.c.sloc],
                                 n_tokens=row[source_summary.c.n_tokens])
