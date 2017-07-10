@@ -33,6 +33,20 @@ class Example {
 }
 """
 
+# c269bfeb157c6dce747f1c786e6136de31cc6700eb73e38e81eef47e2dfc00a4
+test_file_really_bad = r"""class RenameTest {
+    static void fo<caret>o1(Number n) {
+        System.out.println("1");
+    }
+    static void foo2(Long i) {
+        System.out.println("2");
+    }
+    public static void main(String[] args) {
+        long n = 0;
+        foo1(n);
+    }
+}"""
+
 
 def test_sanity_check() -> None:
     assert java.id == 'java'
@@ -42,6 +56,9 @@ def test_check_syntax():
     assert java.check_syntax(test_file_good)
     assert not java.check_syntax(test_file_bad)
 
+    # Invalid token
+    assert java.check_syntax('#') is False
+    assert java.check_syntax(test_file_really_bad) is False
 
 def test_summarize() -> None:
     summary = java.summarize(test_file_good)

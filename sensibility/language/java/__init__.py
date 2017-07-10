@@ -27,6 +27,8 @@ from typing import (
 )
 
 import javalang  # type: ignore
+from javalang.parser import JavaSyntaxError  # type: ignore
+from javalang.tokenizer import LexerError  # type: ignore
 
 from .. import Language, SourceSummary
 from ...lexical_analysis import Lexeme, Location, Position, Token
@@ -59,7 +61,7 @@ class Java(Language):
         try:
             javalang.parse.parse(source)
             return True
-        except javalang.parser.JavaSyntaxError:
+        except (JavaSyntaxError, LexerError):
             return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
