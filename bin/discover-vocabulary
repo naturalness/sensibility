@@ -23,7 +23,8 @@ Usage:
     discover-vocabulary <filehashes > vocabulary.py
 """
 
-from pprint import pprint
+import sys
+import json
 
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
@@ -40,5 +41,4 @@ if __name__ == '__main__':
             unique_entries.add(vocab_entry)
 
     vocab = list(sorted(unique_entries))
-    print('ENTRIES =', end=' ')
-    pprint(vocab)
+    json.dump(vocab, sys.stdout)
