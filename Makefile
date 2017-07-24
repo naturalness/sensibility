@@ -50,3 +50,9 @@ $(VOCABULARY):
 vocabulary: $(VOCABULARY)
 .PHONY: vocabulary
 endif
+
+subset.squashfs: subset
+	mksquashfs $< $@ -comp xz
+
+subset:
+	bin/create-training-sets $(TRAIN_SET_SIZE)

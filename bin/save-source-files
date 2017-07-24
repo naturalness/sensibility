@@ -35,7 +35,9 @@ cursor = conn.execute('''
     SELECT hash, source FROM source_file NATURAL JOIN query_hash
 ''')
 
-extension = next(iter(language.extensions))
+# Get any file extension, minus nay preceeding dots.
+extension = next(iter(language.extensions)).lstrip('.')
+
 for filehash, source in cursor:
     with open(output_dir / f'{filehash}.{extension}', 'wb') as output_file:
         output_file.write(source)
