@@ -15,19 +15,13 @@
 # Augment path wih applications in ./bin/
 PATH := $(PWD)/bin:$(PATH)
 
-# Putting the n in n-gram:
-ORDER = 4
+# Use parameters from Bhatia and Singh 2016
+CONTEXT = 9  # Window size of 10
+HIDDEN_LAYERS = 128
 
-HIDDEN_LAYERS = 300,300
-CONTEXT = 20
-
-# What proportion of files to train on.
-PROPORTION = $(shell echo "scale=5; 1/16" |bc )
-
-# KenLM stuff. Assumes KenLM executables are installed in ~/.kenlm/bin
-KENLMBIN = $(HOME)/.kenlm/bin
-ESTIMATENGRAM = $(KENLMBIN)/lmplz
-BUILDBINARY = $(KENLMBIN)/build_binary
+# How many files to train on
+TRAIN_FILES = 11000
+VALIDATION_FILES = 5500
 
 # Always use the GNU versions of shuf(1) and split(1)
 # shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
@@ -40,11 +34,6 @@ SHUF = $(shell which shuf || which gshuf)
 
 all: models
 
-parse: unparsed.list
-	parallel --pipepart --round-robin parse-and-insert-all :::: $<
-
-lm: corpus.binary
-
 # This will include a LOT of rules to make models, mutations, and results.
 include extra-rules.mk
 # So many in fact, I've written a script to generate all the rules.
@@ -53,30 +42,11 @@ include extra-rules.mk
 
 ################################################################################
 
-# Create a binary n-gram model with modkn backoffs, for querying.
-%.binary: %.arpa
-	$(BUILDBINARY) $< $@
-
-# Estimate an n-gram langauge model from sentences
-%.arpa: %.sentences
-	$(ESTIMATENGRAM) -o $(ORDER) <$< >$@
-
-# Create a list of sentences from the corpus.
-corpus.sentences: corpus.list
-	parallel --pipepart --line-buffer --round-robin vocabularize :::: $< > $@
-
-# Create a list of unparsed sources.
-unparsed.list:
-	list-unparsed-sources > $@
-
 # Create the vocabulary.
-vocabulary.py:
+ifdef SENSIBILITY_LANGUAGE
+VOCABULARY := sensibility/language/$(shell language-id)/vocabulary.json
+$(VOCABULARY):
 	list-elligible-sources | discover-vocabulary > $@
-
-# Create a list of file hashes.
-corpus.list:
-	list-elligible-sources | $(SHUF) | head -n10000 > $@
-
-
-.PHONY: all parse lm
-.INTERMEDIATE: unparsed
+vocabulary: $(VOCABULARY)
+.PHONY: vocabulary
+endif
