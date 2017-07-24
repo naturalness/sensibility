@@ -20,6 +20,7 @@ Miscellaneous filehashes
 """
 
 import sys
+import sqlite3
 from typing import Iterator
 
 
@@ -33,3 +34,20 @@ def filehashes(file=sys.stdin) -> Iterator[str]:
         filehash = line.strip()
         if filehash:
             yield filehash
+
+
+def create_query_table(conn: sqlite3.Connection, hashes: Iterator[str]=None) -> None:
+    """
+    Create a temporary table called `query_hash` that constists of a list of
+    file hashes. One can then use a NATURAL JOIN to fetch rows matching the
+    file hashes provided.
+    """
+
+    conn.execute('''
+        CREATE TEMPORARY TABLE query_hash(hash PRIMARY KEY)
+    ''')
+    if hashes is None:
+        hashes = filehashes()
+    conn.executemany('''
+        INSERT INTO query_hash(hash) VALUES (?)
+    ''', ((fh,) for fh in hashes))

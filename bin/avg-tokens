@@ -25,17 +25,13 @@ Usage:
 import sys
 from statistics import mean, median_grouped, mode
 
-from sensibility.miner.util import filehashes
+from sensibility.miner.util import create_query_table
 from sensibility.miner.connection import get_sqlite3_connection
 
 
+# Ingest all the hashes.
 conn = get_sqlite3_connection()
-conn.execute('''
-    CREATE TEMPORARY TABLE query_hash(hash PRIMARY KEY)
-''')
-conn.executemany('''
-    INSERT INTO query_hash(hash) VALUES (?)
-''', ((fh,) for fh in filehashes()))
+create_query_table(conn)
 
 
 def n_tokens():
