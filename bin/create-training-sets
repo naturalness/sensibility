@@ -1,0 +1,19 @@
+#!/bin/bash
+
+parent="$(dirname "$0")"
+repository_root="$(realpath "$parent/..")"
+
+for language in python java javascript; do
+    for part in {0..4}; do
+        dir="$language/partitions/$part/training"
+        hashes="$repository_root/evaluation/$dir"
+        if [ ! -r "$hashes" ] ; then
+            echo "Could not find hashes: $hashes" 2>&1
+            exit 2
+        fi
+        output_dir="$repository_root/subset/$dir"
+        # Run the actual program with a valid environment
+        env PATH="$PATH:$parent" SENSIBILITY_LANGAGE="$language"\
+            save-source-files "$output_dir" <"$hashes"
+    done
+done
