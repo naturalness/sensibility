@@ -22,17 +22,17 @@ from typing import List, Set, Optional, cast
 from pathlib import Path
 
 from sensibility.language import language
+from sensibility.miner.util import filehashes
 from sensibility.model.lstm import ModelDescription, layers
 from sensibility._paths import (
     EVALUATION_DIR, get_validation_set_path, get_training_set_path
 )
 
 
-# Based on emprical findings: this one gets to min loss pretty quickly,
-# and is usable.
-HIDDEN_LAYERS = (300, 300)
-# Based on White et al. 2015
-CONTEXT_LENGTH = 20
+# Based on findings by Bhatia and Singh 2016
+HIDDEN_LAYERS = (128,)
+CONTEXT_LENGTH = 9
+
 # This is arbitrary, but it should be fairly small.
 BATCH_SIZE = 64
 
@@ -87,6 +87,10 @@ parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
                     help=f"default: {HIDDEN_LAYERS}")
 parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help=f"default: {CONTEXT_LENGTH}")
+# TODO: Add default and help?
+parser.add_argument('--train-set-size', type=int, required=True)
+# TODO: Add default and help?
+parser.add_argument('--validation-set-size', type=int, required=True)
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
 parser.add_argument('--base-dir', type=Path, default=EVALUATION_DIR,
@@ -97,18 +101,13 @@ parser.add_argument('--output', '-o', type=Path,
                     help=f"Where to output.  Infers the rest of the arguments from this one")
 
 
-def slurp(filename: Path, trim :int=None) -> List[str]:
-    with open(filename, 'r') as f:
-        def create_set():
-            for line in f:
-                line = line.strip()
-                if line != '':
-                    yield line
-        return list(create_set())
+def slurp(filename: Path) -> List[str]:
+    with open(filename, 'r') as hashes_file:
+        return list(filehashes(hashes_file))
 
 
-def subset(xs: List[str], proportion: float) -> Set[str]:
-    return set(xs[:int(len(xs) * proportion)])
+def subset(xs: List[str], max_size: int) -> Set[str]:
+    return set(xs[:max_size])
 
 
 # TODO: Support multiple models?
@@ -119,18 +118,16 @@ if __name__ == '__main__':
     if args.partition is None:
         parser.error('Require --partitions or --output')
 
-    logging.info('Proportion: %g', args.proportion)
     partition = cast(int, args.partition)
 
     training_set = slurp(get_training_set_path(partition))
     validation_set = slurp(get_validation_set_path(partition))
 
-
     # Determine language first!
     model = ModelDescription(
         partition=partition,
-        training_set=subset(training_set, args.proportion),
-        validation_set=subset(validation_set, args.proportion),
+        training_set=subset(training_set, args.train_set_size),
+        validation_set=subset(validation_set, args.validation_set_size),
         backwards=args.backwards,
         base_dir=args.base_dir / language.id / 'models',
         batch_size=args.batch_size,
