@@ -135,7 +135,7 @@ class Sensibility:
         """
 
         # Get file vector for the incorrect file.
-        with cast(TextIO, open(filename, 'rt', encoding='UTF-8')) as script:
+        with open(filename, 'rt', encoding='UTF-8') as script:
             tokens = tokenize_file(script)
         file_vector = serialize_tokens(tokens)
         assert len(file_vector) > 0
@@ -214,7 +214,7 @@ class Sensibility:
         Check if the syntax is okay.
         """
         with open(filename, 'rt') as source_file:
-            return check_syntax_file(cast(TextIO, source_file))
+            return check_syntax_file(source_file)
 
 
 # TODO: Move this to a different file, probably

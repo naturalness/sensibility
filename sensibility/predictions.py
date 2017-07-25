@@ -91,7 +91,7 @@ class Predictions:
 
         # Get file vector for this (incorrect) file.
         with open(str(filename), 'rt', encoding='UTF-8') as script:
-            tokens = tokenize_file(cast(TextIO, script))
+            tokens = tokenize_file(script)
         file_vector = serialize_tokens(tokens)
         assert len(file_vector) == len(tokens)
 
