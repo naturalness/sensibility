@@ -10,3 +10,4 @@ redis==2.10.5
 requests==2.13.0
 tqdm
 jenkspy==0.1.3
+python-Levenshtein==0.12.0

@@ -48,6 +48,7 @@ setup(
         'more-itertools>=2.3',
         'numpy>=1.11.0',
         'python-dateutil>=2.6.0',
+        'python-Levenshtein>=0.12.0',
         'pyzmq>=16.0.2, <17.0.0',
         'redis>=2.10.5',
         'requests==2.13.0',
