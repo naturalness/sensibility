@@ -24,7 +24,9 @@ import sqlite3
 import pytest
 
 from sensibility.evaluation.mistakes import Mistakes
-from sensibility.evaluation.distance import tokenwise_distance, determine_edit
+from sensibility.evaluation.distance import (
+    tokenwise_distance, determine_edit, determine_fix_event
+)
 from sensibility.language import language
 from sensibility.vocabulary import Vind
 from sensibility import Insertion, Substitution, Deletion
@@ -80,6 +82,37 @@ def test_get_edit() -> None:
         assert sub.index == 0
     else:
         pytest.fail(f'Wrong edit: {sub!r}')
+
+
+def test_edit_line() -> None:
+    head = [
+        'class Hello {',
+        'public static void main(String args[]) {'
+    ]
+    tail = [
+        'System.error.println("Not enough args!");',
+        'System.exit(1);',
+        '}',
+        'System.out.println("Hello, World!");',
+        '}',
+        '}'
+    ]
+
+    # Glue together a source file from head, tail, and the provided line.
+    def to_source(line: str) -> bytes:
+        return '\n'.join(head + [line] + tail).encode('UTF-8')
+
+    before = to_source('if (args.length < 3)')
+    after = to_source('if (args.length < 3) {')
+
+    # The line the error happens on the line AFTER head (one-indexed).
+    error_line = len(head) + 1
+
+    assert not language.check_syntax(before)
+    assert language.check_syntax(after)
+    fix_event = determine_fix_event(before, after)
+    assert fix_event.edit == Insertion(22, index_of('{'))
+    assert fix_event.line_no == error_line
 
 
 def index_of(token: str) -> Vind:
