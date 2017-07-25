@@ -19,8 +19,7 @@
 Determines the Levenshtein distance between two source files.
 """
 
-import sqlite3
-from typing import Iterable, Iterator, NewType, Optional, Tuple, cast
+from typing import Iterable, Optional, cast
 
 from Levenshtein import distance, editops  # type: ignore
 
@@ -115,21 +114,3 @@ def lists(it):
         a_list.append(a)
         b_list.append(b)
     return a_list, b_list
-
-
-# TODO: move this to bin/<something or other>
-if __name__ == '__main__':
-    from javalang.tokenizer import LexerError  # type: ignore
-    from tqdm import tqdm  # type: ignore
-    from .mistakes import Mistakes, Mistake
-
-    conn = sqlite3.connect('java-mistakes.sqlite3')
-    # HACK! Make writes super speedy by disregarding durability.
-    conn.execute('PRAGMA synchronous = OFF')
-    mistakes = Mistakes(conn)
-    for mistake in tqdm(mistakes):
-        try:
-            dist = tokenwise_distance(mistake.before, mistake.after)
-        except LexerError:
-            continue
-        mistakes.insert_distance(mistake, dist)
