@@ -56,22 +56,17 @@ def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
 
 
 class FixEvent:
-    """
-    A fix event is a collection of the edit that converts a file from good
-    syntax to syntax error (the edit); from bad syntax to good syntax (the
-    fix); and the line number of the token affected.
-    """
-    def __init__(self, edit: Edit, line_no: int) -> None:
-        self.edit = edit
+    def __init__(self, fix: Edit, line_no: int) -> None:
+        self.fix = fix
         self.line_no = line_no
 
     @property
-    def fix(self):
-        return -self.edit
+    def mistake(self):
+        return -self.fix
 
 
 def determine_edit(file_a: bytes, file_b: bytes) -> Edit:
-    return determine_fix_event(file_a, file_b).edit
+    return determine_fix_event(file_a, file_b).fix
 
 
 def determine_fix_event(file_a: bytes, file_b: bytes) -> FixEvent:

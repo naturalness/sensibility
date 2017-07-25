@@ -111,7 +111,7 @@ def test_edit_line() -> None:
     assert not language.check_syntax(before)
     assert language.check_syntax(after)
     fix_event = determine_fix_event(before, after)
-    assert fix_event.edit == Insertion(22, index_of('{'))
+    assert fix_event.fix == Insertion(22, index_of('{'))
     assert fix_event.line_no == error_line
 
 

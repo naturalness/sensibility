@@ -18,8 +18,9 @@
 import sqlite3
 from typing import Iterable, Iterator, NewType, Optional, Tuple
 
+from sensibility import Edit
 from sensibility.vocabulary import Vind
-from sensibility import Edit, Insertion, Deletion, Substitution
+from sensibility.evaluation.distance import FixEvent
 
 
 # Different types of IDs that are both just ints, but it's very important
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS distance(
 );
 
 CREATE TABLE IF NOT EXISTS edit(
+    -- Link back to mistake table (no foreign keys :/)
     source_file_id  INT,
     before_id       INT,
 
@@ -45,14 +47,17 @@ CREATE TABLE IF NOT EXISTS edit(
     line_no         INT NOT NULL,
 
     -- How to go from the good file to the bad file.
-    edit            TEXT NOT NULL,
-    position        INT NOT NULL,
-    new_token       TEXT,
+    mistake        TEXT NOT NULL,
+    mistake_index  INT NOT NULL,
 
     -- How to go from the bad file to the good file.
     fix             TEXT NOT NULL,
-    position        TEXT NOT NULL,
-    new_tok         TEXT,
+    fix_index       TEXT NOT NULL,
+
+    -- The token that used to be there (can be null).
+    old_token       TEXT,
+    -- The token that is there now (can be null).
+    new_token       TEXT,
 
     PRIMARY KEY (source_file_id, before_id)
 );
@@ -104,11 +109,17 @@ class Mistakes(Iterable[Mistake]):
                 VALUES (?, ?, ?)
             ''', (m.sfid, m.meid, dist))
 
-    def insert_edit(self, m: Mistake, edit: Edit) -> None:
+    def insert_fix_event(self, m: Mistake, event: FixEvent) -> None:
+        mistake, mistake_index, new, old = event.mistake.serialize()
+        fix, fix_index, f_new, f_old = event.fix.serialize()
+        assert new == f_old and old == f_new
         with self.conn:
             self.conn.execute('''
                 INSERT INTO edit(
-                    source_file_id, before_id, edit, position, new_token
-                )
-                VALUES (?, ?, ?, ?, ?)
-            ''', (m.sfid, m.meid, *edit.serialize()))
+                    source_file_id, before_id, line_no,
+                    mistake, mistake_index, fix, fix_index,
+                    new_token, old_token
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (m.sfid, m.meid, event.line_no,
+                  mistake, mistake_index, fix, fix_index,
+                  new, old,))
