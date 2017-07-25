@@ -23,6 +23,7 @@ import random
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Hashable, Optional, Tuple, Type, TypeVar
 
+# Unhardcode the vocabulary
 from .vocabulary import vocabulary, Vind
 from .source_vector import SourceVector
 
@@ -164,6 +165,12 @@ class Insertion(Edit):
         A token is chosen randomly in the file. A random token from the
         vocabulary is inserted before this token (the end of the file is also
         considered a “token” for the purposes of the insertion operation).
+
+    Index refers to the index in the token stream to insert BEFORE. Hence it
+    has a range of [0, len(file)] inclusive, where inserting at index 0 means
+    inserting BEFORE the first token, and inserting at index len(file) means
+    inserting after the last token in the file (pedantically, it means
+    inserting before the imaginary end-of-file token).
     """
 
     __slots__ = 'index', 'token'

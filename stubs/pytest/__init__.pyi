@@ -1,4 +1,5 @@
 from typing import Callable, Type
+from mypy_extensions import NoReturn
 
 class raises:
     def __init__(self, ex: Type[BaseException]) -> None: ...
@@ -6,6 +7,7 @@ class raises:
     def __exit__(self, exc_type: type, exc_info: BaseException, traceback) -> None: ...
 
 def fixture(test: Callable) -> Callable: ...
+def fail(reason: str) -> NoReturn: ...
 
 import pytest.mark as mark
 import pytest.config as config

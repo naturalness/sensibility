@@ -27,6 +27,7 @@ from sensibility.evaluation.mistakes import Mistakes
 from sensibility.evaluation.distance import tokenwise_distance, determine_edit
 from sensibility.language import language
 from sensibility.vocabulary import Vind
+from sensibility import Insertion, Substitution, Deletion
 
 
 def setup_module():
@@ -59,19 +60,26 @@ def test_get_source() -> None:
 
 def test_get_edit() -> None:
     ins = determine_edit(b'class Hello {',    b'class Hello {}')
-    # assert ins.type is Insertion
-    assert ins.new_token == index_of('}')
-    assert ins.position == 3
+    if isinstance(ins, Insertion):
+        assert ins.token == index_of('}')
+        assert ins.index == 3
+    else:
+        pytest.fail(f'Wrong edit: {ins!r}')
 
     delt = determine_edit(b'class Hello {{}',   b'class Hello {}')
-    # assert delt.type is Deletion
-    assert delt.new_token is None
-    assert delt.position in {2, 3}  # Can be either curly brace
+    if isinstance(delt, Deletion):
+        assert delt.original_token == index_of('{')
+        assert delt.index in {2, 3}  # Can be either curly brace
+    else:
+        pytest.fail(f'Wrong edit: {delt!r}')
 
     sub = determine_edit(b'goto label;', b'int label;')
-    # assert sub.type is Substitution
-    assert sub.position == 0
-    assert sub.new_token == index_of('int')
+    if isinstance(sub, Substitution):
+        assert sub.token == index_of('int')
+        assert sub.original_token == index_of('goto')
+        assert sub.index == 0
+    else:
+        pytest.fail(f'Wrong edit: {sub!r}')
 
 
 def index_of(token: str) -> Vind:

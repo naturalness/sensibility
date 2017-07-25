@@ -19,6 +19,7 @@ import sqlite3
 from typing import Iterable, Iterator, NewType, Optional, Tuple
 
 from sensibility.vocabulary import Vind
+from sensibility import Edit, Insertion, Deletion, Substitution
 
 
 # Different types of IDs that are both just ints, but it's very important
@@ -56,35 +57,6 @@ CREATE TABLE IF NOT EXISTS edit(
     PRIMARY KEY (source_file_id, before_id)
 );
 """
-
-
-class EditType:
-    """
-    Symbolic constants for Insertion, Deletion, and Substitution.
-    """
-    id: str
-
-    def __repr__(self) -> str:
-        return type(self).__name__
-
-
-Insertion = type('Insertion', (EditType,), {'id': 'i'})()
-Deletion = type('Deletion', (EditType,), {'id': 'x'})()
-Substitution = type('Substitution', (EditType,), {'id': 's'})()
-
-
-# TODO: use Edit classes from sensibility?
-class Edit:
-    """
-    Represents an edit.
-    """
-    __slots__ = 'type', 'position', 'new_token'
-
-    def __init__(self, type_name: EditType, position: int,
-                 new_token: Optional[Vind]) -> None:
-        self.type = type_name
-        self.position = position
-        self.new_token = new_token
 
 
 class Mistake:
@@ -139,4 +111,4 @@ class Mistakes(Iterable[Mistake]):
                     source_file_id, before_id, edit, position, new_token
                 )
                 VALUES (?, ?, ?, ?, ?)
-            ''', (m.sfid, m.meid, edit.type.id, edit.position, edit.new_token))
+            ''', (m.sfid, m.meid, *edit.serialize()))
