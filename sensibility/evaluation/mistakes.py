@@ -119,7 +119,7 @@ class Mistakes(Iterable[Mistake]):
                     source_file_id, before_id, line_no,
                     mistake, mistake_index, fix, fix_index,
                     new_token, old_token
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (m.sfid, m.meid, event.line_no,
                   mistake, mistake_index, fix, fix_index,
                   new, old,))
