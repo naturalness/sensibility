@@ -182,7 +182,9 @@ class Insertion(Edit):
         self.index = index
 
     def __repr__(self) -> str:
-        text_token = vocabulary.to_text(self.token)
+        # XXX: Should use language.vocabulary everywhere else too!
+        from sensibility.language import language
+        text_token = language.vocabulary.to_text(self.token)
         return f'Insertion({self.index}, {self.token} or {text_token!r})'
 
     def additive_inverse(self) -> Edit:

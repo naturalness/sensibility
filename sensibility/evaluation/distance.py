@@ -41,17 +41,6 @@ from .mistakes import Edit
 PUA_B_START = 0x100000
 
 
-def to_edit_code(name: str) -> str:
-    """
-    Convert a string returned from Levenshtein.editops into a constant.
-    """
-    return {
-        'replace': 's',
-        'insert': 'i',
-        'delete': 'x'
-    }[name]
-
-
 def tokens2seq(tokens: Iterable[Lexeme],
                to_entry=java2sensibility) -> str:
     """
@@ -76,7 +65,6 @@ def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
     """
     seq_a = tokens2seq(java.tokenize(file_a))
     seq_b = tokens2seq(java.tokenize(file_b))
-    # TODO: use editops as a post-processing step!
     return distance(seq_a, seq_b)
 
 
@@ -134,12 +122,13 @@ def determine_fix_event(file_a: bytes, file_b: bytes) -> FixEvent:
 def from_pua(char: str) -> Vind:
     """
     Undoes the injective mapping between vocabulary IDs and Private Use Area
-    code poiunts.
+    code points.
     """
     assert ord(char) >= 0x100000
     return cast(Vind, ord(char) & 0xFFFF)
 
 
+# TODO: move this to bin/<something or other>
 if __name__ == '__main__':
     conn = sqlite3.connect('java-mistakes.sqlite3')
     # HACK! Make writes super speedy by disregarding durability.
