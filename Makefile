@@ -20,8 +20,9 @@ CONTEXT = 9  # Window size of 10
 HIDDEN_LAYERS = 128
 
 # How many files to train on
-TRAIN_SET_SIZE = 11000  # files
-VALIDATION_SET_SIZE = 5500  # files
+TRAIN_SET_SIZE := 11000  # files
+VALIDATION_SET_SIZE := 5500  # files
+TEST_SET_SIZE := $(TRAIN_SET_SIZE)
 
 # Always use the GNU versions of shuf(1) and split(1)
 # shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
