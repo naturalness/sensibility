@@ -110,9 +110,8 @@ class Mistakes(Iterable[Mistake]):
             ''', (m.sfid, m.meid, dist))
 
     def insert_fix_event(self, m: Mistake, event: FixEvent) -> None:
-        mistake, mistake_index, new, old = event.mistake.serialize()
-        fix, fix_index, f_new, f_old = event.fix.serialize()
-        assert new == f_old and old == f_new
+        mistake, mistake_index, _, _ = event.mistake.serialize()
+        fix, fix_index, _, _ = event.fix.serialize()
         with self.conn:
             self.conn.execute('''
                 INSERT INTO edit(
@@ -122,4 +121,4 @@ class Mistakes(Iterable[Mistake]):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (m.sfid, m.meid, event.line_no,
                   mistake, mistake_index, fix, fix_index,
-                  new, old,))
+                  event.new_token, event.old_token,))

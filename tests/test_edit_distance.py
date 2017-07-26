@@ -108,11 +108,15 @@ def test_edit_line() -> None:
     # The line the error happens on the line AFTER head (one-indexed).
     error_line = len(head) + 1
 
+    # Sanity check: before should be invalid; after should be valid.
     assert not language.check_syntax(before)
     assert language.check_syntax(after)
+
     fix_event = determine_fix_event(before, after)
     assert fix_event.fix == Insertion(22, index_of('{'))
     assert fix_event.line_no == error_line
+    assert fix_event.new_token == '{'
+    assert fix_event.old_token is None
 
 
 def index_of(token: str) -> Vind:

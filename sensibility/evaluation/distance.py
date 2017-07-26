@@ -57,12 +57,26 @@ def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
 
 class FixEvent:
     def __init__(self, fix: Edit, line_no: int) -> None:
+        # Feature request: use the current language for each fix, then to
+        # decode the token at instantiation time.
         self.fix = fix
         self.line_no = line_no
 
     @property
-    def mistake(self):
+    def mistake(self) -> Edit:
         return -self.fix
+
+    @property
+    def old_token(self) -> Optional[str]:
+        _code, _pos, _new, old = self.fix.serialize()
+        # assert new == f_old and old == f_new
+        return language.vocabulary.to_text(old) if old is not None else None
+
+    @property
+    def new_token(self) -> Optional[str]:
+        # assert new == f_old and old == f_new
+        _code, _pos, new, _old = self.fix.serialize()
+        return language.vocabulary.to_text(new) if new is not None else None
 
 
 def determine_edit(file_a: bytes, file_b: bytes) -> Edit:
