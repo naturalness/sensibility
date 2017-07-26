@@ -26,8 +26,9 @@ from javalang.tokenizer import LexerError  # type: ignore
 from tqdm import tqdm
 from sensibility.evaluation.mistakes import Mistakes, Mistake
 from sensibility.evaluation.distance import tokenwise_distance
+from sensibility._paths import MISTAKE_FILE
 
-conn = sqlite3.connect('java-mistakes.sqlite3')
+conn = sqlite3.connect(str(MISTAKE_FILE))
 # Make writes super speedy by disregarding durability.
 conn.execute('PRAGMA synchronous = OFF')
 

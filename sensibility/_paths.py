@@ -35,10 +35,12 @@ MODEL_DIR = REPOSITORY_ROOT / 'models'
 EVALUATION_DIR = REPOSITORY_ROOT / 'evaluation'
 
 # Paths to specific databases.
+# TODO: allow this to vary by language.
 SOURCES_PATH = DATA_DIR / 'javascript-sources.sqlite3'
 VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'
 MUTATIONS_PATH = DATA_DIR / 'javascript-mutations.sqlite3'
 PREDICTIONS_PATH = DATA_DIR / 'javascript-predictions.sqlite3'
+MISTAKE_FILE = REPOSITORY_ROOT / 'java-mistakes.sqlite3'
 
 
 def get_partitions_path(language=language) -> Path:

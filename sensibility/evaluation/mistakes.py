@@ -29,7 +29,7 @@ SFID = NewType('SFID', int)
 MEID = NewType('MEID', int)
 Revision = Tuple[SFID, MEID]
 
-# To work along side java-mistakes.sqlite3
+# This schema assumes a table `mistake` already exists.
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS distance(
     source_file_id  INT,

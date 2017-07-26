@@ -19,8 +19,6 @@
 Tests mistakes and edit distance.
 """
 
-import sqlite3
-
 import pytest
 
 from sensibility.evaluation.mistakes import Mistakes
@@ -55,7 +53,9 @@ def test_extra() -> None:
 
 @pytest.mark.skip  # Does an unnecessary database access.
 def test_get_source() -> None:
-    m = Mistakes(sqlite3.connect('java-mistakes.sqlite3'))
+    import sqlite3
+    from sensibility._paths import MISTAKE_FILE
+    m = Mistakes(sqlite3.connect(str(MISTAKE_FILE)))
     mistake = next(iter(m))
     assert 0 < tokenwise_distance(mistake.before, mistake.after)
 
