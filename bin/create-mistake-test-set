@@ -72,7 +72,7 @@ files = tuple(conn.execute('''
 # Optimization: Create a temporary table with the subset. This speeds up
 # things considerably.
 conn.execute('''
-    CREATE TABLE query(source_file_id, before_id,
+    CREATE TEMPORARY TABLE query(source_file_id, before_id,
     PRIMARY KEY (source_file_id, before_id))
 ''')
 conn.executemany('''
@@ -99,14 +99,18 @@ code_to_word = dict(i='insertion', x='deletion', s='substitution')
 for row in tqdm(rows, total=len(files)):
     sfid, meid = str(row['sfid']), str(row['meid'])
 
-    # Fix the code to a word
-    row['fix'] = code_to_word[row['fix']]
-    row['mistake'] = code_to_word[row['mistake']]
-
     # Write out the contents
     path = root / sfid / meid
+    path.mkdir(parents=True)
+
     with open(path / 'before.java', 'wb') as file:
         file.write(row['before'])
     with open(path / 'after.java', 'wb') as file:
         file.write(row['after'])
-    writer.writerow(row)
+
+    # Let's modify the dictionary, not dictionary!
+    row_dict = dict(row)
+    row_dict['fix'] = code_to_word[row['fix']]
+    row_dict['mistake'] = code_to_word[row['mistake']]
+
+    writer.writerow(dict(row))
