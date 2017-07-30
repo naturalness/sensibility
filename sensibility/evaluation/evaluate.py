@@ -25,43 +25,144 @@ Evaluates the performance of the detecting and fixing syntax errors.
 
 
 import csv
+import logging
 import sys
 import traceback
 from pathlib import Path
-from typing import Iterator, Optional, Sequence, TextIO, Tuple
+from typing import Iterable, Iterator, Optional, Sequence, TextIO, Tuple
 
 from tqdm import tqdm
+
+from sensibility.source_file import SourceFile
+from sensibility.edit import Edit
+from sensibility.language import language
+from sensibility.vocabulary import Vind
+
+from abc import ABC, abstractmethod
+
+
+class Fix:
+    ...
+
+
+class FixResult(Iterable[Fix]):
+    ...
+
+
+class EvaluationFile(ABC):
+    id: str  # Uniquely identifies the file
+    error: Edit  # Error is a mistake or a mutation
+    error_line: int  # Line number of the error
+    true_fix: Edit  # The "true" fix that reversed the mistake
+    source: bytes  # The source code of the error
+    n_lines: int  # Number of SLOC in the file
+    n_tokens: int  # Number of tokens in the file.
+
+
+class Mistake(EvaluationFile):
+    """
+    Mistake from BlackBox data
+    """
+    # TODO: HAS-A FixEvent
+
+
+class Mutant(EvaluationFile):
+    """
+    Sythetic mutant.
+    """
+
+
+class Model(ABC):
+    id: str  # Uniquely identifies the model under evaluation
+
+    def fix(self, file: EvaluationFile) -> FixResult:
+        ...
+
+
+class LSTMPartition(Model):
+    def __init__(self, partition: int) -> None:
+        assert partition in {0, 1, 2, 3, 4}
+        self.id = f'lstm{partition}'
+        # TODO: Load the model
+
+    # TODO: Test this class specifically!
+    # Ensure it creates decent fixes.
 
 
 class Evaluation:
     FIELDS = '''
-        fold filehash n.lines n.tokens
+        tool file n.lines n.tokens
         m.kind m.loc m.token m.old
         correct.line line.top.rank rank.correct.line
         fixed true.fix
         f.kind f.loc f.token f.old
     '''.split()
 
+    def __init__(self, model: Model) -> None:
+        self.model = model
+
+    def evaluate_file(self, file: EvaluationFile) -> None:
+        fixes = self.model.fix(file)
+        # TODO: Get ranked location from file
+        # TODO: get list of fixes from file
+        # TODO: have to do something if there AREN'T valid fixes.
+        for fix in fixes:
+            self.add_fix(file, fix)
+
+    def add_fix(self, *args) -> None:
+        ...
+        # Actually commit the fix to whatever file.
+        # Put:
+        #  - model
+        #  - file
+        #  - error (mistake ∪ mutant)
+        #  - error line number
+        #  - number of lines
+        #  - number of tokens
+        # Compute
+        #  - was it fixed?
+        #  - fix
+        #  - line of the top ranked fix
+        #  - rank of the first location on the correct line
+        #       => assert locations line up with file
+
+    def evaluate(self, files: Iterator[EvaluationFile]) -> None:
+        ...
+
+
+'''
+    # TODO: input is:
+    #   "name" / "partition"
+    #   model under evaluation
+    #   source of errors (mistakes or mutants)
+    #       yields SourceFile?
     def __init__(self, fold: int) -> None:
         assert 0 <= fold < 5
         self.fold = fold
         self._filename = f'results.{fold}.csv'
-        self.sensibility = Sensibility(fold)
+        # TODO: Do not instantiate here!
+        # self.sensibility = Sensibility(fold)
 
     def __enter__(self) -> None:
+        """
+        Opens the result file.
+        """
         self._file = open(self._filename, 'w')
         self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
         self._writer.writeheader()
 
     def __exit__(self, *exc_info) -> None:
+        """
+        Closes the result file.
+        """
         self._file.close()
 
     def run(self) -> None:
         """
         Run the evaluation.
         """
-        SourceFile.vectors = Vectors.connect_to(VECTORS_PATH)
-        SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
+        # SourcFile.vectors = Vectors.connect_to(VECTORS_PATH)
+        # SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
 
         with self:
             mutations = self.filter_mutations()
@@ -73,11 +174,10 @@ class Evaluation:
         Filter only the relevant mutations.
         """
 
-        # Figure out which hashes are acceptable.
-        with open(DATA_DIR / f'test_set_hashes.{self.fold}') as f:
-            hashes = frozenset(s.strip() for s in f.readlines()
-                               if len(s) > 2)
+        # TODO: Figure out which hashes are acceptable.
+        hashes = frozenset('invalid')
 
+        # TODO: handle ANY kind of evaluation files.
         with Mutations(read_only=True) as all_mutations:
             i = 0
             for entry in all_mutations:
@@ -184,7 +284,7 @@ def to_text(token: Optional[Vind]) -> Optional[str]:
     """
     Converts the token to its textual representation, if it exists.
     """
-    return None if token is None else vocabulary.to_text(token)
+    return None if token is None else language.vocabulary.to_text(token)
 
 
 def piratize(value: bool) -> str:
@@ -207,3 +307,4 @@ def first_with_line_no(ranked_locations: Sequence[IndexResult],
         if program.line_of_index(location.index, mutation) == correct_line:
             return rank
     raise ValueError(f'Could not find any token on {correct_line}')
+'''
