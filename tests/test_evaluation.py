@@ -16,7 +16,7 @@
 # limitations under the License.
 
 
-canonical_example = br"""                   //  1
+canonical_error = br"""                   //  1
 class Hello {                               //  2
     public void main(String args[]) {       //  3
         if (args.length < 3) // {           --   4
@@ -55,8 +55,8 @@ def test_evaluation() -> None:
     from sensibility.evaluation.distance import determine_fix_event
 
     evaluation = Evaluation('mistake', LSTMPartition(3))
-    event = determine_fix_event(canonical_example, fixed)
-    mistake = Mistake('example', event)
+    event = determine_fix_event(canonical_error, fixed)
+    mistake = Mistake('example', canonical_error, event)
     actual = evaluation.evaluate_file(mistake)
 
     assert 'lstm3' == actual.model

@@ -308,8 +308,6 @@ class Fixes(Iterable[Edit]):
         return iter(self.fixes)
 
 
-
-
 class EvaluationFile(ABC):
     id: str  # Uniquely identifies the file
     error: Edit  # Error is a mistake or a mutation
@@ -326,19 +324,24 @@ class Mistake(EvaluationFile):
     """
     from sensibility.evaluation.distance import FixEvent
 
-    def __init__(self, id: str, fix: FixEvent) -> None:
-        ...
+    def __init__(self, id: str, source: bytes, event: FixEvent) -> None:
+        self.id = id
+        self.error = event.mistake
+        self.error_line = event.line_no
+        self.true_fix = event.fix
+        summary = language.summarize(source)
+        self.source = source
+        self.n_lines = summary.sloc
+        self.n_tokens = summary.n_tokens
 
 
 class Mutant(EvaluationFile):
     """
     Sythetic mutant.
     """
+    # TODO:
 
 
-
-
-# TODO: Have tests that invoke this class!
 class LSTMPartition(Model):
     """
     Detects and fixes syntax errors in JavaScript files.
