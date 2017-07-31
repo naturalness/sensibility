@@ -71,4 +71,4 @@ def get_lstm_path(direction: str, partition: int) -> Path:
 
 
 def get_cache_path() -> Path:
-    return get_evaluation_dir() / 'models' / f'{language.id}-predictions.hdf5'
+    return get_evaluation_dir() / 'models' / f'{language.id}-predictions.sqlite3'
