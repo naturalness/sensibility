@@ -26,7 +26,7 @@ import array
 from itertools import zip_longest
 from typing import IO, Iterable, Iterator, Sequence, Any, List, cast
 
-from .vocabulary import vocabulary, Vind
+from .vocabulary import Vind
 
 
 class SourceVector(Sequence[Vind]):
@@ -73,10 +73,19 @@ class SourceVector(Sequence[Vind]):
         """
         Prints the tokens to a file, using real tokens.
         """
+        from sensibility.language import language
         for token in self:
-            print(vocabulary.to_text(token), file=file, end=' ')
+            print(language.vocabulary.to_text(token), file=file, end=' ')
         # Print a final newline.
         print(file=file)
+
+    def to_source_code(self) -> bytes:
+        """
+        Returns the source vector as bytes.
+        """
+        from sensibility.language import language
+        to_text = language.vocabulary.to_text
+        return ' '.join(to_text(token) for token in self).encode('UTF-8')
 
     def random_token_index(self) -> int:
         """

@@ -9,6 +9,12 @@ from hypothesis.strategies import random_module  # type: ignore
 from strategies import programs
 
 
+def setup():
+    # XXX: This is more or less hardcoded to work with JavaScript.
+    from sensibility.language import language
+    language.set_language('javascript')
+
+
 @given(programs(), random_module())
 def test_program_random(program, random):
     assert 0 <= program.random_token_index() < len(program)
