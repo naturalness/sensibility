@@ -16,30 +16,30 @@
 # limitations under the License.
 
 
-canonical_error = br"""                   //  1
-class Hello {                               //  2
-    public void main(String args[]) {       //  3
-        if (args.length < 3) // {           --   4
-            System.err.println("No good!"); //  5
-            System.exit(2);                 //  6
-        }                                   //  7
-        System.out.println("Good!");        //  8
-        System.exit(0);                     //  9
-    }                                       // 10
-}                                           // 11
+canonical_error = br"""                         //  1
+class Hello {                                   //  2
+    public static void main(String args[]) {    //  3
+        if (args.length != 3) // {              --   4
+            System.err.println("No good!");     //  5
+            System.exit(2);                     //  6
+        }                                       //  7
+        System.out.println("Good!");            //  8
+        System.exit(0);                         //  9
+    }                                           // 10
+}                                               // 11
 """
 
-fixed = br"""                               //  1
-class Hello {                               //  2
-    public void main(String args[]) {       //  3
-        if (args.length < 3) {              //   4
-            System.err.println("No good!"); //  5
-            System.exit(2);                 //  6
-        }                                   //  7
-        System.out.println("Good!");        //  8
-        System.exit(0);                     //  9
-    }                                       // 10
-}                                           // 11
+fixed = br"""                                   //  1
+class Hello {                                   //  2
+    public static void main(String args[]) {    //  3
+        if (args.length != 3) {                 //  4
+            System.err.println("No good!");     //  5
+            System.exit(2);                     //  6
+        }                                       //  7
+        System.out.println("Good!");            //  8
+        System.exit(0);                         //  9
+    }                                           // 10
+}                                               // 11
 """
 
 
@@ -62,6 +62,5 @@ def test_evaluation() -> None:
     assert 'lstm3' == actual.model
     assert 'mistake' == actual.mode
     assert 10 == actual.n_lines
-    assert 56 == actual.n_tokens
+    assert 57 == actual.n_tokens
     assert event.mistake == actual.error
-    assert actual.fixed

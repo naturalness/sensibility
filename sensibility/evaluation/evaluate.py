@@ -196,6 +196,7 @@ class Predictions:
             ''')
         return conn
 
+
 class IndexResult(SupportsFloat):
     """
     Provides results for EACH INDIVIDUAL INDEX in a file.
@@ -375,9 +376,7 @@ class LSTMPartition(Model):
         contexts = enumerate(self.contexts(file_vector))
 
         for index, ((prefix, token), (suffix, _)) in contexts:
-            assert token == file_vector[index], (
-                str(token) + ' ' + str(file_vector[index])
-            )
+            assert token == file_vector[index], f'{token} != {file_vector[index]}'
 
             # Fetch predictions.
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))  # type: ignore
@@ -419,7 +418,7 @@ class LSTMPartition(Model):
             fixes.try_insert(pos, likely_next)
             fixes.try_insert(pos, likely_prev)
 
-            # Assume an addition. Let's try removing the offensive token.
+            # Assume an insertion. Let's try removing the offensive token.
             fixes.try_delete(pos)
 
             # Assume a substitution. Let's try swapping the token.
@@ -450,16 +449,11 @@ class EvaluationResult(NamedTuple):
     n_lines: int  # source lines of code
     n_tokens: int  # number of tokens in the error file
     error: Edit  # What was the error (mistake or mutation)?
+    fixed: bool
     fixes: Sequence[Edit]  # What is a possible fix?
 
-    @property
-    def fixed(self) -> RLogical:
-        return piratize(len(self.fixes) > 0)
-
-    def true_fix(self, fix: Edit) -> RLogical:
-        return piratize(fix == self.error.additive_inverse())
-
-    # TODO: implement the other required fields.
+    # I wanted cool methods to add to NamedTuple, but they don't work
+    # for some reason so :/
 
 
 from typing import IO  # noqa
@@ -475,19 +469,21 @@ class Evaluation:
         f.kind f.loc f.token f.old
     '''.split()
 
-    def __init__(self, source: str, model: LSTMPartition) -> None:
+    def __init__(self, mode: str, model: LSTMPartition) -> None:
         self.model = model
-        self.source = source
+        self.mode = mode
 
     def evaluate_file(self, file: EvaluationFile) -> EvaluationResult:
-        fixes = self.model.fix(file.source)
-        # TODO: Get ranked location from file
-        # TODO: get list of fixes from file
-        # TODO: have to do something if there AREN'T valid fixes.
-        raise NotImplementedError
+        results = self.model.fix(file.source)
+        # results.ranks
+        # results.fixes
 
-    def add_fix(self, *args) -> None:
-        ...
+        # TODO: implement:
+        #   - line of the top ranked fix
+        #       -> Must use initial source, tokenize with locations,
+        #       -> and figure out where it's supposed to go...
+        #   - rank of the first location on the correct line
+
         # Actually commit the fix to whatever file.
         # Put:
         #  - model
@@ -503,7 +499,20 @@ class Evaluation:
         #  - rank of the first location on the correct line
         #       => assert locations line up with file
 
+        # TODO: Get ranked location from file
+        # TODO: get list of fixes from file
+        return EvaluationResult(
+            model=self.model.id,
+            mode=self.mode,
+            n_lines=file.n_lines,
+            n_tokens=file.n_tokens,
+            error=file.error,
+            fixed=len(results.fixes) > 0,
+            fixes=results.fixes,
+        )
+
     def evaluate(self, files: EvaluationFiles, output: IO[str]) -> None:
+        # TODO: have to do something if there AREN'T valid fixes.
         ...
 
 
