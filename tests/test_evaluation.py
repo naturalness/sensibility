@@ -15,6 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
+from sensibility.evaluation.evaluate import (
+    Evaluation, EvaluationFile, EvaluationResult, LSTMPartition, Mistake,
+)
+from sensibility.evaluation.distance import determine_fix_event
+
 
 canonical_error = br"""                         //  1
 class Hello {                                   //  2
@@ -43,18 +50,33 @@ class Hello {                                   //  2
 """
 
 
+evaluation: Evaluation
+
+
 def setup():
+    global evaluation
     from sensibility.language import language
     language.set_language('java')
-
-
-def test_evaluation() -> None:
-    from sensibility.evaluation.evaluate import (
-        Evaluation, EvaluationFile, EvaluationResult, LSTMPartition, Mistake,
-    )
-    from sensibility.evaluation.distance import determine_fix_event
-
     evaluation = Evaluation('mistake', LSTMPartition(3))
+
+
+@pytest.mark.skip
+def test_evaluation_simpler() -> None:
+    bad, good =  b'class Hello }', b'class Hello {}'
+    event = determine_fix_event(bad, good)
+    mistake = Mistake('example', bad, event)
+    actual = evaluation.evaluate_file(mistake)
+
+    assert 'lstm3' == actual.model
+    assert 'mistake' == actual.mode
+    assert 1 == actual.n_lines
+    assert 3 == actual.n_tokens
+    assert event.mistake == actual.error
+    # TODO: test fix stuff.
+
+
+@pytest.mark.skip
+def test_evaluation() -> None:
     event = determine_fix_event(canonical_error, fixed)
     mistake = Mistake('example', canonical_error, event)
     actual = evaluation.evaluate_file(mistake)
@@ -64,3 +86,4 @@ def test_evaluation() -> None:
     assert 10 == actual.n_lines
     assert 57 == actual.n_tokens
     assert event.mistake == actual.error
+    # TODO: test fix stuff.

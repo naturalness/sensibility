@@ -425,6 +425,7 @@ class LSTMPartition(Model):
             fixes.try_substitute(pos, likely_next)
             fixes.try_substitute(pos, likely_prev)
 
+        assert False
         return FixResult(ranks=ranked_results, fixes=tuple(fixes))
 
     def contexts(self, file_vector: SourceVector) -> Contexts:
