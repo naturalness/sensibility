@@ -351,8 +351,13 @@ def fetch_mistakes() -> Iterator[EvaluationFile]:
     '''
     for row in conn.execute(query):
         sfid, meid, source, line_no, f_kind, f_ind, f_new, f_old = row
-        fix = Edit.deserialize(f_kind, f_ind, f_new, f_old)
+        fix = Edit.deserialize(f_kind, int(f_ind), to_index(f_new), to_index(f_old))
         yield Mistake(f"{sfid}/{meid}", source, FixEvent(fix, line_no))
+
+
+def to_index(token: Optional[str]) -> Optional[Vind]:
+    return language.vocabulary.to_index(token) if token is not None else None
+
 
 class Mutant(EvaluationFile):
     """
@@ -534,11 +539,7 @@ class Evaluation:
         writer = csv.DictWriter(output, self.FIELDS)
         writer.writeheader()
         for file in files:
-            try:
-                self._evaluate_file(file, writer)
-            except Exception as e:
-                import pdb; pdb.set_trace()
-                pass
+            self._evaluate_file(file, writer)
 
     def _evaluate_file(self, file: EvaluationFile, writer: csv.DictWriter) -> None:
         result = self.evaluate_file(file)

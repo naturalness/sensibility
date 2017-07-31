@@ -23,8 +23,7 @@ import random
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Hashable, Optional, Tuple, Type, TypeVar
 
-# Unhardcode the vocabulary
-from .vocabulary import vocabulary, Vind
+from .vocabulary import Vind
 from .source_vector import SourceVector
 
 
@@ -182,7 +181,6 @@ class Insertion(Edit):
         self.index = index
 
     def __repr__(self) -> str:
-        # XXX: Should use language.vocabulary everywhere else too!
         from sensibility.language import language
         text_token = language.vocabulary.to_text(self.token)
         return f'Insertion({self.index}, {self.token} or {text_token!r})'
@@ -228,7 +226,8 @@ class Deletion(Edit):
         self.original_token = original_token
 
     def __repr__(self) -> str:
-        as_text = vocabulary.to_text(self.original_token)
+        from sensibility.language import language
+        as_text = language.vocabulary.to_text(self.original_token)
         return f'Deletion({self.index}, {self.original_token} or {as_text!r})'
 
     def additive_inverse(self) -> Edit:
@@ -274,8 +273,9 @@ class Substitution(Edit):
         self.index = index
 
     def __repr__(self) -> str:
-        new_text = vocabulary.to_text(self.token)
-        old_text = vocabulary.to_text(self.original_token)
+        from sensibility.language import language
+        new_text = language.vocabulary.to_text(self.token)
+        old_text = language.vocabulary.to_text(self.original_token)
         return (
             f'Substitution({self.index}, '
             f'original_token={self.original_token} or {old_text!r}, '
