@@ -443,7 +443,6 @@ class LSTMPartition(Model):
             fixes.try_substitute(pos, likely_next)
             fixes.try_substitute(pos, likely_prev)
 
-        assert False
         return FixResult(ranks=ranked_results, fixes=tuple(fixes))
 
     def contexts(self, file_vector: SourceVector) -> Contexts:
@@ -537,8 +536,9 @@ class Evaluation:
         for file in files:
             try:
                 self._evaluate_file(file, writer)
-            except Exception:
+            except Exception as e:
                 import pdb; pdb.set_trace()
+                pass
 
     def _evaluate_file(self, file: EvaluationFile, writer: csv.DictWriter) -> None:
         result = self.evaluate_file(file)
