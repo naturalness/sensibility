@@ -39,21 +39,36 @@ EVALUATION_DIR = REPOSITORY_ROOT / 'evaluation'
 SOURCES_PATH = DATA_DIR / 'javascript-sources.sqlite3'
 VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'
 MUTATIONS_PATH = DATA_DIR / 'java-mutations.sqlite3'
-PREDICTIONS_PATH = DATA_DIR / 'java-predictions.sqlite3'
 MISTAKE_FILE = REPOSITORY_ROOT / 'java-mistakes.sqlite3'
 
 
-def get_partitions_path(language=language) -> Path:
-    return EVALUATION_DIR / language.id / 'partitions'
+def get_evaluation_dir() -> Path:
+    return EVALUATION_DIR / language.id
 
 
-def get_validation_set_path(partition: int, language=language) -> Path:
-    return get_partitions_path(language) / str(partition) / 'validation'
+def get_partitions_path() -> Path:
+    return get_evaluation_dir() / 'partitions'
 
 
-def get_training_set_path(partition: int, language=language) -> Path:
-    return get_partitions_path(language) / str(partition) / 'training'
+def get_validation_set_path(partition: int) -> Path:
+    return get_partitions_path() / str(partition) / 'validation'
 
 
-def get_test_set_path(partition: int, language=language) -> Path:
-    return get_partitions_path(language) / str(partition) / 'test'
+def get_training_set_path(partition: int) -> Path:
+    return get_partitions_path() / str(partition) / 'training'
+
+
+def get_test_set_path(partition: int) -> Path:
+    return get_partitions_path() / str(partition) / 'test'
+
+
+def get_mistakes_path() -> Path:
+    return get_evaluation_dir() / f'{language.id}-mistakes.sqlite3'
+
+
+def get_lstm_path(direction: str, partition: int) -> Path:
+    return get_evaluation_dir() / 'models' / f'{language.id}-{direction}{partition}.hdf5'
+
+
+def get_cache_path() -> Path:
+    return get_evaluation_dir() / 'models' / f'{language.id}-predictions.hdf5'

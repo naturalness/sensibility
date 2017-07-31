@@ -46,7 +46,7 @@ from typing import cast
 from sensibility.model import Model
 from typing import List  # noqa
 
-from sensibility._paths import PREDICTIONS_PATH, MODEL_DIR
+from sensibility._paths import MODEL_DIR
 
 # TODO: fetch from the database instead.
 # TODO: make language-agnostic (with priority for Java)
@@ -73,19 +73,17 @@ class Predictions:
     );
     """
 
-    def __init__(self, fold: int, filename: Path=PREDICTIONS_PATH) -> None:
-        assert 0 <= fold < 5
-        forwards_path = MODEL_DIR / f"javascript-f{fold}.hdf5"
-        backwards_path = MODEL_DIR / f"javascript-b{fold}.hdf5"
-        self.forwards_model = Model.from_filename(forwards_path)
-        self.backwards_model = Model.from_filename(backwards_path,
-                                                   backwards=True)
+    def __init__(self, partition: int) -> None:
+        from sensibility._paths import get_lstm_path, get_cache_path
+        assert 0 <= partition < 5
+        self.forwards_model = Model.from_filename(get_lstm_path('f', partition))
+        self.backwards_model = Model.from_filename(get_lstm_path('b', partition), backwards=True)
         # XXX: Hard code the context length!
         self.context_length = 20
-        self._conn = self._connect(filename)
+        self._conn = self._connect(get_cache_path())
 
-        forwards = f'f{fold}'
-        backwards = f'b{fold}'
+        forwards = f'f{partition}'
+        backwards = f'b{partition}'
 
         def _predict(name: str, model: Model,
                      tuple_context: Sequence[Vind]) -> array.array:
