@@ -21,14 +21,16 @@ Evaluates the performance of the detecting and fixing syntax errors.
 
 import argparse
 
-from sensibility.evaluation import Evaluation
-
+from sensibility.evaluation.evaluate import Evaluation, LSTMPartition, fetch_mistakes
+from sensibility._paths import get_evaluation_dir
 
 parser = argparse.ArgumentParser()
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument('--mistakes', action='store_true')
-group.add_argument('partition', type=int, default=None)
+parser.add_argument('partition', type=int, default=None)
+#parser.add_argument('--mistakes', action='store_const', const='mistake')
+#parser.add_argument('--mutants', action='store_const', const='mutants')
 
 args = parser.parse_args()
-print(args)
-# Evaluation(args.partition).run()
+filename = get_evaluation_dir() / f'results-{args.partition}-{args.mode}.csv'
+evaluation = Evaluation('mistakes', LSTMPartition(args.partition))
+with open(filename, 'w') as csvfile:
+    evaluation.evaluate(fetch_mistakes(), csvfile)

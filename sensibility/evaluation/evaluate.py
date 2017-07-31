@@ -33,6 +33,7 @@ from abc import ABC, abstractmethod
 from numpy.linalg import norm  # noqa
 from pathlib import Path
 from sensibility.edit import Edit, Insertion, Deletion, Substitution
+from sensibility.evaluation.distance import FixEvent
 from sensibility.language import language
 from sensibility.source_file import SourceFile
 from sensibility.source_vector import SourceVector  # noqa
@@ -319,11 +320,11 @@ class EvaluationFile(ABC):
     n_tokens: int  # Number of tokens in the file.
 
 
+
 class Mistake(EvaluationFile):
     """
     Mistake from BlackBox data
     """
-    from sensibility.evaluation.distance import FixEvent
 
     def __init__(self, id: str, source: bytes, event: FixEvent) -> None:
         self.id = id
@@ -335,6 +336,23 @@ class Mistake(EvaluationFile):
         self.n_lines = summary.sloc
         self.n_tokens = summary.n_tokens
 
+
+def fetch_mistakes() -> Iterator[EvaluationFile]:
+    from sensibility._paths import get_mistakes_path
+    conn = sqlite3.connect(str(get_mistakes_path()))
+    # TODO: subset to files in a mistake file...
+    query = '''
+        SELECT mistake.source_file_id,
+               mistake.before_id,
+               before as source,
+               line_no,
+               fix, fix_index, new_token, old_token
+          FROM mistake NATURAL JOIN edit
+    '''
+    for row in conn.execute(query):
+        sfid, meid, source, line_no, f_kind, f_ind, f_new, f_old = row
+        fix = Edit.deserialize(f_kind, f_ind, f_new, f_old)
+        yield Mistake(f"{sfid}/{meid}", source, FixEvent(fix, line_no))
 
 class Mutant(EvaluationFile):
     """
@@ -452,6 +470,7 @@ class EvaluationResult(NamedTuple):
     error: Edit  # What was the error (mistake or mutation)?
     fixed: bool
     fixes: Sequence[Edit]  # What is a possible fix?
+    line_of_top_ranked: int  # The line number of the top ranked error location
 
     # I wanted cool methods to add to NamedTuple, but they don't work
     # for some reason so :/
@@ -463,7 +482,7 @@ EvaluationFiles = Iterator[EvaluationFile]
 
 class Evaluation:
     FIELDS = '''
-        model mode n.lines n.tokens
+        model mode file n.lines n.tokens
         m.kind m.loc m.token m.old
         correct.line line.top.rank rank.correct.line
         fixed true.fix
@@ -480,9 +499,6 @@ class Evaluation:
         # results.fixes
 
         # TODO: implement:
-        #   - line of the top ranked fix
-        #       -> Must use initial source, tokenize with locations,
-        #       -> and figure out where it's supposed to go...
         #   - rank of the first location on the correct line
 
         # Actually commit the fix to whatever file.
@@ -499,6 +515,8 @@ class Evaluation:
         #  - line of the top ranked fix
         #  - rank of the first location on the correct line
         #       => assert locations line up with file
+        top_rank = results.ranks[0]
+        locations = tuple(language.token_locations(file.source))
 
         # TODO: Get ranked location from file
         # TODO: get list of fixes from file
@@ -510,11 +528,52 @@ class Evaluation:
             error=file.error,
             fixed=len(results.fixes) > 0,
             fixes=results.fixes,
+            line_of_top_ranked=locations[top_rank.index].line
         )
 
     def evaluate(self, files: EvaluationFiles, output: IO[str]) -> None:
-        # TODO: have to do something if there AREN'T valid fixes.
-        ...
+        writer = csv.DictWriter(output, self.FIELDS)
+        writer.writeheader()
+        for file in files:
+            try:
+                self._evaluate_file(file, writer)
+            except Exception:
+                import pdb; pdb.set_trace()
+
+    def _evaluate_file(self, file: EvaluationFile, writer: csv.DictWriter) -> None:
+        result = self.evaluate_file(file)
+        m_kind, m_loc, m_token, m_old = result.error.serialize()
+        row = {
+            'model': result.model,
+            'mode': result.mode,
+            'file': file.id,
+            'n.lines': result.n_lines,
+            'n.tokens': result.n_tokens,
+            'm.kind': m_kind,
+            'm.loc': m_loc,
+            'm.token': to_text(m_token),
+            'm.old': to_text(m_old),
+            'correct.line': file.error_line,
+            'line.top.rank': result.line_of_top_ranked,
+            'rank.correct.line':  None
+        }
+
+        if result.fixed:
+            row['fixed'] = piratize(True)
+            # Create an output for each row.
+            for fix in result.fixes:
+                f_kind, f_loc, f_token, f_old = fix.serialize()
+                row.update({
+                    'f.kind': f_kind,
+                    'f.loc': f_loc,
+                    'f.token': to_text(f_token),
+                    'f.old': to_text(f_old),
+                    'true.fix': piratize(fix == file.true_fix)
+                })
+                writer.writerow(row)
+        else:
+            row['fixed'] = piratize(False)
+            writer.writerow(row)
 
 
 def piratize(value: bool) -> RLogical:
@@ -546,27 +605,15 @@ def to_source_vector(source: bytes) -> SourceVector:
     return SourceVector(to_index(x) for x in entries)
 
 
+def to_text(token: Optional[Vind]) -> Optional[str]:
+    """
+    Converts the token to its textual representation, if it exists.
+    """
+    return None if token is None else language.vocabulary.to_text(token)
+
+
+
 '''
-    # TODO: input is:
-    #   "name" / "partition"
-    #   model under evaluation
-    #   source of errors (mistakes or mutants)
-    #       yields SourceFile?
-
-    def __enter__(self) -> None:
-        """
-        Opens the result file.
-        """
-        self._file = open(self._filename, 'w')
-        self._writer = csv.DictWriter(self._file, fieldnames=self.FIELDS)
-        self._writer.writeheader()
-
-    def __exit__(self, *exc_info) -> None:
-        """
-        Closes the result file.
-        """
-        self._file.close()
-
     def run(self) -> None:
         """
         Run the evaluation.
@@ -689,12 +736,6 @@ def to_source_vector(source: bytes) -> SourceVector:
             traceback.print_exc(file=failures)
             failures.write(f"{line}\n\n")
 
-
-def to_text(token: Optional[Vind]) -> Optional[str]:
-    """
-    Converts the token to its textual representation, if it exists.
-    """
-    return None if token is None else language.vocabulary.to_text(token)
 
 
 def first_with_line_no(ranked_locations: Sequence[IndexResult],

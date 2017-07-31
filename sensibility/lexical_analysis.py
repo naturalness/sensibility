@@ -102,6 +102,10 @@ class Location:
     def __repr__(self) -> str:
         return f"Location(start={self.start!r}, end={self.end!r})"
 
+    @property
+    def line(self) -> int:
+        return self.start.line
+
     @classmethod
     def from_string(self, text: str, *, line: int, column: int) -> 'Location':
         r"""
