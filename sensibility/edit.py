@@ -326,6 +326,10 @@ def random_vocabulary_entry() -> Vind:
     """
     Returns a random vocabulary index. Excludes the start and end tokens.
     """
+    # TODO: use modern version of vocabulary!
+    import warnings
+    from sensibility.vocabulary import vocabulary
+    warnings.warn('Using old JavaScript vocabulary for random vocab entry')
     return Vind(random.randint(vocabulary.start_token_index + 1,
                                vocabulary.end_token_index - 1))
 

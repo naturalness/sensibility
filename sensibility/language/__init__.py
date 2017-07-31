@@ -102,7 +102,7 @@ class Language(ABC):
         """
         return self.vocabularize_tokens(self._as_tokens(source))
 
-    def token_locations (self, source: Union[SourceCode, Tokens]) -> Iterable[Location]:
+    def token_locations(self, source: Union[SourceCode, Tokens]) -> Iterable[Location]:
         stream = self.vocabularize_tokens(self._as_tokens(source))
         return (loc for loc, _tok in stream)
 
