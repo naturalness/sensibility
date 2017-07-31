@@ -30,9 +30,6 @@ from .vectorize_tokens import serialize_tokens
 from .vectors import Vectors
 from .vocabulary import Vind, LegacyVocabulary, vocabulary
 
-# TODO: Temporary?
-from .fix import Sensibility, FixResult
-
 __all__ = [
     'Edit', 'Insertion', 'Deletion', 'Substitution',
     'Language', 'language',
