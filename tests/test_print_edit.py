@@ -38,7 +38,33 @@ def test_delete() -> None:
     actual = mutant.to_source_code()
     assert expected == actual
     assert language.check_syntax(actual)
-    # TODO: annotations don't work right?
+
+
+def test_insert() -> None:
+    source_code = to_source_vector(b"""
+    @SuppressWarnings({"fake", 0x1.8p1)
+    class Hello {}
+    """)
+    edit = Insertion(7, to_index('}'))
+    mutant = edit.apply(source_code)
+    expected = b'@ ident ( { "string" , 0 } ) class ident { }'
+    actual = mutant.to_source_code()
+    assert expected == actual
+    assert language.check_syntax(actual)
+
+
+def test_substitution() -> None:
+    source_code = to_source_vector(b"""
+    @SuppressWarnings("fake"=0x1.8p1)
+    class Hello {}
+    """)
+    edit = Substitution(3, original_token=to_index('<STRING>'),
+                        replacement=to_index("<IDENTIFIER>"))
+    mutant = edit.apply(source_code)
+    expected = b'@ ident ( ident = 0 ) class ident { }'
+    actual = mutant.to_source_code()
+    assert expected == actual
+    assert language.check_syntax(actual)
 
 
 def to_index(text: str) -> Vind:
