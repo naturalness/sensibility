@@ -326,8 +326,10 @@ def random_vocabulary_entry() -> Vind:
     """
     Returns a random vocabulary index. Excludes the start and end tokens.
     """
-    return Vind(random.randint(vocabulary.start_token_index + 1,
-                               vocabulary.end_token_index - 1))
+    from sensibility.language import language
+    vocabulary = language.vocabulary
+    return Vind(random.randint(vocabulary.end_token_index + 1,
+                              len(vocabulary)))
 
 
 T = TypeVar('T')

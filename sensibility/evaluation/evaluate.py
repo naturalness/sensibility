@@ -205,13 +205,14 @@ class IndexResult(SupportsFloat):
     __slots__ = (
         'index',
         'cosine_similarity', 'indexed_prob',
-        'mutual_info', 'total_variation'
+        'mutual_info', 'total_variation', 'line_num'
     )
 
     def __init__(self, index: int, program: SourceVector,
-                 a: np.ndarray, b: np.ndarray) -> None:
+                 a: np.ndarray, b: np.ndarray, line_num: int) -> None:
         assert 0 <= index < len(program)
         self.index = index
+        self.line_num = line_num
 
         # Categorical distributions MUST have |x|_1 == 1.0
         assert is_normalized_vector(a, p=1) and is_normalized_vector(b, p=1)
@@ -388,6 +389,10 @@ class LSTMPartition(Model):
 
         # Get file vector for the error'd file.
         file_vector = to_source_vector(source)
+
+        tok_gen = language.tokenize(source)
+        all_toks = list(tok_gen)
+
         assert len(file_vector) > 0
 
         # Holds the lowest agreement at each point in the file.
@@ -400,12 +405,13 @@ class LSTMPartition(Model):
 
         for index, ((prefix, token), (suffix, _)) in contexts:
             assert token == file_vector[index], f'{token} != {file_vector[index]}'
-
+            line_num = all_toks[index]
+            
             # Fetch predictions.
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))  # type: ignore
             suffix_pred = np.array(self.predictions.predict_backwards(suffix))  # type: ignore
 
-            result = IndexResult(index, file_vector, prefix_pred, suffix_pred)
+            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, line_num)
             results.append(result)
 
             # Store the TOP prediction from each model.
