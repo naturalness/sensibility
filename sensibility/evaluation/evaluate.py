@@ -205,14 +205,14 @@ class IndexResult(SupportsFloat):
     __slots__ = (
         'index',
         'cosine_similarity', 'indexed_prob',
-        'mutual_info', 'total_variation', 'line_num'
+        'mutual_info', 'total_variation', 'line_no'
     )
 
     def __init__(self, index: int, program: SourceVector,
-                 a: np.ndarray, b: np.ndarray, line_num: int) -> None:
+                 a: np.ndarray, b: np.ndarray, line_no: int) -> None:
         assert 0 <= index < len(program)
         self.index = index
-        self.line_num = line_num
+        self.line_no = line_no
 
         # Categorical distributions MUST have |x|_1 == 1.0
         assert is_normalized_vector(a, p=1) and is_normalized_vector(b, p=1)
@@ -235,6 +235,8 @@ class IndexResult(SupportsFloat):
         # Total variation distance:
         # http://onlinelibrary.wiley.com/doi/10.1111/j.1751-5823.2002.tb00178.x/epdf
         # https://en.wikipedia.org/wiki/Total_variation_distance_of_probability_measures
+        # Clamp between 0.0 an 1.0 because due to the weirdness of floating
+        # point, norm can return slightly above 1.0...
         from sensibility.utils import clamp
         self.total_variation = clamp(.5 * norm(a - b, ord=1))
 
@@ -405,13 +407,13 @@ class LSTMPartition(Model):
 
         for index, ((prefix, token), (suffix, _)) in contexts:
             assert token == file_vector[index], f'{token} != {file_vector[index]}'
-            line_num = all_toks[index].line
+            line_no = all_toks[index].line
 
             # Fetch predictions.
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))  # type: ignore
             suffix_pred = np.array(self.predictions.predict_backwards(suffix))  # type: ignore
 
-            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, line_num)
+            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, line_no)
             results.append(result)
 
             # Store the TOP prediction from each model.
@@ -605,7 +607,6 @@ def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
     return isclose(norm(x, p), 1.0, rel_tol=tolerance)
 
 
-
 def to_text(token: Optional[Vind]) -> Optional[str]:
     """
     Converts the token to its textual representation, if it exists.
@@ -613,42 +614,20 @@ def to_text(token: Optional[Vind]) -> Optional[str]:
     return None if token is None else language.vocabulary.to_text(token)
 
 
+def first_with_line_no(ranked_results: Sequence[IndexResult],
+                       correct_line: int) -> Optional[int]:
+    """
+    Return the first result with the given correct line number.
+
+    Sometimes this fails and I'm not sure why!
+    """
+    for rank, token_result in enumerate(ranked_results, start=1):
+        if token_result.line_no == correct_line:
+            return rank
+    raise ValueError(f'Could not find any token on {correct_line}')
+
+
 '''
-    def run(self) -> None:
-        """
-        Run the evaluation.
-        """
-        # SourcFile.vectors = Vectors.connect_to(VECTORS_PATH)
-        # SourceFile.corpus = Corpus.connect_to(SOURCES_PATH)
-
-        with self:
-            mutations = self.filter_mutations()
-            for program, mutation in tqdm(mutations):
-                self.evaluate_mutant(program, mutation)
-
-    def filter_mutations(self) -> Iterator[Tuple[SourceFile, Edit]]:
-        """
-        Filter only the relevant mutations.
-        """
-
-        # TODO: Figure out which hashes are acceptable.
-        hashes = frozenset('invalid')
-
-        # TODO: handle ANY kind of evaluation files.
-        with Mutations(read_only=True) as all_mutations:
-            i = 0
-            for entry in all_mutations:
-                program, mutation = entry
-                if program.file_hash not in hashes:
-                    continue
-                yield entry
-
-    def evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
-        try:
-            self._evaluate_mutant(program, mutation)
-        except Exception:
-            self.log_exception(program, mutation)
-
     def _evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
         """
         Evaluate one particular mutant.
@@ -738,17 +717,4 @@ def to_text(token: Optional[Vind]) -> Optional[str]:
 
 
 
-def first_with_line_no(ranked_locations: Sequence[IndexResult],
-                       mutation: Edit,
-                       correct_line: int,
-                       program: SourceFile) -> int:
-    """
-    Return the first result with the given correct line number.
-
-    Sometimes this fails and I'm not sure why!
-    """
-    for rank, location in enumerate(ranked_locations, start=1):
-        if program.line_of_index(location.index, mutation) == correct_line:
-            return rank
-    raise ValueError(f'Could not find any token on {correct_line}')
 '''

@@ -64,7 +64,7 @@ def test_symlink() -> None:
             assert f.read() == unique_contents
 
 
-def clamp(x:float, lower=0., upper=1.) -> float:
+def clamp(x: float, lower=0., upper=1.) -> float:
     """
     Clamps a float to within a range (default [0, 1]).
     """

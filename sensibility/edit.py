@@ -330,8 +330,7 @@ def random_vocabulary_entry() -> Vind:
     from sensibility.language import language
     vocabulary = language.vocabulary
     return Vind(random.randint(vocabulary.end_token_index + 1,
-                              len(vocabulary)))
-
+                               len(vocabulary)))
 
 
 T = TypeVar('T')
