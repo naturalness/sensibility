@@ -62,3 +62,17 @@ def test_symlink() -> None:
         assert (directory / 'target').is_symlink()
         with open(directory / 'target') as f:
             assert f.read() == unique_contents
+
+
+def clamp(x:float, lower=0., upper=1.) -> float:
+    """
+    Clamps a float to within a range (default [0, 1]).
+    """
+    from math import isnan
+    if x <= lower:
+        return lower
+    elif x >= upper:
+        return upper
+    elif isnan(x):
+        raise FloatingPointError('clamp is undefined for NaN')
+    return x
