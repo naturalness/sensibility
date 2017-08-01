@@ -85,13 +85,10 @@ class Java(Language):
                         start=loc.start, end=loc.end)
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
-        javalang.parse.parse(source)
-        return True
         try:
             javalang.parse.parse(source)
             return True
         except (JavaSyntaxError, LexerError) as e:
-            import pdb; pdb.set_trace()
             return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
