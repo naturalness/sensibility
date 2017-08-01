@@ -160,3 +160,11 @@ class SourceVector(Sequence[Vind]):
         """
         as_array = array.array('B', byte_string)
         return SourceVector(tuple(cast(Sequence[Vind], as_array)))
+
+
+def to_source_vector(source: bytes) -> SourceVector:
+    from sensibility.language import language
+    vocabulary = language.vocabulary
+    to_index = vocabulary.to_index
+    entries = language.vocabularize(source)
+    return SourceVector(to_index(x) for x in entries)

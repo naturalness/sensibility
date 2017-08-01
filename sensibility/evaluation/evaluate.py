@@ -36,7 +36,7 @@ from sensibility.edit import Edit, Insertion, Deletion, Substitution
 from sensibility.evaluation.distance import FixEvent
 from sensibility.language import language
 from sensibility.source_file import SourceFile
-from sensibility.source_vector import SourceVector  # noqa
+from sensibility.source_vector import SourceVector, to_source_vector
 from sensibility.vocabulary import Vind
 from tqdm import tqdm
 from typing import Iterable, Iterator, Optional, Sequence, TextIO, Tuple
@@ -597,12 +597,6 @@ def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
     from math import isclose
     return isclose(norm(x, p), 1.0, rel_tol=tolerance)
 
-
-def to_source_vector(source: bytes) -> SourceVector:
-    vocabulary = language.vocabulary
-    to_index = vocabulary.to_index
-    entries = language.vocabularize(source)
-    return SourceVector(to_index(x) for x in entries)
 
 
 def to_text(token: Optional[Vind]) -> Optional[str]:
