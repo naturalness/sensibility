@@ -19,7 +19,7 @@ import pytest
 from sensibility.language import language
 from sensibility.edit import Insertion, Deletion, Substitution
 from sensibility.vocabulary import Vocabulary, Vind
-from sensibility.print_edit import print_edit
+from sensibility.source_vector import to_source_vector
 
 
 def setup():
@@ -27,17 +27,14 @@ def setup():
 
 
 def test_delete() -> None:
-    source_code = b"""
+    source_code = to_source_vector(b"""
     class Hello {
         }
     }
-    """
+    """)
     edit = Deletion(3, to_index('}'))
-    assert print_edit(source_code, edit) == b"""
-    class Hello {
-
-    }
-    """
+    mutant = edit.apply(source_code)
+    assert b"class identifier { }" == mutant.to_source_code()
 
 
 def to_index(text: str) -> Vind:
