@@ -479,10 +479,12 @@ class EvaluationResult(NamedTuple):
     mode: str  # 'mutant' | 'mistake'
     n_lines: int  # source lines of code
     n_tokens: int  # number of tokens in the error file
+    correct_line: int  # Line of the syntax error
     error: Edit  # What was the error (mistake or mutation)?
     fixed: bool
     fixes: Sequence[Edit]  # What is a possible fix?
     line_of_top_ranked: int  # The line number of the top ranked error location
+    rank_of_correct_line: Optional[int]  # Rank of the first token on the erro line line
 
     # I wanted cool methods to add to NamedTuple, but they don't work
     # for some reason so :/
@@ -507,40 +509,27 @@ class Evaluation:
 
     def evaluate_file(self, file: EvaluationFile) -> EvaluationResult:
         results = self.model.fix(file.source)
-        # results.ranks
-        # results.fixes
-
-        # TODO: implement:
-        #   - rank of the first location on the correct line
-
-        # Actually commit the fix to whatever file.
-        # Put:
-        #  - model
-        #  - file
-        #  - error (mistake ∪ mutant)
-        #  - error line number
-        #  - number of lines
-        #  - number of tokens
-        # Compute
-        #  - was it fixed?
-        #  - fix
-        #  - line of the top ranked fix
-        #  - rank of the first location on the correct line
-        #       => assert locations line up with file
         top_rank = results.ranks[0]
         locations = tuple(language.token_locations(file.source))
+        rank_correct_line = first_with_line_no(results.ranks, file.error_line)
 
-        # TODO: Get ranked location from file
-        # TODO: get list of fixes from file
+        if rank_correct_line is None:
+            import warnings
+            line_nums = sorted(set(x.line_no for x in results.ranks))
+            warnings.warn(f"{file.id}: Did not find line number "
+                          f"{file.error_line} in {line_nums}")
+
         return EvaluationResult(
             model=self.model.id,
             mode=self.mode,
             n_lines=file.n_lines,
             n_tokens=file.n_tokens,
+            correct_line=file.error_line,
             error=file.error,
             fixed=len(results.fixes) > 0,
             fixes=results.fixes,
-            line_of_top_ranked=locations[top_rank.index].line
+            line_of_top_ranked=locations[top_rank.index].line,
+            rank_of_correct_line=rank_correct_line,
         )
 
     def evaluate(self, files: EvaluationFiles, output: IO[str]) -> None:
@@ -552,6 +541,12 @@ class Evaluation:
     def _evaluate_file(self, file: EvaluationFile, writer: csv.DictWriter) -> None:
         result = self.evaluate_file(file)
         m_kind, m_loc, m_token, m_old = result.error.serialize()
+        # Compute
+        #  - was it fixed?
+        #  - fix
+        #  - line of the top ranked fix
+        #  - rank of the first location on the correct line
+        #       => assert locations line up with file
         row = {
             'model': result.model,
             'mode': result.mode,
@@ -562,9 +557,9 @@ class Evaluation:
             'm.loc': m_loc,
             'm.token': to_text(m_token),
             'm.old': to_text(m_old),
-            'correct.line': file.error_line,
             'line.top.rank': result.line_of_top_ranked,
-            'rank.correct.line':  None
+            'correct.line': result.correct_line,
+            'rank.correct.line':  result.rank_of_correct_line
         }
 
         if result.fixed:
@@ -624,97 +619,4 @@ def first_with_line_no(ranked_results: Sequence[IndexResult],
     for rank, token_result in enumerate(ranked_results, start=1):
         if token_result.line_no == correct_line:
             return rank
-    raise ValueError(f'Could not find any token on {correct_line}')
-
-
-'''
-    def _evaluate_mutant(self, program: SourceFile, mutation: Edit) -> None:
-        """
-        Evaluate one particular mutant.
-        """
-        # Figure out the line of the mutation in the original file.
-        correct_line = program.line_of_index(mutation.index, mutation)
-
-        # Apply the original mutation.
-        mutant = mutation.apply(program.vector)
-        with temporary_program(mutant) as mutated_file:
-            # Do the (canned) prediction...
-            ranked_locations, fixes = self.rank_and_fix(mutated_file)
-        assert len(ranked_locations) > 0
-
-        # Figure out the rank of the actual mutation.
-        top_error_index = ranked_locations[0].index
-        line_of_top_rank = program.source_tokens[top_error_index].line
-        rank_of_correct_line = first_with_line_no(ranked_locations, mutation,
-                                                  correct_line, program)
-
-        self.write(program=program,
-                   mutation=mutation, fixes=fixes,
-                   correct_line=correct_line,
-                   line_of_top_rank=line_of_top_rank,
-                   rank_of_correct_line=rank_of_correct_line)
-
-    def rank_and_fix(self, mutated_file: TextIO) -> FixResult:
-        """
-        Try to fix the given source file and return the results.
-        """
-        return self.sensibility.rank_and_fix(mutated_file.name)
-
-    def write(self, *,
-              program: SourceFile,
-              mutation: Edit,
-              fixes: Sequence[Edit],
-              correct_line: int,
-              line_of_top_rank: int,
-              rank_of_correct_line: int) -> None:
-
-        kind, loc, new_tok, old_tok = mutation.serialize()
-        row = {
-            # Meta information
-            "filehash": program.file_hash,
-            "n.lines": program.sloc,
-            "n.tokens": len(program.vector),
-
-            # Mutation information
-            "m.kind": kind,
-            "m.loc": loc,
-            "m.token": to_text(new_tok),
-            "m.old": to_text(old_tok),
-
-            # Fault locatization information.
-            "line.top.rank": line_of_top_rank,
-            "correct.line": correct_line,
-            "rank.correct.line": rank_of_correct_line,
-        }
-
-        # Information about the fix (if at least one exists).
-        if len(fixes) == 0:
-            row.update({
-                "fixed": piratize(False),
-            })
-        else:
-            fix = fixes[0]
-            kind, loc, new_tok, old_tok = fix.serialize()
-            row.update({
-                "fixed": piratize(True),
-                "true.fix": piratize(fix == mutation.additive_inverse()),
-                "f.kind": kind,
-                "f.loc": loc,
-                "f.token": to_text(new_tok),
-                "f.old": to_text(old_tok),
-            })
-
-        self._writer.writerow(row)
-        self._file.flush()
-
-    def log_exception(self, program: SourceFile, mutation: Edit) -> None:
-        with open('failures.txt', 'at') as failures:
-            line = '=' * 78
-            failures.write(f"{line}\n")
-            failures.write(f"Error evaluating {mutation!r} on {program!r}\n")
-            traceback.print_exc(file=failures)
-            failures.write(f"{line}\n\n")
-
-
-
-'''
+    return None
