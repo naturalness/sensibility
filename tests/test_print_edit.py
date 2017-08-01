@@ -34,7 +34,11 @@ def test_delete() -> None:
     """)
     edit = Deletion(3, to_index('}'))
     mutant = edit.apply(source_code)
-    assert b"class identifier { }" == mutant.to_source_code()
+    expected = b'class ident { }'
+    actual = mutant.to_source_code()
+    assert expected == actual
+    assert language.check_syntax(actual)
+    # TODO: annotations don't work right?
 
 
 def to_index(text: str) -> Vind:

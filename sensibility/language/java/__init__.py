@@ -32,10 +32,38 @@ from javalang.tokenizer import LexerError  # type: ignore
 
 from .. import Language, SourceSummary
 from ...lexical_analysis import Lexeme, Location, Position, Token
-from ...vocabulary import Vocabulary
+from ...vocabulary import Vocabulary, Vind
 
 
 here = Path(__file__).parent
+
+
+class NoSourceRepresentationError(ValueError):
+    """
+    Raise when there is no way to convert the Vocabular index into a
+    token that can be inserted into the file.
+    """
+
+
+class JavaVocabulary(Vocabulary):
+    """
+    The vocabulary, but with werid Java stuff.
+    """
+    @staticmethod
+    def load() -> Vocabulary:
+        return JavaVocabulary.from_json_file(here / 'vocabulary.json')
+
+    def to_source_text(self, idx: Vind) -> str:
+        text = self.to_text(idx)
+        if text == "<IDENTIFIER>":
+            return "ident"
+        elif text == "<NUMBER>":
+            return "0"
+        elif text == "<STRING>":
+            return '"string"'
+        elif not (text.startswith('<') and text.endswith('>')):
+            return text
+        raise NoSourceRepresentationError(text)
 
 
 class Java(Language):
@@ -44,8 +72,7 @@ class Java(Language):
     """
 
     extensions = {'.java'}
-    vocabulary = Vocabulary.from_json_file(Path(__file__).parent /
-                                           'vocabulary.json')
+    vocabulary = JavaVocabulary.load()
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
         tokens = javalang.tokenizer.tokenize(source)
@@ -58,10 +85,13 @@ class Java(Language):
                         start=loc.start, end=loc.end)
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
+        javalang.parse.parse(source)
+        return True
         try:
             javalang.parse.parse(source)
             return True
-        except (JavaSyntaxError, LexerError):
+        except (JavaSyntaxError, LexerError) as e:
+            import pdb; pdb.set_trace()
             return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:

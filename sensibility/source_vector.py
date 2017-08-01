@@ -84,7 +84,7 @@ class SourceVector(Sequence[Vind]):
         Returns the source vector as bytes.
         """
         from sensibility.language import language
-        to_text = language.vocabulary.to_text
+        to_text = language.vocabulary.to_source_text
         return ' '.join(to_text(token) for token in self).encode('UTF-8')
 
     def random_token_index(self) -> int:

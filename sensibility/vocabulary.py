@@ -78,7 +78,7 @@ class Vocabulary(Sized):
     def __getitem__(self, idx: Vind) -> Entry:
         return self._index2text[idx]
 
-    def to_lexeme(self, idx: Vind) -> None:
+    def to_source_text(self, idx: Vind) -> str:
         # TODO: return a lexeme
         raise NotImplementedError
 
