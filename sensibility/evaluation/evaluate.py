@@ -321,7 +321,6 @@ class EvaluationFile(ABC):
     n_tokens: int  # Number of tokens in the file.
 
 
-
 class Mistake(EvaluationFile):
     """
     Mistake from BlackBox data
@@ -617,7 +616,6 @@ def to_text(token: Optional[Vind]) -> Optional[str]:
     Converts the token to its textual representation, if it exists.
     """
     return None if token is None else language.vocabulary.to_text(token)
-
 
 
 '''
