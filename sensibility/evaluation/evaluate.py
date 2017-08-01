@@ -389,8 +389,8 @@ class LSTMPartition(Model):
         # Get file vector for the error'd file.
         file_vector = to_source_vector(source)
 
-        tok_gen = language.tokenize(source)
-        all_toks = list(tok_gen)
+        from sensibility.lexical_analysis import Token
+        all_toks: List[Token] = list(language.tokenize(source))
 
         assert len(file_vector) > 0
 
@@ -404,8 +404,8 @@ class LSTMPartition(Model):
 
         for index, ((prefix, token), (suffix, _)) in contexts:
             assert token == file_vector[index], f'{token} != {file_vector[index]}'
-            line_num = all_toks[index]
-            
+            line_num = all_toks[index].line
+
             # Fetch predictions.
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))  # type: ignore
             suffix_pred = np.array(self.predictions.predict_backwards(suffix))  # type: ignore
