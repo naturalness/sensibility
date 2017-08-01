@@ -58,7 +58,10 @@ class Vectors(MutableMapping[str, SourceVector]):
         # XXX: Hardcoded amount to mmap.
         size = 2 * 1024 * 1024  # 2 GiB
         self.conn.execute(f'PRAGMA mmap_size={size:d}')
+        # Turn off Durability
         self.conn.execute(f'PRAGMA synchronous = OFF')
+        # Optimize for read-only access.
+        self.conn.execute(f'PRAGMA journal_mode = OFF')
 
     def disconnect(self) -> None:
         self.conn.close()

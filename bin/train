@@ -25,7 +25,7 @@ from sensibility.language import language
 from sensibility.miner.util import filehashes
 from sensibility.model.lstm import ModelDescription, layers
 from sensibility._paths import (
-    EVALUATION_DIR, get_validation_set_path, get_training_set_path
+    get_validation_set_path, get_training_set_path, get_vectors_path
 )
 
 
@@ -50,7 +50,7 @@ name_pattern = re.compile(r"""
 
 def infer_args(args: argparse.Namespace) -> argparse.Namespace:
     """
-    >>> args = infer_args(parser.parser_args(['-o', 'python-b2.hdf5']))
+    >>> args = infer_args(parser.parse_args(['-o', 'lstms/python-b2.hdf5']))
     >>> from sensibility.language import language
     >>> language.id
     'python'
@@ -58,6 +58,8 @@ def infer_args(args: argparse.Namespace) -> argparse.Namespace:
     True
     >>> args.partition
     2
+    >>> str(args.base_dir)
+    'lstms'
     """
     path: Optional[Path] = args.output
     if not path:
@@ -72,6 +74,7 @@ def infer_args(args: argparse.Namespace) -> argparse.Namespace:
     setattr(args, 'backwards', backwards)
     partition = int(match.groupdict()['partition'])
     setattr(args, 'partition', partition)
+    setattr(args, 'base_dir', path.parent)
     return args
 
 
@@ -87,14 +90,14 @@ parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
                     help=f"default: {HIDDEN_LAYERS}")
 parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
                     help=f"default: {CONTEXT_LENGTH}")
-# TODO: Add default and help?
-parser.add_argument('--train-set-size', type=int, required=True)
-# TODO: Add default and help?
-parser.add_argument('--validation-set-size', type=int, required=True)
+parser.add_argument('--train-set-size', type=int,
+                    default=11_000, help='Number of files to train on')
+parser.add_argument('--validation-set-size', type=int,
+                    default=5500, help='Number of files to validate against')
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
-parser.add_argument('--base-dir', type=Path, default=EVALUATION_DIR,
-                    help=f"default: {EVALUATION_DIR}")
+parser.add_argument('--base-dir', type=Path, default=Path('.'),
+                    help=f"default: .")
 parser.add_argument('--proportion', '-p', type=float, default=1.0,
                     help=f"default: 1.0")
 parser.add_argument('--output', '-o', type=Path,
@@ -129,11 +132,11 @@ if __name__ == '__main__':
         training_set=subset(training_set, args.train_set_size),
         validation_set=subset(validation_set, args.validation_set_size),
         backwards=args.backwards,
-        base_dir=args.base_dir / language.id / 'models',
+        base_dir=args.base_dir,
         batch_size=args.batch_size,
         context_length=args.context_length,
         hidden_layers=args.hidden_layers,
-        vectors_path=args.base_dir / language.id / 'vectors.sqlite3'
+        vectors_path=get_vectors_path(),
     )
 
     model.train()

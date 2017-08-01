@@ -52,8 +52,16 @@ vocabulary: $(VOCABULARY)
 .PHONY: vocabulary
 endif
 
-subset.squashfs: subset
+
+# Joshua is a phony
+.PHONY: joshua
+joshua: subset.squashfs mistakes.squashfs
+
+%.squashfs: %
 	mksquashfs $< $@ -comp xz
 
 subset:
 	bin/create-training-sets $(TRAIN_SET_SIZE)
+
+mistakes:
+	bin/create-mistake-test-set $(TRAIN_SET_SIZE) $@
