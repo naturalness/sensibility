@@ -20,17 +20,25 @@ Evaluates the performance of the detecting and fixing syntax errors.
 """
 
 import argparse
+from pathlib import Path
 
-from sensibility.evaluation.evaluate import Evaluation, LSTMPartition, fetch_mistakes
+from sensibility.evaluation.evaluate import Evaluation, LSTMPartition
+from sensibility.evaluation.evaluate import fetch_mistakes, subset_from_file
 from sensibility._paths import get_evaluation_dir
 
 parser = argparse.ArgumentParser()
-parser.add_argument('partition', type=int, default=None)
+parser.add_argument('partition', type=int)
+parser.add_argument('mistakes', type=Path)
+
+# TODO: Handle more than just mistakes
 #parser.add_argument('--mistakes', action='store_const', const='mistake')
 #parser.add_argument('--mutants', action='store_const', const='mutants')
 
 args = parser.parse_args()
+
 filename = get_evaluation_dir() / f'results-mistakes-{args.partition}.csv'
 evaluation = Evaluation('mistakes', LSTMPartition(args.partition))
+mistakes = fetch_mistakes(subset_from_file(args.mistakes))
+
 with open(filename, 'w') as csvfile:
-    evaluation.evaluate(fetch_mistakes(), csvfile)
+    evaluation.evaluate(mistakes, csvfile)

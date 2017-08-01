@@ -44,8 +44,9 @@ from typing import NamedTuple
 from typing import Sequence, Tuple, Union, TextIO, Iterable, cast
 from typing import SupportsFloat  # noqa
 from typing import cast
-from sensibility.model import Model
+from typing import Set
 from typing import List  # noqa
+from sensibility.model import Model
 
 from sensibility._paths import MODEL_DIR
 
@@ -59,7 +60,7 @@ Contexts = Iterable[Tuple[Sentence[Vind], Sentence[Vind]]]
 
 class Predictions:
     """
-    Stores predictions.
+    Caches predictions.
     """
 
     SCHEMA = r"""
@@ -340,10 +341,21 @@ class Mistake(EvaluationFile):
         self.n_tokens = summary.n_tokens
 
 
-def fetch_mistakes() -> Iterator[EvaluationFile]:
+def subset_from_file(filename: Path) -> Set[Tuple[int, int]]:
+    def gen():
+        with open(filename) as file:
+            for line in file:
+                line = line.strip()
+                if not line:
+                    continue
+                a, b = line.split(',')
+                yield int(a), int(b)
+    return set(gen())
+
+
+def fetch_mistakes(subset: Set[Tuple[int, int]]) -> Iterator[EvaluationFile]:
     from sensibility._paths import get_mistakes_path
     conn = sqlite3.connect(str(get_mistakes_path()))
-    # TODO: subset to files in a mistake file...
     query = '''
         SELECT mistake.source_file_id,
                mistake.before_id,
@@ -354,6 +366,8 @@ def fetch_mistakes() -> Iterator[EvaluationFile]:
     '''
     for row in conn.execute(query):
         sfid, meid, source, line_no, f_kind, f_ind, f_new, f_old = row
+        if (sfid, meid) not in subset:
+            continue
         fix = Edit.deserialize(f_kind, int(f_ind), to_index(f_new), to_index(f_old))
         yield Mistake(f"{sfid}/{meid}", source, FixEvent(fix, line_no))
 
