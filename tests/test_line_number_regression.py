@@ -15,9 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#from sensibility.evaluation.evaluate import first_with_line_no, IndexResult
+from sensibility.edit import Insertion, Deletion
 from sensibility.evaluation.distance import determine_fix_event
-from sensibility.edit import Deletion
 from sensibility.language import language
 
 
@@ -73,9 +72,39 @@ def setup():
     language.set_language('java')
 
 
-def test_line_number_regession() -> None:
+def test_calculates_line_numbers_from_source() -> None:
     event = determine_fix_event(error_file, fixed_file)
     assert isinstance(event.fix, Deletion)
     # One of the curly braces at the end of the ERROR file.
     assert event.fix.original_token == language.vocabulary.to_index('}')
     assert event.line_no in {19, 22, 23}
+
+
+def test_calculates_first_line_number() -> None:
+    """
+    Tests to ensure position of line number doesn't "wrap around" to the
+    bottom.
+    """
+
+    error = b"""
+    HelloWorld {
+        string greet() {
+            return "hello, world!";
+
+        }
+    }"""
+
+    fixed = b"""
+    class HelloWorld {
+        string greet() {
+            return "hello, world!";
+
+        }
+    }"""
+
+    event = determine_fix_event(error, fixed)
+    assert isinstance(event.fix, Insertion)
+    assert event.fix.index == 0
+    # It used to think this was line number zero, because it wrapped around to
+    # the end of the file.
+    assert event.line_no == 2
