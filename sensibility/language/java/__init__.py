@@ -90,6 +90,10 @@ class Java(Language):
             return True
         except (JavaSyntaxError, LexerError) as e:
             return False
+        except Exception as e:
+            import warnings
+            warnings.warn(f'javalang bug strikes again for file: {source!r}')
+            return False
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
         toks = [tok for tok in source if tok.name != 'EndOfInput']
