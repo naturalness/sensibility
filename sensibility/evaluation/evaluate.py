@@ -28,30 +28,26 @@ import sqlite3
 import sys
 import traceback
 
-from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
 from abc import ABC, abstractmethod
 from numpy.linalg import norm  # noqa
 from pathlib import Path
 from sensibility.edit import Edit, Insertion, Deletion, Substitution
 from sensibility.evaluation.distance import FixEvent
 from sensibility.language import language
+from sensibility.lexical_analysis import Token
+from sensibility.model import Model
+from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
 from sensibility.source_file import SourceFile
 from sensibility.source_vector import SourceVector, to_source_vector
 from sensibility.vocabulary import Vind
 from tqdm import tqdm
 from typing import Iterable, Iterator, Optional, Sequence, TextIO, Tuple
+from typing import List  # noqa
 from typing import NamedTuple
 from typing import Sequence, Tuple, Union, TextIO, Iterable, cast
+from typing import Set
 from typing import SupportsFloat  # noqa
 from typing import cast
-from typing import Set
-from typing import List  # noqa
-from sensibility.model import Model
-
-from sensibility._paths import MODEL_DIR
-
-# TODO: fetch from the database instead.
-# TODO: make language-agnostic (with priority for Java)
 
 
 # A type that neatly summarizes the double contexts.
@@ -206,14 +202,14 @@ class IndexResult(SupportsFloat):
     __slots__ = (
         'index',
         'cosine_similarity', 'indexed_prob',
-        'mutual_info', 'total_variation', 'line_no'
-    )
+        'mutual_info', 'total_variation', 'token'
+     )
 
     def __init__(self, index: int, program: SourceVector,
-                 a: np.ndarray, b: np.ndarray, line_no: int) -> None:
+                 a: np.ndarray, b: np.ndarray, token: Token) -> None:
         assert 0 <= index < len(program)
         self.index = index
-        self.line_no = line_no
+        self.token = token
 
         # Categorical distributions MUST have |x|_1 == 1.0
         assert is_normalized_vector(a, p=1) and is_normalized_vector(b, p=1)
@@ -243,6 +239,14 @@ class IndexResult(SupportsFloat):
 
         # TODO: Store the forwards and backward predictions?
         #   => useful for visual debugging later.
+
+    def __repr__(self) -> str:
+        return (f'IndexResult(index={self.index!r}, token={self.token!r}, '
+                f'total_variation={self.total_variation!r})')
+
+    @property
+    def line_no(self) -> int:
+        return self.token.line
 
     @property
     def comp_total_variation(self):
@@ -419,15 +423,15 @@ class LSTMPartition(Model):
         backwards_predictions: List[Vind] = []
         contexts = enumerate(self.contexts(file_vector))
 
-        for index, ((prefix, token), (suffix, _)) in contexts:
-            assert token == file_vector[index], f'{token} != {file_vector[index]}'
-            line_no = all_toks[index].line
+        for index, ((prefix, vind), (suffix, _)) in contexts:
+            assert vind == file_vector[index], f'{vind} != {file_vector[index]}'
+            token = all_toks[index]
 
             # Fetch predictions.
             prefix_pred = np.array(self.predictions.predict_forwards(prefix))  # type: ignore
             suffix_pred = np.array(self.predictions.predict_backwards(suffix))  # type: ignore
 
-            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, line_no)
+            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, token)
             results.append(result)
 
             # Store the TOP prediction from each model.

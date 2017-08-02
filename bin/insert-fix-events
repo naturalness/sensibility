@@ -43,4 +43,5 @@ for mistake in tqdm(mistakes.eligible_mistakes):
         fix_event = determine_fix_event(mistake.before, mistake.after)
     except Exception:
         logger.exception('Error determining fix for %s', mistake)
-    mistakes.insert_fix_event(mistake, fix_event)
+    else:
+        mistakes.insert_fix_event(mistake, fix_event)
