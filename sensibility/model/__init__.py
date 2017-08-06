@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import sys
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -56,7 +56,9 @@ class Model:
     def from_filename(cls, path: Path,
                       backwards: bool=False) -> 'Model':
         from keras.models import load_model
+        print('Loading model:', path, file=sys.stderr)
         model = load_model(str(path))
+        print('Finished loading model:', path, file=sys.stderr)
 
         try:
             length: int

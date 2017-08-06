@@ -53,7 +53,7 @@ class Hello {                                   //  2
 evaluation: Evaluation
 
 
-def setup():
+def setup_module():
     global evaluation
     from sensibility.language import language
     language.set_language('java')
@@ -61,7 +61,7 @@ def setup():
 
 
 def test_evaluation_simpler() -> None:
-    bad, good =  b'class Hello }', b'class Hello {}'
+    bad, good =  b'class Hello {*}', b'class Hello {}'
     event = determine_fix_event(bad, good)
     mistake = Mistake('example', bad, event)
     actual = evaluation.evaluate_file(mistake)
@@ -69,12 +69,12 @@ def test_evaluation_simpler() -> None:
     assert 'lstm3' == actual.model
     assert 'mistake' == actual.mode
     assert 1 == actual.n_lines
-    assert 3 == actual.n_tokens
+    assert 5 == actual.n_tokens
     assert event.mistake == actual.error
-    # TODO: test fix stuff.
+    assert actual.fixed
+    assert actual.fixes[0] == mistake.true_fix
 
 
-@pytest.mark.skip
 def test_evaluation() -> None:
     event = determine_fix_event(canonical_error, fixed)
     mistake = Mistake('example', canonical_error, event)
@@ -85,4 +85,3 @@ def test_evaluation() -> None:
     assert 10 == actual.n_lines
     assert 57 == actual.n_tokens
     assert event.mistake == actual.error
-    # TODO: test fix stuff.

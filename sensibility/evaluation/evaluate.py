@@ -243,7 +243,7 @@ class IndexResult(SupportsFloat):
 
     def __repr__(self) -> str:
         return (f'IndexResult(index={self.index!r}, token={self.token!r}, '
-                f'total_variation={self.total_variation!r})')
+                f'score={float(self)})')
 
     @property
     def line_no(self) -> int:
@@ -308,8 +308,8 @@ class Fixes(Iterable[Edit]):
         """
         Actually apply the edit to the file. Add it to the fixes if it works.
         """
+        source_code = edit.apply(self.vector).to_source_code()
         from sensibility.language import language
-        source_code = self.vector.to_source_code()
         if language.check_syntax(source_code):
             self.fixes.append(edit)
 
@@ -410,7 +410,6 @@ class LSTMPartition(Model):
         # Get file vector for the error'd file.
         file_vector = to_source_vector(source)
 
-        from sensibility.lexical_analysis import Token
         all_toks: List[Token] = list(language.tokenize(source))
 
         assert len(file_vector) > 0
@@ -460,7 +459,7 @@ class LSTMPartition(Model):
 
             # Note: the order of these operations SHOULDN'T matter,
             # but typically we only report the first fix that works.
-            # Because missing tokens are usually a bigger issue,
+            # Because missing tokens are the most common
             # we'll try to insert tokens first, THEN delete.
 
             # Assume a deletion. Let's try inserting some tokens.
