@@ -554,6 +554,7 @@ class Evaluation:
         writer.writeheader()
         for file in files:
             self._evaluate_file(file, writer)
+            output.flush()
 
     def _evaluate_file(self, file: EvaluationFile, writer: csv.DictWriter) -> None:
         result = self.evaluate_file(file)
