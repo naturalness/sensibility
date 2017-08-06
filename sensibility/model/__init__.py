@@ -35,7 +35,7 @@ class Model:
     # TODO: correct type for Keras model declared as Any type.
     def __init__(self, model, *,
                  backwards: bool=False,
-                 context_length: int=20) -> None:
+                 context_length: int) -> None:
         self.model = model
         self.backwards = backwards
         self.context_length = context_length
@@ -53,14 +53,18 @@ class Model:
         return self.model.predict(x, batch_size=1)[0]
 
     @classmethod
-    def from_filename(cls,
-                      path: Path,
-                      backwards: bool=False,
-                      **kwargs) -> 'Model':
+    def from_filename(cls, path: Path,
+                      backwards: bool=False) -> 'Model':
         from keras.models import load_model
         model = load_model(str(path))
 
-        return cls(model, backwards=backwards, **kwargs)
+        try:
+            length: int
+            _, length, _vocab = model.layers[0].batch_input_shape  # type: ignore
+        except (IndexError, AttributeError) as e:
+            raise RuntimeError(f'Could not determine shape of model: {path!s}')
+        else:
+            return cls(model, backwards=backwards, context_length=length)
 
 
 def test():

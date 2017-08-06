@@ -76,9 +76,10 @@ class Predictions:
         assert 0 <= partition < 5
         self.forwards_model = Model.from_filename(get_lstm_path('f', partition))
         self.backwards_model = Model.from_filename(get_lstm_path('b', partition), backwards=True)
-        # XXX: Hard code the context length!
-        self.context_length = 20
         self._conn = self._connect(get_cache_path())
+
+        assert self.forwards_model.context_length == self.backwards_model.context_length
+        self.context_length = self.forwards_model.context_length
 
         forwards = f'f{partition}'
         backwards = f'b{partition}'
@@ -391,7 +392,6 @@ class LSTMPartition(Model):
     """
     Detects and fixes syntax errors in JavaScript files.
     """
-    context_length = 20
 
     def __init__(self, partition: int) -> None:
         assert partition in {0, 1, 2, 3, 4}

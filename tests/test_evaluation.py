@@ -60,7 +60,6 @@ def setup():
     evaluation = Evaluation('mistake', LSTMPartition(3))
 
 
-@pytest.mark.skip
 def test_evaluation_simpler() -> None:
     bad, good =  b'class Hello }', b'class Hello {}'
     event = determine_fix_event(bad, good)
