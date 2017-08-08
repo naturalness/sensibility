@@ -289,6 +289,17 @@ class FixResult(NamedTuple):
     fixes: Sequence[Edit]
 
 
+if language.id == 'java':
+    from javac_parser import Java  # type: ignore
+    java = Java()
+    # XXX: Import this hacky parser.
+    def check_syntax(source: bytes) -> bool:
+        return java.get_num_parse_errors(source.decode('utf-8')) == 0
+else:
+    def check_syntax(source: bytes) -> bool:
+        return language.check_syntax(source)
+
+
 class Fixes(Iterable[Edit]):
     def __init__(self, vector: SourceVector) -> None:
         self.vector = vector
@@ -310,7 +321,7 @@ class Fixes(Iterable[Edit]):
         """
         source_code = edit.apply(self.vector).to_source_code()
         from sensibility.language import language
-        if language.check_syntax(source_code):
+        if check_syntax(source_code):
             self.fixes.append(edit)
 
     def __bool__(self) -> bool:
