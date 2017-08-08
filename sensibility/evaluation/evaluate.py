@@ -552,7 +552,11 @@ class Evaluation:
     def evaluate(self, files: EvaluationFiles, output: IO[str]) -> None:
         writer = csv.DictWriter(output, self.FIELDS)
         writer.writeheader()
-        for file in files:
+        # Progress bar, updating every iteration
+        # https://pypi.python.org/pypi/tqdm
+        progress = tqdm(files, miniters=1)
+        for file in progress:
+            progress.set_description(file.id)
             self._evaluate_file(file, writer)
             output.flush()
 
