@@ -49,7 +49,7 @@ rows = conn.execute('''
 
 # Write all the pairs in the database.
 for sfid, meid, before, after in tqdm(rows):
-    path = root / sfid / meid
+    path = root / str(sfid) / str(meid)
     path.mkdir(parents=True)
     (path / 'before.java').write_bytes(before)
     (path / 'after.java').write_bytes(after)
