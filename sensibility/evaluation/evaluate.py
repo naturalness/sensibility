@@ -289,9 +289,12 @@ class FixResult(NamedTuple):
     fixes: Sequence[Edit]
 
 
-if language.id == 'java':
+# XXX: HACK! Use Josh's Java parser instead of javalang. Once
+# javalang is removed, this can entirely be removed too!
+if language.is_initialized and language.id == 'java':
     from javac_parser import Java  # type: ignore
     java = Java()
+
     # XXX: Import this hacky parser.
     def check_syntax(source: bytes) -> bool:
         return java.get_num_parse_errors(source.decode('utf-8')) == 0

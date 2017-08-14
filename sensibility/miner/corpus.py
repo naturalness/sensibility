@@ -156,6 +156,19 @@ class Corpus:
                    SourceSummary(sloc=row[source_summary.c.sloc],
                                  n_tokens=row[source_summary.c.n_tokens]))
 
+    @property
+    def sources_with_repository(self) -> Iterator[Tuple[str, str,
+                                                        PurePosixPath, bytes]]:
+        """
+        Returns ALL sources including their repository and their repository
+        path.
+        """
+        query = select([repository_source.c.owner, repository_source.c.name,
+                        repository_source.c.path, source_file.c.source])\
+            .select_from(repository_source.join(source_file))
+        for owner, name, pathstr, source in self.conn.execute(query):
+            yield owner, name, PurePosixPath(pathstr), source
+
     def __getitem__(self, filehash: str) -> bytes:
         """
         Returns a file from the corpus.
