@@ -69,4 +69,4 @@ mistakes:
 	bin/create-mistake-test-set $(TRAIN_SET_SIZE) $@
 
 all-mistakes:
-	bin/create-mistake-test-set --all $@
+	bin/all-mistakes $@
