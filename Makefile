@@ -53,15 +53,20 @@ vocabulary: $(VOCABULARY)
 endif
 
 
-# Joshua is a phony
+# Josh is a phony
 .PHONY: joshua
-joshua: subset.squashfs mistakes.squashfs
+joshua: training.squashfs all-mistakes.squashfs
 
 %.squashfs: %
 	mksquashfs $< $@ -comp xz
 
-subset:
-	bin/create-training-sets $(TRAIN_SET_SIZE)
+training: $(addprefix training/,java python javascript)
+
+training/%: %-sources.sqlite3
+	bin/joshify $@ $<
 
 mistakes:
 	bin/create-mistake-test-set $(TRAIN_SET_SIZE) $@
+
+all-mistakes:
+	bin/create-mistake-test-set --all $@

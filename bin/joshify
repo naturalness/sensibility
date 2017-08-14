@@ -39,7 +39,7 @@ corpus = Corpus(path=args.corpus)
 destination = args.destination
 
 print("Exporting", corpus.language, "corpus to", destination)
-destination.mkdir()
+destination.mkdir(parents=True)
 
 for owner, name, inner_path, source in tqdm(corpus.sources_with_repository):
     full_path = destination / owner / name / inner_path

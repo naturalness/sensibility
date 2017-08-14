@@ -18,6 +18,11 @@
 """
 Selects N random mistakes from the mistakes database and creates a directory
 holding them.
+
+Usage:
+
+    create-mistake-test-set SIZE DESTINATION
+    create-mistake-test-set --all DESTINATION
 """
 
 import argparse
@@ -41,11 +46,13 @@ FIELD_NAMES = [
 ]
 
 parser = argparse.ArgumentParser()
-parser.add_argument('size', type=int, help="how many mistakes to sample")
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('--all', action='store_true')
+group.add_argument('size', type=int, help="how many mistakes to sample", nargs='?')
 parser.add_argument('destination', type=Path, help="where to dump the files")
 args = parser.parse_args()
 
-assert args.size >= 0
+assert args.all or args.size >= 0
 
 conn = sqlite3.connect(str(MISTAKE_FILE))
 
@@ -61,13 +68,19 @@ csv_file = open(root / 'mistakes.csv', 'w')
 writer = csv.DictWriter(csv_file, FIELD_NAMES, extrasaction='ignore')
 writer.writeheader()
 
-# Get a list of random (one-token) mistakes from the database.
-files = tuple(conn.execute('''
-    SELECT source_file_id, before_id
-      FROM edit
-     ORDER BY RANDOM()
-     LIMIT ?
-''', (args.size,)))
+if args.all:
+    # Get ALL of the mistakes from the database.
+    files = tuple(conn.execute('''
+        SELECT source_file_id, before_id FROM edit
+    '''))
+else:
+    # Get a list of random (one-token) mistakes from the database.
+    files = tuple(conn.execute('''
+        SELECT source_file_id, before_id
+          FROM edit
+         ORDER BY RANDOM()
+         LIMIT ?
+    ''', (args.size,)))
 
 # Optimization: Create a temporary table with the subset. This speeds up
 # things considerably.
