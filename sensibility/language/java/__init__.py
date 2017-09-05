@@ -29,7 +29,6 @@ from typing import (
 import javac_parser
 
 import javalang  # type: ignore
-from javalang.parser import JavaSyntaxError  # type: ignore
 from javalang.tokenizer import LexerError  # type: ignore
 
 from .. import Language, SourceSummary
@@ -69,6 +68,16 @@ class JavaVocabulary(Vocabulary):
         raise NoSourceRepresentationError(text)
 
 
+def to_str(source: Union[str, bytes, IO[bytes]]) -> str:
+    if isinstance(source, str):
+        return source
+    elif isinstance(source, bytes):
+        # XXX: Assume it's UTF-8 encoded!
+        return source.decode('UTF-8')
+    else:
+        raise NotImplementedError
+
+
 class Java(Language):
     """
     Defines the Java 8 programming language.
@@ -91,8 +100,7 @@ class Java(Language):
                         start=loc.start, end=loc.end)
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
-        # Java#check_syntax() returns the number of syntax errors!
-        return self.java.check_syntax(source) == 0
+        return self.java.get_num_parse_errors(to_str(source)) == 0
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
         toks = [tok for tok in source if tok.name != 'EndOfInput']

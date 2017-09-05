@@ -4,6 +4,7 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
+
 def slurp(filename):
     with open(filename, encoding='UTF-8') as text_file:
         return text_file.read()
@@ -43,7 +44,7 @@ setup(
         'github3.py==0.9.6',
         'h5py>=2.6.0',
         'javalang>=0.11',
-        'javac-parser>=0.1.4',
+        'javac-parser>=0.1.5',
         'jenkspy>= 0.1.3, <0.2.0',
         'Keras>=2.0.0, < 3.0.0',
         'more-itertools>=2.3',
