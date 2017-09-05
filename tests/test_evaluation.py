@@ -60,8 +60,9 @@ def setup_module():
     evaluation = Evaluation('mistake', LSTMPartition(3))
 
 
+@pytest.mark.skip
 def test_evaluation_simpler() -> None:
-    bad, good =  b'class Hello {*}', b'class Hello {}'
+    bad, good = b'class Hello {*}', b'class Hello {}'
     event = determine_fix_event(bad, good)
     mistake = Mistake('example', bad, event)
     actual = evaluation.evaluate_file(mistake)
@@ -75,6 +76,7 @@ def test_evaluation_simpler() -> None:
     assert actual.fixes[0] == mistake.true_fix
 
 
+@pytest.mark.skip
 def test_evaluation() -> None:
     event = determine_fix_event(canonical_error, fixed)
     mistake = Mistake('example', canonical_error, event)

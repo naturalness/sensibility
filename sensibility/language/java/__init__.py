@@ -26,6 +26,8 @@ from typing import (
     overload,
 )
 
+import javac_parser
+
 import javalang  # type: ignore
 from javalang.parser import JavaSyntaxError  # type: ignore
 from javalang.tokenizer import LexerError  # type: ignore
@@ -38,6 +40,7 @@ from ...vocabulary import Vocabulary, Vind
 here = Path(__file__).parent
 
 
+# XXX: Should probably be elsewhere.
 class NoSourceRepresentationError(ValueError):
     """
     Raise when there is no way to convert the Vocabular index into a
@@ -74,6 +77,9 @@ class Java(Language):
     extensions = {'.java'}
     vocabulary = JavaVocabulary.load()
 
+    def __init__(self) -> None:
+        self.java = javac_parser.Java()
+
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
         tokens = javalang.tokenizer.tokenize(source)
         for token in tokens:
@@ -85,15 +91,8 @@ class Java(Language):
                         start=loc.start, end=loc.end)
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
-        try:
-            javalang.parse.parse(source)
-            return True
-        except (JavaSyntaxError, LexerError) as e:
-            return False
-        except Exception as e:
-            import warnings
-            warnings.warn(f'javalang bug strikes again for file: {source!r}')
-            return False
+        # Java#check_syntax() returns the number of syntax errors!
+        return self.java.check_syntax(source) == 0
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
         toks = [tok for tok in source if tok.name != 'EndOfInput']
