@@ -88,17 +88,30 @@ class Java(Language):
     extensions = {'.java'}
     vocabulary = JavaVocabulary.load()
 
-    def __init__(self) -> None:
-        self.java = javac_parser.Java()
+    @property
+    def java(self):
+        """
+        Lazily start up the Java server. This decreases the chances of things
+        going horribly wrong when two seperate process initialize
+        the Java language instance around the same time.
+        """
+        if not hasattr(self, '_java_server'):
+            # Start the finicky server.
+            self._java_server = javac_parser.Java()
 
-        # Attempt to remove all references to the Java server to invoke its
-        # __del__. Do this at atexit, because atexits callbacks are invoked
-        # BEFORE Python tears down the interpreter and causes a lot of
-        # problems in doing so.
-        @atexit.register
-        def kill_server():
-            assert sys.getrefcount(self.java) in {1, 2}, "Too many references to Java server."
-            self.java = None
+            # Attempt to remove all references to the Java server to invoke its
+            # __del__. Do this at atexit, because atexits callbacks are invoked
+            # BEFORE Python tears down the interpreter and causes a lot of
+            # problems in doing so.
+            @atexit.register
+            def kill_server():
+                assert sys.getrefcount(self._java_server) in {1, 2}, "Too many references to Java server."
+                # to prevent anything from going wrong, EXPLICLITY call the
+                # "destructor"
+                self._java_server.__del__()
+                self._java_server = None
+
+        return self._java_server
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
         tokens = self.java.lex(to_str(source))
