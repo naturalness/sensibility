@@ -65,9 +65,8 @@ def test_summarize() -> None:
     summary = java.summarize(test_file_good)
     assert summary.n_tokens == 15
     # Return the PHYSICAL number of lines of code.
-    # The tokenizer may split more logical lines on \u000a escapes, but those
-    # are dumb.
-    assert summary.sloc == 4
+    # There are 4 logical lines in this example, caused by the \u000A escape.
+    assert summary.sloc == 3
 
 
 @pytest.mark.skip(reason="Column numbers are wonky.")

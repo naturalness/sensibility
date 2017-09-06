@@ -110,6 +110,9 @@ class Java(Language):
         #   4. A 2-tuple of end line, end column
         #   5. A whitespace-free representation of the value
         for name, value, start, end, _normalized in tokens:
+            # Omit the EOF token, as it's only useful for the parser.
+            if name == 'EOF':
+                continue
             yield Token(name=name, value=value,
                         start=Position(line=start[0], column=start[0]),
                         end=Position(line=end[0], column=end[0]))
@@ -170,6 +173,10 @@ OPEN_CLASSES = (
 
 
 def java2sensibility(lex: Lexeme) -> str:
+    """
+    Returns a simple string representation of the token. The string
+    representation is guarenteed to not include any whitespace.
+    """
     # > Except for comments (§3.7), identifiers, and the contents of character
     # > and string literals (§3.10.4, §3.10.5), all input elements (§3.5) in a
     # > program are formed only from ASCII characters (or Unicode escapes (§3.3)
