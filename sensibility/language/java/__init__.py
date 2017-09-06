@@ -41,7 +41,7 @@ here = Path(__file__).parent
 # XXX: Should probably be elsewhere.
 class NoSourceRepresentationError(ValueError):
     """
-    Raise when there is no way to convert the Vocabular index into a
+    Raise when there is no way to convert the Vocabulary index into a
     token that can be inserted into the file.
     """
 
@@ -114,8 +114,8 @@ class Java(Language):
             if name == 'EOF':
                 continue
             yield Token(name=name, value=value,
-                        start=Position(line=start[0], column=start[0]),
-                        end=Position(line=end[0], column=end[0]))
+                        start=Position(line=start[0], column=start[1]),
+                        end=Position(line=end[0], column=end[1]))
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
         return self.java.get_num_parse_errors(to_str(source)) == 0
@@ -130,7 +130,9 @@ class Java(Language):
             yield token.location, java2sensibility(token)
 
 
-RESERVED_WORDS = {
+# Big list of symbol names, derived from
+# com.sun.tools.javac.parser.Tokens.TokenKind
+RESERVED_WORDS_REPR = {
     'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch',
     'char', 'class', 'const', 'continue', 'default', 'do', 'double',
     'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto',
@@ -143,59 +145,83 @@ RESERVED_WORDS = {
     'transient', 'volatile', 'boolean', 'byte', 'char', 'double', 'float',
     'int', 'long', 'short', 'true', 'false', 'null'
 }
-SYMBOLS = {
+SYMBOLS_REPR = {
     '>>>=', '>>=', '<<=',  '%=', '^=', '|=', '&=', '/=',
     '*=', '-=', '+=', '<<', '--', '++', '||', '&&', '!=',
     '>=', '<=', '==', '%', '^', '|', '&', '/', '*', '-',
     '+', ':', '?', '~', '!', '<', '>', '=', '...', '->', '::',
     '(', ')', '{', '}', '[', ']', ';', ',', '.', '@'
 }
-CLOSED_CLASSES = {
-    'Keyword', 'Modifier', 'BasicType', 'Boolean', 'Null',
-    'Separator', 'Operator', 'Annotation', 'EndOfInput'
+REPRESENTABLE_CLOSED_CLASSES = SYMBOLS_REPR | RESERVED_WORDS_REPR
+
+NON_REPRESENTABLE_CLOSED_CLASSES = {
+    'EOF', 'ERROR'
 }
 
-INTEGER_LITERALS = {
-    'Integer',
-    'DecimalInteger', 'OctalInteger', 'BinaryInteger', 'HexInteger',
+CLOSED_CLASSES = {
+    # Keywords and other reserved words
+    'ABSTRACT', 'ASSERT', 'BOOLEAN', 'BREAK', 'BYTE', 'CASE', 'CATCH',
+    'CHAR', 'CLASS', 'CONST', 'CONTINUE', 'DEFAULT', 'DO', 'DOUBLE',
+    'ELSE', 'ENUM', 'EXTENDS', 'FINAL', 'FINALLY', 'FLOAT', 'FOR', 'GOTO',
+    'IF', 'IMPLEMENTS', 'IMPORT', 'INSTANCEOF', 'INT', 'INTERFACE', 'LONG',
+    'NATIVE', 'NEW', 'PACKAGE', 'PRIVATE', 'PROTECTED', 'PUBLIC', 'RETURN',
+    'SHORT', 'STATIC', 'STRICTFP', 'SUPER', 'SWITCH', 'SYNCHRONIZED',
+    'THIS', 'THROW', 'THROWS', 'TRANSIENT', 'TRY', 'VOID', 'VOLATILE',
+    'WHILE', 'ABSTRACT', 'DEFAULT', 'FINAL', 'NATIVE', 'PRIVATE',
+    'PROTECTED', 'PUBLIC', 'STATIC', 'STRICTFP', 'SYNCHRONIZED',
+    'TRANSIENT', 'VOLATILE', 'BOOLEAN', 'BYTE', 'CHAR', 'DOUBLE', 'FLOAT',
+    'INT', 'LONG', 'SHORT',
+    # Reserved literals
+    'TRUE', 'FALSE', 'NULL',
+
+    # Symbols
+    'UNDERSCORE', 'ARROW', 'COLCOL', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
+    'LBRACKET', 'RBRACKET', 'SEMI', 'COMMA', 'DOT', 'ELLIPSIS', 'EQ', 'GT',
+    'LT', 'BANG', 'TILDE', 'QUES', 'COLON', 'EQEQ', 'LTEQ', 'GTEQ', 'BANGEQ',
+    'AMPAMP', 'BARBAR', 'PLUSPLUS', 'SUBSUB', 'PLUS', 'SUB', 'STAR', 'SLASH',
+    'AMP', 'BAR', 'CARET', 'PERCENT', 'LTLT', 'GTGT', 'GTGTGT', 'PLUSEQ',
+    'SUBEQ', 'STAREQ', 'SLASHEQ', 'AMPEQ', 'BAREQ', 'CARETEQ', 'PERCENTEQ',
+    'LTLTEQ', 'GTGTEQ', 'GTGTGTEQ', 'MONKEYS_AT',
 }
-FLOATING_POINT_LITERALS = {
-    'FloatingPoint',
-    'DecimalFloatingPoint', 'HexFloatingPoint',
+
+NUMERIC_LITERALS = {
+    'INTLITERAL', 'LONGLITERAL', 'FLOATLITERAL', 'DOUBLELITERAL', 'CHARLITERAL',
 }
-STRING_LITERALS = {
-    'Character', 'String',
-}
-OPEN_CLASSES = (
-    INTEGER_LITERALS | FLOATING_POINT_LITERALS | STRING_LITERALS |
-    {'Identifier'}
-)
+OPEN_CLASSES = {'IDENTIFIER', 'STRINGLITERAL'} | NUMERIC_LITERALS
 
 
 def java2sensibility(lex: Lexeme) -> str:
     """
     Returns a simple string representation of the token. The string
-    representation is guarenteed to not include any whitespace.
+    representation is guaranteed to not include any whitespace.
+
+    Open classes and non-representable closed classes have a angle-bracket
+    delimited name, e.g., <IDENTIFIER>, <STRING>, <ERROR>. Special case is
+    EOF, which uses the NLP convention of </s> take to mean "end of sentence".
+
+    Other closed classes are represented by their in-source value.
     """
     # > Except for comments (§3.7), identifiers, and the contents of character
     # > and string literals (§3.10.4, §3.10.5), all input elements (§3.5) in a
     # > program are formed only from ASCII characters (or Unicode escapes (§3.3)
     # > which result in ASCII characters).
     # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html
-    if lex.name == 'EndOfInput':
-        return '</s>'
-    if lex.name in CLOSED_CLASSES:
-        assert lex.value in RESERVED_WORDS | SYMBOLS
+    if lex.value in REPRESENTABLE_CLOSED_CLASSES:
         return lex.value
-    else:
-        assert lex.name in OPEN_CLASSES
-        if lex.name in INTEGER_LITERALS | FLOATING_POINT_LITERALS:
+    elif lex.name in OPEN_CLASSES:
+        if lex.name in NUMERIC_LITERALS:
             return '<NUMBER>'
-        elif lex.name in STRING_LITERALS:
+        elif lex.name == 'STRINGLITERAL':
             return '<STRING>'
         else:
-            assert lex.name == 'Identifier'
+            assert lex.name == 'IDENTIFIER'
             return '<IDENTIFIER>'
+    elif lex.name == 'EOF':
+        return '</s>'
+    elif lex.name == 'ERROR':
+        return '<ERROR>'
+    else:
+        raise NotImplementedError(repr(lex))
 
 
 java: Language = Java()
