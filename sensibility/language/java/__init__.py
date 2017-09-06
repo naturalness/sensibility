@@ -30,9 +30,6 @@ from typing import (
 
 import javac_parser
 
-import javalang  # type: ignore
-from javalang.tokenizer import LexerError  # type: ignore
-
 from .. import Language, SourceSummary
 from ...lexical_analysis import Lexeme, Location, Position, Token
 from ...vocabulary import Vocabulary, Vind
@@ -71,6 +68,9 @@ class JavaVocabulary(Vocabulary):
 
 
 def to_str(source: Union[str, bytes, IO[bytes]]) -> str:
+    """
+    Coerce an input format to a Unicode string.
+    """
     if isinstance(source, str):
         return source
     elif isinstance(source, bytes):
@@ -101,14 +101,18 @@ class Java(Language):
             self.java = None
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
-        tokens = javalang.tokenizer.tokenize(source)
-        for token in tokens:
-            loc = Location.from_string(token.value,
-                                       line=token.position[0],
-                                       column=token.position[1])
-            yield Token(name=type(token).__name__,
-                        value=token.value,
-                        start=loc.start, end=loc.end)
+        tokens = self.java.lex(to_str(source))
+        # Each token is a tuple with the following structure
+        # (reproduced from javac_parser.py):
+        #   1. Lexeme type
+        #   2. Value (as it appears in the source file)
+        #   3. A 2-tuple of start line, start column
+        #   4. A 2-tuple of end line, end column
+        #   5. A whitespace-free representation of the value
+        for name, value, start, end, _normalized in tokens:
+            yield Token(name=name, value=value,
+                        start=Position(line=start[0], column=start[0]),
+                        end=Position(line=end[0], column=end[0]))
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
         return self.java.get_num_parse_errors(to_str(source)) == 0
