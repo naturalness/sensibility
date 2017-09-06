@@ -15,7 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
 import os
+import sys
 import token
 import tokenize
 from io import BytesIO
@@ -88,6 +90,15 @@ class Java(Language):
 
     def __init__(self) -> None:
         self.java = javac_parser.Java()
+
+        # Attempt to remove all references to the Java server to invoke its
+        # __del__. Do this at atexit, because atexits callbacks are invoked
+        # BEFORE Python tears down the interpreter and causes a lot of
+        # problems in doing so.
+        @atexit.register
+        def kill_server():
+            assert sys.getrefcount(self.java) in {1, 2}, "Too many references to Java server."
+            self.java = None
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
         tokens = javalang.tokenizer.tokenize(source)
