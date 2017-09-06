@@ -60,6 +60,7 @@ def test_check_syntax():
     assert java.check_syntax('#') is False
     assert java.check_syntax(test_file_really_bad) is False
 
+
 def test_summarize() -> None:
     summary = java.summarize(test_file_good)
     assert summary.n_tokens == 15
