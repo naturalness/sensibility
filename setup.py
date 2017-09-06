@@ -43,7 +43,6 @@ setup(
         'blessings',
         'github3.py==0.9.6',
         'h5py>=2.6.0',
-        'javalang>=0.11',
         'javac-parser>=0.1.8',
         'jenkspy>= 0.1.3, <0.2.0',
         'Keras>=2.0.0, < 3.0.0',

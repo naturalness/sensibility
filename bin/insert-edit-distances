@@ -22,7 +22,6 @@ database.
 
 import sqlite3
 
-from javalang.tokenizer import LexerError  # type: ignore
 from tqdm import tqdm
 from sensibility.evaluation.mistakes import Mistakes, Mistake
 from sensibility.evaluation.distance import tokenwise_distance
@@ -34,8 +33,5 @@ conn.execute('PRAGMA synchronous = OFF')
 
 mistakes = Mistakes(conn)
 for mistake in tqdm(mistakes):
-    try:
-        dist = tokenwise_distance(mistake.before, mistake.after)
-    except LexerError:
-        continue
+    dist = tokenwise_distance(mistake.before, mistake.after)
     mistakes.insert_distance(mistake, dist)

@@ -87,3 +87,9 @@ def test_vocabularize() -> None:
         (loc.next_line().next_line().across(5), 'class'),
     ]
     assert result[:len(expected)] == expected
+
+
+def test_tokenize_invalid():
+    tokens = list(java.tokenize('#'))
+    assert len(tokens) == 1
+    assert tokens[0].name == 'ERROR'
