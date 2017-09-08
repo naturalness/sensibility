@@ -134,7 +134,7 @@ class Java(Language):
         return self.java.get_num_parse_errors(to_str(source)) == 0
 
     def summarize_tokens(self, source: Iterable[Token]) -> SourceSummary:
-        toks = [tok for tok in source if tok.name != 'EndOfInput']
+        toks = [tok for tok in source if tok.name != 'EOF']
         slines = set(line for tok in toks for line in tok.lines)
         return SourceSummary(n_tokens=len(toks), sloc=len(slines))
 
