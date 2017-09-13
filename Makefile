@@ -43,11 +43,22 @@ include extra-rules.mk
 
 ################################################################################
 
-# Create the vocabulary.
+# When a language is active (see bin/shell),
+# allow the generation of the active language's vocabulary using:
+#
+#  	make vocabulary
+#
 ifdef SENSIBILITY_LANGUAGE
 VOCABULARY := sensibility/language/$(shell language-id)/vocabulary.json
+# GNU parallel's --pipepart requires a seekable file, so dump the elligible
+# sources in this temporary file:
+HASHES_FILE := $(shell mktemp -ut hashes)
 $(VOCABULARY):
-	list-elligible-sources | discover-vocabulary > $@
+	list-elligible-sources > /tmp/
+		| parallel --jobs 0 --pipepart --round-robin -a $(HASHES_FILE)\
+			discover-vocabulary\
+		| sort -u\
+		| list-to-json > $@
 vocabulary: $(VOCABULARY)
 .PHONY: vocabulary
 endif
