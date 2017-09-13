@@ -17,29 +17,27 @@
 
 
 """
-Prints the vocabulary discovered from all given filehashes.
+Prints each line as an entry in a JSON array. Skips blanks.
 
 Usage:
-    discover-vocabulary <filehashes > vocabulary.txt
+    list-to-json <list.txt > list.json
+
+Potential use case:
+
+Create a JSON version of a vocabulary collected from several partial
+vocabularies as line-seperated files.
+
+    cat partial-vocabulary-*.txt | sort -u | list-to-json > vocabulary.json
 """
 
 import sys
 import json
 
-from sensibility.miner.corpus import Corpus
-from sensibility.miner.util import filehashes
-from sensibility.language import language
-
 
 if __name__ == '__main__':
-    corpus = Corpus(read_only=True)
-
-    unique_entries = set()
-    for filehash in filehashes():
-        source = corpus.get_source(filehash)
-        for vocab_entry in language.vocabularize(source):
-            unique_entries.add(vocab_entry)
-
-    for entry in unique_entries:
-        assert '\n' not in entry
-        print(entry)
+    def lines():
+        for line in sys.stdin:
+            line = line.strip()
+            if line != '':
+                yield line
+    json.dump(tuple(lines()), sys.stdout)
