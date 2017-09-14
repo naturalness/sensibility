@@ -93,3 +93,13 @@ def test_tokenize_invalid():
     tokens = list(java.tokenize('#'))
     assert len(tokens) == 1
     assert tokens[0].name == 'ERROR'
+
+
+def test_tokenize_evil():
+    # I'm learning awfull things about Java today
+    tokens = list(java.tokenize('p. \\u0042 \\uuu003B'))
+    assert 4 == len(tokens)
+    assert tokens[0].value == 'p'
+    assert tokens[1].value == '.'
+    assert tokens[2].value == 'B'
+    assert tokens[3].value == ';'
