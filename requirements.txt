@@ -11,4 +11,4 @@ requests==2.13.0
 tqdm
 jenkspy==0.1.3
 python-Levenshtein==0.12.0
-javac-parser==0.1.9
+javac-parser==0.2.0
