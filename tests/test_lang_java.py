@@ -97,6 +97,11 @@ def test_tokenize_invalid():
 
 def test_tokenize_evil():
     # I'm learning awfull things about Java today
+    # For a good time, read The Java SE Specification Section §3.3
+    # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.3
+    # Then follow that up with The Java SE Specification Section i §3.5
+    # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.5
+    #tokens = list(java.tokenize('p. \\u0042 \\uuu003B\u001a'))
     tokens = list(java.tokenize('p. \\u0042 \\uuu003B'))
     assert 4 == len(tokens)
     assert tokens[0].value == 'p'

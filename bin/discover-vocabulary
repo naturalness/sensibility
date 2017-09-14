@@ -37,8 +37,14 @@ if __name__ == '__main__':
     unique_entries = set()
     for filehash in filehashes():
         source = corpus.get_source(filehash)
-        for vocab_entry in language.vocabularize(source):
-            unique_entries.add(vocab_entry)
+        
+        # If there is an unknown vocabulary item, print the file in which it happened.
+        try:
+            for vocab_entry in language.vocabularize(source):
+                unique_entries.add(vocab_entry)
+        except NotImplementedError:
+            print(filehash, file=sys.stderr)
+            raise
 
     for entry in unique_entries:
         assert '\n' not in entry

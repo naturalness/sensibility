@@ -19,13 +19,12 @@ import atexit
 import os
 import sys
 import token
-import tokenize
 from io import BytesIO
 from keyword import iskeyword
 from pathlib import Path
 from typing import (
     Any, AnyStr, Callable, IO, Iterable, Optional, Tuple, Union,
-    overload,
+    overload, cast
 )
 
 import javac_parser
@@ -45,51 +44,30 @@ class NoSourceRepresentationError(ValueError):
     token that can be inserted into the file.
     """
 
-# XXX: should probably be in vocabulary.
-class NullVocabulary(Vocabulary):
-    """
-    Vocabulary that is loaded prior to discovery.
-    """
-    def __init__(self) -> None:
-        super().__init__(())
-
-    def entries(self):
-        raise NotImplementedError
-
-    def to_test(self):
-        raise NotImplementedError
-
-    def to_index(self):
-        raise NotImplementedError
-
-    def __len__(self):
-        raise NotImplementedError
-
-    def __getitem__(self):
-        raise NotImplementedError
-
-
 class JavaVocabulary(Vocabulary):
     """
     The vocabulary, but with werid Java stuff.
     """
     @staticmethod
     def load() -> Vocabulary:
-        vocab_path = here / 'vocabulary.json'
-        if not vocab_path.exists():
-            from warnings import warn
-            warn("Could not find vocabulary; some operations are not permitted.")
-            return NullVocabulary()
-        return JavaVocabulary.from_json_file(vocab_path)
+        return JavaVocabulary.from_json_file(here / 'vocabulary.json')
 
     def to_source_text(self, idx: Vind) -> str:
         text = self.to_text(idx)
         if text == "<IDENTIFIER>":
             return "ident"
-        elif text == "<NUMBER>":
-            return "0"
         elif text == "<STRING>":
             return '"string"'
+        elif text == "<INTLITERAL>":
+            return "0"
+        elif text == "<DOUBLELITERAL>":
+            return "0.0"
+        elif text == "<CHARLITERAL>":
+            return r"'\0'"
+        elif text == "<LONGLITERAL>":
+            return "0L"
+        elif text == "<FLOATLITERAL>":
+            return "0.0F"
         elif not (text.startswith('<') and text.endswith('>')):
             return text
         raise NoSourceRepresentationError(text)
@@ -108,13 +86,23 @@ def to_str(source: Union[str, bytes, IO[bytes]]) -> str:
         raise NotImplementedError
 
 
+class LazyVocabulary:
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __get__(self, obj, value):
+        if not hasattr(self, 'value'):
+            self.value = self.fn()
+        return self.value
+
+
 class Java(Language):
     """
     Defines the Java 8 programming language.
     """
 
     extensions = {'.java'}
-    vocabulary = JavaVocabulary.load()
+    vocabulary = cast(Vocabulary, LazyVocabulary(JavaVocabulary.load))
 
     @property
     def java(self):
@@ -150,11 +138,13 @@ class Java(Language):
         #   3. A 2-tuple of start line, start column
         #   4. A 2-tuple of end line, end column
         #   5. A whitespace-free representation of the value
-        for name, value, start, end, _normalized in tokens:
+        for name, _raw_value, start, end, normalized in tokens:
             # Omit the EOF token, as it's only useful for the parser.
             if name == 'EOF':
                 continue
-            yield Token(name=name, value=value,
+            # Take the NORMALIZED value, as Java allows unicode escapes in
+            # ARBITRARY tokens and then things get hairy here.
+            yield Token(name=name, value=normalized,
                         start=Position(line=start[0], column=start[1]),
                         end=Position(line=end[0], column=end[1]))
 
@@ -186,13 +176,14 @@ RESERVED_WORDS_REPR = {
     'transient', 'volatile', 'boolean', 'byte', 'char', 'double', 'float',
     'int', 'long', 'short', 'true', 'false', 'null'
 }
+
 SYMBOLS_REPR = {
-    '>>>=', '>>=', '<<=',  '%=', '^=', '|=', '&=', '/=',
-    '*=', '-=', '+=', '<<', '--', '++', '||', '&&', '!=',
-    '>=', '<=', '==', '%', '^', '|', '&', '/', '*', '-',
-    '+', ':', '?', '~', '!', '<', '>', '=', '...', '->', '::',
-    '(', ')', '{', '}', '[', ']', ';', ',', '.', '@'
+    "_", "->", "::", "(", ")", "{", "}", "[", "]", ";", ",", ".", "...", "=",
+    ">", "<", "!", "~", "?", ":", "==", "<=", ">=", "!=", "&&", "||", "++",
+    "--", "+", "-", "*", "/", "&", "|", "^", "%", "<<", ">>", ">>>", "+=",
+    "-=", "*=", "/=", "&=", "|=", "^=", "%=", "<<=", ">>=", ">>>=", "@",
 }
+
 REPRESENTABLE_CLOSED_CLASSES = SYMBOLS_REPR | RESERVED_WORDS_REPR
 
 NON_REPRESENTABLE_CLOSED_CLASSES = {
@@ -262,6 +253,7 @@ def java2sensibility(lex: Lexeme) -> str:
     elif lex.name == 'ERROR':
         return '<ERROR>'
     else:
+        # When I forgot to account for a token.
         raise NotImplementedError(repr(lex))
 
 

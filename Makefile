@@ -55,7 +55,7 @@ VOCABULARY := sensibility/language/$(shell language-id)/vocabulary.json
 HASHES_FILE := $(shell mktemp -u hashes.XXXXX)
 $(VOCABULARY):
 	list-eligible-sources > $(HASHES_FILE)
-	parallel --jobs 0 --pipepart --round-robin -a $(HASHES_FILE)\
+	parallel --pipepart --round-robin -a $(HASHES_FILE)\
 		discover-vocabulary | sort -u | list-to-json > $@
 vocabulary: $(VOCABULARY)
 .PHONY: vocabulary
