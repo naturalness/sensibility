@@ -45,6 +45,29 @@ class NoSourceRepresentationError(ValueError):
     token that can be inserted into the file.
     """
 
+# XXX: should probably be in vocabulary.
+class NullVocabulary(Vocabulary):
+    """
+    Vocabulary that is loaded prior to discovery.
+    """
+    def __init__(self) -> None:
+        super().__init__(())
+
+    def entries(self):
+        raise NotImplementedError
+
+    def to_test(self):
+        raise NotImplementedError
+
+    def to_index(self):
+        raise NotImplementedError
+
+    def __len__(self):
+        raise NotImplementedError
+
+    def __getitem__(self):
+        raise NotImplementedError
+
 
 class JavaVocabulary(Vocabulary):
     """
@@ -52,7 +75,12 @@ class JavaVocabulary(Vocabulary):
     """
     @staticmethod
     def load() -> Vocabulary:
-        return JavaVocabulary.from_json_file(here / 'vocabulary.json')
+        vocab_path = here / 'vocabulary.json'
+        if not vocab_path.exists():
+            from warnings import warn
+            warn("Could not find vocabulary; some operations are not permitted.")
+            return NullVocabulary()
+        return JavaVocabulary.from_json_file(vocab_path)
 
     def to_source_text(self, idx: Vind) -> str:
         text = self.to_text(idx)
@@ -223,7 +251,7 @@ def java2sensibility(lex: Lexeme) -> str:
         return lex.value
     elif lex.name in OPEN_CLASSES:
         if lex.name in NUMERIC_LITERALS:
-            return '<NUMBER>'
+            return f'<{lex.name}>'
         elif lex.name == 'STRINGLITERAL':
             return '<STRING>'
         else:

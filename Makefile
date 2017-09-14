@@ -52,9 +52,9 @@ ifdef SENSIBILITY_LANGUAGE
 VOCABULARY := sensibility/language/$(shell language-id)/vocabulary.json
 # GNU parallel's --pipepart requires a seekable file, so dump the elligible
 # sources in this temporary file:
-HASHES_FILE := $(shell mktemp -ut hashes)
+HASHES_FILE := $(shell mktemp -u hashes.XXXXX)
 $(VOCABULARY):
-	list-elligible-sources > $(HASHES_FILE)
+	list-eligible-sources > $(HASHES_FILE)
 	parallel --jobs 0 --pipepart --round-robin -a $(HASHES_FILE)\
 		discover-vocabulary | sort -u | list-to-json > $@
 vocabulary: $(VOCABULARY)

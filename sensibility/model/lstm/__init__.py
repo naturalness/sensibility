@@ -51,7 +51,7 @@ class ModelDescription:
                  context_length: int,
                  partition: int,
                  hidden_layers: Sequence[int],
-                 learning_rate: float=0.001,
+                 learning_rate: float=0.05,
                  training_set: Set[str],
                  validation_set: Set[str],
                  vectors_path: Path) -> None:
