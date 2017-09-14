@@ -47,7 +47,7 @@ def test_insert() -> None:
     """)
     edit = Insertion(7, to_index('}'))
     mutant = edit.apply(source_code)
-    expected = b'@ ident ( { "string" , 0 } ) class ident { }'
+    expected = b'@ ident ( { "string" , 0.0 } ) class ident { }'
     actual = mutant.to_source_code()
     assert expected == actual
     assert language.check_syntax(actual)
@@ -61,7 +61,7 @@ def test_substitution() -> None:
     edit = Substitution(3, original_token=to_index('<STRING>'),
                         replacement=to_index("<IDENTIFIER>"))
     mutant = edit.apply(source_code)
-    expected = b'@ ident ( ident = 0 ) class ident { }'
+    expected = b'@ ident ( ident = 0.0 ) class ident { }'
     actual = mutant.to_source_code()
     assert expected == actual
     assert language.check_syntax(actual)
