@@ -130,7 +130,7 @@ if __name__ == '__main__':
     # Use the provided GPU.
     if args.gpu is not None:
         import os
-        os.environ['THEANO_FLAGS'] = f'device=gpu{args.gpu}'
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
     # Determine language first!
     model = ModelDescription(
