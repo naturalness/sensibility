@@ -53,6 +53,7 @@ sub model_rules {
             print "--train-set-size=\$(TRAIN_SET_SIZE) ";
             print "--validation-set-size=\$(VALIDATION_SET_SIZE) ";
             print "--hidden-layers=\$(HIDDEN_LAYERS) ";
+	    print "--gpu=", $dir eq 'f' ? '0' : '1', ' ';
             print "--context-length=\$(CONTEXT)\n";
         }
     }

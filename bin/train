@@ -102,7 +102,8 @@ parser.add_argument('--proportion', '-p', type=float, default=1.0,
                     help=f"default: 1.0")
 parser.add_argument('--output', '-o', type=Path,
                     help=f"Where to output.  Infers the rest of the arguments from this one")
-
+parser.add_argument('--gpu', type=int, default=None,
+                    help=f"Which GPU to use.")
 
 def slurp(filename: Path) -> List[str]:
     with open(filename, 'r') as hashes_file:
@@ -125,6 +126,11 @@ if __name__ == '__main__':
 
     training_set = slurp(get_training_set_path(partition))
     validation_set = slurp(get_validation_set_path(partition))
+
+    # Use the provided GPU.
+    if args.gpu is not None:
+        import os
+        os.environ['THEANO_FLAGS'] = f'device=gpu{args.gpu}'
 
     # Determine language first!
     model = ModelDescription(
