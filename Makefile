@@ -16,8 +16,8 @@
 PATH := $(PWD)/bin:$(PATH)
 
 # Use parameters from Bhatia and Singh 2016
-CONTEXT = 9  # Window size of 10
-HIDDEN_LAYERS = 128
+CONTEXT = 20  # Window size of 10
+HIDDEN_LAYERS = 300
 
 # How many files to train on
 TRAIN_SET_SIZE := 11000  # files

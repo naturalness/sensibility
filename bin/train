@@ -98,12 +98,11 @@ parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
 parser.add_argument('--base-dir', type=Path, default=Path('.'),
                     help=f"default: .")
-parser.add_argument('--proportion', '-p', type=float, default=1.0,
-                    help=f"default: 1.0")
 parser.add_argument('--output', '-o', type=Path,
                     help=f"Where to output.  Infers the rest of the arguments from this one")
 parser.add_argument('--gpu', type=int, default=None,
                     help=f"Which GPU to use.")
+
 
 def slurp(filename: Path) -> List[str]:
     with open(filename, 'r') as hashes_file:
@@ -143,6 +142,7 @@ if __name__ == '__main__':
         context_length=args.context_length,
         hidden_layers=args.hidden_layers,
         vectors_path=get_vectors_path(),
+        learning_rate=0.1
     )
 
     model.train()
