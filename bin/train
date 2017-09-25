@@ -17,7 +17,10 @@
 
 import argparse
 import logging
+import os
 import re
+import sys
+import warnings
 from typing import List, Set, Optional, cast
 from pathlib import Path
 
@@ -127,9 +130,18 @@ if __name__ == '__main__':
     validation_set = slurp(get_validation_set_path(partition))
 
     # Use the provided GPU.
+    try:
+        import GPUtil  # type: ignore
+    except ImportError:
+        warnings.warn("Could not import GPUtil: using default GPU.")
+    else:
+        # Get the GPU with the LEAST memory utilization.
+        device_id, = GPUtil.getFirstAvailable(order='memory')
+        print("Using GPU", device_id, file=sys.stderr)
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
+
     if args.gpu is not None:
-        import os
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+        warnings.warn('Ignoring deprecated option: --gpu')
 
     # Determine language first!
     model = ModelDescription(
