@@ -155,7 +155,7 @@ class ModelDescription:
 
     def compile_model(self) -> 'Sequential':
         from keras.models import Sequential
-        from keras.layers import Dense, Activation
+        from keras.layers import Dense, Activation, Dropout
         from keras.layers import LSTM
         from keras.optimizers import RMSprop
 
@@ -182,9 +182,14 @@ class ModelDescription:
             # Add the final layer.
             model.add(LSTM(last_layer))
 
+        # Add some form of regularization:
+        # http://theorangeduck.com/page/neural-network-not-working#dropout
+        # The rate should ideally be tweaked according to the size and nature
+        # of the training data.
+        model.add(Dropout(0.75))
         # Output is number of samples x size of hidden layer
         model.add(Dense(len(vocabulary)))
-        # To make a thing that looks like a probability distribution.
+        # Softmax makes the output look like a probability distribution.
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy',
