@@ -116,6 +116,28 @@ def subset(xs: List[str], max_size: int) -> Set[str]:
     return set(xs[:max_size])
 
 
+def configure_gpu(prefered: int) -> int:
+    device_id = prefered
+
+    try:
+        import GPUtil  # type: ignore
+    except ImportError:
+        warnings.warn("Could not import GPUtil: using prefered GPU.")
+    else:
+        # Get the GPUs with the LEAST memory utilization.
+        available = GPUtil.getAvailable(order='memory', limit=16, maxMemory=0.25)
+        assert len(available) >= 1
+        if prefered not in available:
+            print("Requested GPU", prefered, "unavailable", file=sys.stderr)
+            # Since the preference is unavailable, use the GPU with the least
+            # allocated memory.
+            device_id = available[0]
+
+    # Set the prefered GPU ID.
+    print("Using GPU", device_id, file=sys.stderr)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+
+
 # TODO: Support multiple models?
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -129,19 +151,7 @@ if __name__ == '__main__':
     training_set = slurp(get_training_set_path(partition))
     validation_set = slurp(get_validation_set_path(partition))
 
-    # Use the provided GPU.
-    try:
-        import GPUtil  # type: ignore
-    except ImportError:
-        warnings.warn("Could not import GPUtil: using default GPU.")
-    else:
-        # Get the GPU with the LEAST memory utilization.
-        device_id, = GPUtil.getFirstAvailable(order='memory')
-        print("Using GPU", device_id, file=sys.stderr)
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
-
-    if args.gpu is not None:
-        warnings.warn('Ignoring deprecated option: --gpu')
+    configure_gpu(args.gpu)
 
     # Determine language first!
     model = ModelDescription(
