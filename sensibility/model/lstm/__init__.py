@@ -146,6 +146,7 @@ class ModelDescription:
                 pickle_safe=True,
             )
         except KeyboardInterrupt:
+            model.summary()
             model.save(str(self.interrupted_path))  # type: ignore
         finally:
             self.update_symlink()
@@ -193,7 +194,7 @@ class ModelDescription:
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy',
-                      optimizer=RMSprop(lr=self.learning_rate),
+                      optimizer=RMSprop(lr=self.learning_rate, clipnorm=1.),
                       metrics=['categorical_accuracy'])
         return model
 

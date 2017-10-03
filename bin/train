@@ -164,7 +164,7 @@ if __name__ == '__main__':
         context_length=args.context_length,
         hidden_layers=args.hidden_layers,
         vectors_path=get_vectors_path(),
-        learning_rate=0.1
+        learning_rate=0.01
     )
 
     model.train()
