@@ -61,6 +61,9 @@ vocabulary: $(VOCABULARY)
 .PHONY: vocabulary
 endif
 
+################################################################################
+
+# Tools for generating data in a Josh-approved manner.
 
 # Josh is a phony
 .PHONY: joshua
@@ -79,3 +82,16 @@ mistakes:
 
 all-mistakes:
 	bin/all-mistakes $@
+
+# Generates a list of paths.
+ifdef SENSIBILITY_LANGUAGE
+language-id := $(shell language-id)
+# Also allow the creation of partitions
+partition-paths:
+	for i in {0..4} ; do \
+		hash2path --prefix="$(language-id)/" \
+		<evaluation/$(language-id)/partitions/$$i/training\
+		>training/$(language-id)-$$i.txt ;\
+	done
+.PHONY: partition-paths
+endif
