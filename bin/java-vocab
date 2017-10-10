@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Prints all tokens in Java.
+
+Usage:
+
+    java-vocab > java-vocabulary.tsv
+    java-vocab | tail +2 | java-lex-raw
+"""
+
+from sensibility.language.java import java
+vocab = java.vocabulary
+lex = java.java.lex  # type: ignore
+
+print("idx", "lex0", "entry", "src", sep="\t")
+
+entries = ['#', '_'] + list(vocab.entries())  # type: ignore
+
+for entry in entries:
+    try:
+        index = vocab.to_index(entry)
+    except KeyError:
+        index = vocab.unk_token_index
+        src = '/*ERROR:*/' + entry
+        lex0 = lex(entry)[0][0]
+    else:
+        src = vocab.to_source_text(index)
+        lex0 = lex(src)[0][0]
+
+    print(f"/* {index:>3} */",
+          f"/* {lex0:>16} */",
+          f"/* {entry:>16} */",
+          src,
+          sep="\t")
+
+# It will complain if I don't do this.
+del lex
