@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Print the path of one or more filehashes.
+If no hashes are provided on the command line, checks stdin.
+
+Usage:
+      hash2path  [--prefix=PREFIX] [FILEHASH...]
+"""
+
+import sys
+import argparse
+
+from sensibility.miner.corpus import Corpus, FileInfo
+from sensibility.miner.util import filehashes as filehashes_from_stdin
+
+
+parser = argparse.ArgumentParser(description="Get path for a filehash")
+parser.add_argument('filehashes',  nargs='*',
+                    help='Filehash within the database')
+parser.add_argument('-p', '--prefix', default='')
+
+
+if __name__ == '__main__':
+      args = parser.parse_args()
+      prefix = args.prefix
+
+      # TODO: determine through command-line arguments
+      corpus = Corpus(read_only=True)
+      
+      filehashes = filehashes_from_stdin() if not args.filehashes else args.filehashes
+      for filehash in filehashes:
+          info = corpus.get_info(filehash)
+          print(f"{prefix}{info.owner}/{info.name}/{info.path}")
