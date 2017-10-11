@@ -89,6 +89,26 @@ def test_vocabularize() -> None:
     assert result[:len(expected)] == expected
 
 
+def test_vocabulary() -> None:
+    """
+    Test whether every entry is  unique and source-representable.
+    """
+    unique_entries = set(java.vocabulary.representable_indicies())
+    entries_seen = 0
+
+    for idx in java.vocabulary.representable_indicies():
+        text = java.vocabulary.to_source_text(idx)
+        # What happens when we reparse the single token?
+        tokens = tuple(java.vocabularize(text))
+        assert len(tokens) == 1
+
+        actual_idx = java.vocabulary.to_index(tokens[0])
+        assert idx == actual_idx
+        entries_seen += 1
+
+    assert len(unique_entries) == entries_seen
+
+
 def test_tokenize_invalid():
     tokens = list(java.tokenize('#'))
     assert len(tokens) == 1
@@ -99,9 +119,9 @@ def test_tokenize_evil():
     # I'm learning awfull things about Java today
     # For a good time, read The Java SE Specification Section §3.3
     # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.3
-    # Then follow that up with The Java SE Specification Section i §3.5
+    # Then follow that up with The Java SE Specification Section §3.5
     # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.5
-    #tokens = list(java.tokenize('p. \\u0042 \\uuu003B\u001a'))
+    # tokens = list(java.tokenize('p. \\u0042 \\uuu003B\u001a'))
     tokens = list(java.tokenize('p. \\u0042 \\uuu003B'))
     assert 4 == len(tokens)
     assert tokens[0].value == 'p'

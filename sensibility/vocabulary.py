@@ -60,11 +60,15 @@ class Vocabulary(Sized):
 
     def entries(self) -> Iterable[Entry]:
         """
-        Yields all "true" entries of the vocabulary (all minus the special
-        entries).
+        Yields all source-representable entries of the vocabulary
+        i.e., everything excluding the special entries <s>, </s>, and <unk>.
         """
-        for ind in range(len(self.SPECIAL_ENTRIES), len(self)):
-            yield self._index2text[cast(Vind, ind)]
+        for ind in self.representable_indicies():
+            yield self._index2text[ind]
+
+    def representable_indicies(self) -> Iterable[Vind]:
+        return (Vind(i) for i in range(self.minimum_representable_index(),
+                                       self.maximum_representable_index() + 1))
 
     def to_text(self, index: Vind) -> str:
         return self._index2text[index]
@@ -79,12 +83,15 @@ class Vocabulary(Sized):
         All the entries from here to self.maximum_representable_index() are
         also source-representable.
         """
-        return self.end_token_index + 1
+        # The special entries are always the first few entries; thus, the
+        # entry immidiately after is the first source-representable entry.
+        return Vind(len(self.SPECIAL_ENTRIES))
 
     def maximum_representable_index(self) -> Vind:
         """
         The largest vocabulary index of a source-representable token.
         """
+        # The very last entry of the vocabulary.
         return Vind(len(self) - 1)
 
     def __len__(self) -> int:
