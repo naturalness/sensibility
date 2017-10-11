@@ -8,6 +8,9 @@ class Layer:
 class Dense(Layer):
     def __init__(self, *args, **kwargs) -> None: ...
 
+class Dropout(Layer):
+    def __init__(self, rate: float, **kwargs) -> None: ...
+
 class Activation(Layer):
     def __init__(self, fn: ActivationFunction) -> None: ...
 
