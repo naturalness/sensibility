@@ -29,7 +29,8 @@ from typing import Optional, Sequence, TextIO, cast
 
 from .language.javascript import javascript
 from .lexical_analysis import Token, Lexeme
-from .vocabulary import vocabulary, Vind
+from .vocabulary import Vind
+vocabulary = javascript.vocabulary
 
 warnings.warn("deprecated", DeprecationWarning)
 

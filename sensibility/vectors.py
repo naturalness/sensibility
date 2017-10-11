@@ -27,7 +27,7 @@ from typing import Union, Tuple, Sequence, Iterable
 from .lexical_analysis import Lexeme
 from .source_vector import SourceVector
 from .vectorize_tokens import serialize_tokens
-from .vocabulary import vocabulary
+from .language import language
 
 
 # Results are always the hash and the source vector.
@@ -123,6 +123,7 @@ class Vectors:
     """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
+        vocabulary = language.vocabulary
         assert len(vocabulary) < 256
         warnings.warn("deprecated", DeprecationWarning)
         self.conn = conn

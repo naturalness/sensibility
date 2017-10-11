@@ -17,13 +17,14 @@
 import warnings
 from typing import Sequence
 
+from .language import language
 from .lexical_analysis import Lexeme
 from .source_vector import SourceVector
-from .vocabulary import vocabulary
 from .stringify_token import stringify_token
 
 
 def generated_vector(tokens):
+    vocabulary = language.vocabulary
     for token in tokens:
         # XXX: HACK!
         try:
@@ -37,6 +38,8 @@ def serialize_tokens(tokens: Sequence[Lexeme]) -> SourceVector:
     """
     Return an (unsigned) byte array of tokens, useful for storage.
 
+    >>> language.set('javascript')
+    ConcreteLanguageProxy(...)
     >>> toks = [Lexeme(value='var', name='Keyword')]
     >>> serialize_tokens(toks)
     SourceVector([90])

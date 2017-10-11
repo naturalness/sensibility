@@ -129,26 +129,4 @@ class LegacyVocabulary(Sized):
     end_token = '/*<END>*/'
 
 
-# TODO: Once again with the proxy...?
-class VocabularyProxy:
-    """
-    Access to the vocabulary proxy.
-    """
-
-    def __getattr__(self, name: str) -> Any:
-        # Avoid accessing the proxy prematurely
-        if name == '__wrapped__':
-            raise AttributeError
-        from .language import language
-        # Delegate to the current language's vocabulary
-        return getattr(language.vocabulary, name)
-
-    def __len__(self) -> int:
-        # This method must be explicilty defined, probably due to some weird
-        # CPython reason.
-        from .language import language
-        # Delegate to the current language's vocabulary
-        return len(language.vocabulary)
-
-
 vocabulary = LegacyVocabulary()

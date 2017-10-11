@@ -181,6 +181,12 @@ class LanguageProxy(Language):
         """
         self._language = None
 
+    def set(self, name: str) -> 'LanguageProxy':
+        """
+        Less redundant alias of set_language().
+        """
+        return self.set_language(name)
+
     def set_language(self, name: str) -> 'LanguageProxy':
         """
         Explicitly set the language to load.

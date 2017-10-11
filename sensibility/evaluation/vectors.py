@@ -25,7 +25,6 @@ from typing import Iterator, MutableMapping, Optional
 
 from ..lexical_analysis import Lexeme
 from ..source_vector import SourceVector
-from ..vocabulary import vocabulary
 from .._paths import EVALUATION_DIR
 
 
@@ -43,7 +42,8 @@ class Vectors(MutableMapping[str, SourceVector]):
     """
 
     def __init__(self, conn: Optional[sqlite3.Connection]=None) -> None:
-        assert len(vocabulary) < 256
+        from ..language import language
+        assert len(language.vocabulary) < 256
         if conn is None:
             self.conn = determine_from_language()
         else:
