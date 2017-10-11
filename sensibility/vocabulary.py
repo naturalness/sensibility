@@ -72,6 +72,21 @@ class Vocabulary(Sized):
     def to_index(self, text: str) -> Vind:
         return self._text2index[text]
 
+    def minimum_representable_index(self) -> Vind:
+        """
+        The smallest vocabulary index of a source-representable token.
+
+        All the entries from here to self.maximum_representable_index() are
+        also source-representable.
+        """
+        return self.end_token_index + 1
+
+    def maximum_representable_index(self) -> Vind:
+        """
+        The largest vocabulary index of a source-representable token.
+        """
+        return Vind(len(self) - 1)
+
     def __len__(self) -> int:
         return len(self._index2text)
 

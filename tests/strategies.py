@@ -18,6 +18,7 @@
 from hypothesis.strategies import lists, integers, composite  # type: ignore
 
 from sensibility import SourceVector, vocabulary
+from sensibility.language import language
 
 
 @composite
@@ -27,7 +28,8 @@ def programs(draw):
 
     TODO: rename to source_vectors()? Ew, kinda gross.
     """
-    tokens = integers(min_value=vocabulary.start_token_index + 1,
-                      max_value=vocabulary.end_token_index - 1)
+    vocabulary = language.vocabulary
+    tokens = integers(min_value=vocabulary.minimum_representable_index(),
+                      max_value=vocabulary.maximum_representable_index())
     vectors = draw(lists(tokens, min_size=1))
     return SourceVector(vectors)
