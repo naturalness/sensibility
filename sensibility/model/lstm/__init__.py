@@ -64,6 +64,9 @@ class KerasDualLSTMModel(DualLSTMModel):
         self.backwards = backwards
         assert model_context_length(forwards) == model_context_length(backwards)
         self.context_length = model_context_length(forwards)
+        logger = logging.getLogger(type(self).__name__)
+        logger.info('Loaded models with context length %d (window size %d)',
+                    self.context_length, self.context_length + 1)
 
     def predict_file(self, vector: Sequence[Vind]) -> Sequence[TokenResult]:
         """
@@ -111,13 +114,22 @@ def model_context_length(model: 'Model') -> int:
         return length
 
 
-def test():
-    """
-    I'd write this test if I had a model...
-    """
-    from sensibility._paths import MODEL_DIR
-    model = Model.from_filename(MODEL_DIR / 'javascript-f0.hdf5')
-    comma = vocabulary.to_index(',')
-    answer = model.predict([comma] * 20)
-    assert len(answer) == len(vocabulary)
-    assert answer[comma] > 0.5
+def test() -> None:
+    from sensibility._paths import REPOSITORY_ROOT
+    from sensibility.language import language
+    from sensibility.source_vector import to_source_vector
+
+    language.set('java')
+    model = KerasDualLSTMModel.from_directory(REPOSITORY_ROOT / 'tests')
+    source = to_source_vector(rb'''
+        package ca.ualberta.cs;
+
+        class HelloWorld {
+            public static void main(String args[] /* Syntax error, delete token 20 to fix */ ... ) {
+                System.out.println("Hello, World!");
+            }
+        }
+    ''')
+
+    answer = model.predict_file(source)
+    raise NotImplementedError('I still have to write sane assertions')
