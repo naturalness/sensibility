@@ -53,10 +53,15 @@ def test_extra() -> None:
     assert 1 == tokenwise_distance(b'goto label;', b'int label;')
 
     # Regression: Distances should still be calculated if items are OOV
-    # ERROR and _ are out-of-vocabulary as well.
+    # ERROR and UNDERSCORE are out-of-vocabulary as well.
+    # In hindsight, const and goto should be OOV as well... :/
     assert 1 == tokenwise_distance(b'int #label;', b'int label;')
     assert 1 == tokenwise_distance(b'int _;', b'int label;')
-    # In hindsight, const and goto should be OOV as well... :/
+    edit = determine_edit(b'int #label;', b'int label;')
+    if isinstance(edit, Deletion):
+        assert edit.original_token == language.vocabulary.unk_token_index
+    else:
+        pytest.fail(f'Wrong edit: {edit!r}')
 
 
 @pytest.mark.skip  # Does an unnecessary database access.

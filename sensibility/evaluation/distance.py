@@ -97,7 +97,7 @@ def determine_fix_event(file_a: bytes, file_b: bytes) -> FixEvent:
 
     new: Optional[Vind]
     old: Optional[Vind]
-    to_index = language.vocabulary.to_index
+    to_index = language.vocabulary.to_index_or_unk
 
     # Decode editop's format into our "Database-friendly" format.
     (type_name, src_pos, dest_pos), = ops
