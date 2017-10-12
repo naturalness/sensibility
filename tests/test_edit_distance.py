@@ -19,6 +19,8 @@
 Tests mistakes and edit distance.
 """
 
+from functools import lru_cache
+
 import pytest
 
 from sensibility.evaluation.mistakes import Mistakes
@@ -31,7 +33,7 @@ from sensibility import Insertion, Substitution, Deletion
 
 
 def setup_module():
-    language.set_language('java')
+    language.set('java')
 
 
 def test_general() -> None:
@@ -60,31 +62,31 @@ def test_get_source() -> None:
     assert 0 < tokenwise_distance(mistake.before, mistake.after)
 
 
-def test_get_edit() -> None:
+def test_get_edit(c) -> None:
     ins = determine_edit(b'class Hello {',    b'class Hello {}')
     if isinstance(ins, Insertion):
-        assert ins.token == index_of('}')
+        assert ins.token == index_of(c('}'))
         assert ins.index == 3
     else:
         pytest.fail(f'Wrong edit: {ins!r}')
 
     delt = determine_edit(b'class Hello {{}',   b'class Hello {}')
     if isinstance(delt, Deletion):
-        assert delt.original_token == index_of('{')
+        assert delt.original_token == index_of(c('{'))
         assert delt.index in {2, 3}  # Can be either curly brace
     else:
         pytest.fail(f'Wrong edit: {delt!r}')
 
     sub = determine_edit(b'goto label;', b'int label;')
     if isinstance(sub, Substitution):
-        assert sub.token == index_of('int')
-        assert sub.original_token == index_of('goto')
+        assert sub.token == index_of(c('int'))
+        assert sub.original_token == index_of(c('goto'))
         assert sub.index == 0
     else:
         pytest.fail(f'Wrong edit: {sub!r}')
 
 
-def test_edit_line() -> None:
+def test_edit_line(c) -> None:
     head = [
         'class Hello {',
         'public static void main(String args[]) {'
@@ -113,9 +115,9 @@ def test_edit_line() -> None:
     assert language.check_syntax(after)
 
     fix_event = determine_fix_event(before, after)
-    assert fix_event.fix == Insertion(22, index_of('{'))
+    assert fix_event.fix == Insertion(22, index_of(c('{')))
     assert fix_event.line_no == error_line
-    assert fix_event.new_token == '{'
+    assert fix_event.new_token == c('{')
     assert fix_event.old_token is None
 
 

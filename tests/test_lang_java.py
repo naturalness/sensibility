@@ -69,22 +69,22 @@ def test_summarize() -> None:
     assert summary.sloc == 3
 
 
-def test_vocabularize() -> None:
+def test_vocabularize(c) -> None:
     loc = LocationFactory(Position(line=1, column=0))
     result = list(java.vocabularize_with_locations(test_file_bad))
     expected = [
-        (loc.across(len("package")),            'package'),
-        (loc.space().across(len('ca')),         '<IDENTIFIER>'),
-        (loc.across(1),                         '.'),
-        (loc.across(len('ualberta')),           '<IDENTIFIER>'),
-        (loc.across(1),                         '.'),
-        (loc.across(len('cs')),                 '<IDENTIFIER>'),
-        (loc.across(1),                         '.'),
-        (loc.across(len('emplab')),             '<IDENTIFIER>'),
-        (loc.across(1),                         '.'),
-        (loc.across(len('example')),            '<IDENTIFIER>'),
-        (loc.across(1),                         ';'),
-        (loc.next_line().next_line().across(5), 'class'),
+        (loc.across(len("package")),            c('package')),
+        (loc.space().across(len('ca')),         'IDENTIFIER'),
+        (loc.across(1),                         c('.')),
+        (loc.across(len('ualberta')),           'IDENTIFIER'),
+        (loc.across(1),                         c('.')),
+        (loc.across(len('cs')),                 'IDENTIFIER'),
+        (loc.across(1),                         c('.')),
+        (loc.across(len('emplab')),             'IDENTIFIER'),
+        (loc.across(1),                         c('.')),
+        (loc.across(len('example')),            'IDENTIFIER'),
+        (loc.across(1),                         c(';')),
+        (loc.next_line().next_line().across(5), c('class')),
     ]
     assert result[:len(expected)] == expected
 

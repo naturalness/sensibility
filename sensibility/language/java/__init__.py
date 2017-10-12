@@ -47,31 +47,39 @@ class NoSourceRepresentationError(ValueError):
 
 class JavaVocabulary(Vocabulary):
     """
-    The vocabulary, but with werid Java stuff.
+    The vocabulary, except it returns from
     """
-    @staticmethod
-    def load() -> Vocabulary:
-        return JavaVocabulary.from_json_file(here / 'vocabulary.json')
+    first_entry_num = len(Vocabulary.SPECIAL_ENTRIES)
+
+    def __init__(self, entries: Iterable[str], reprs: Iterable[str]) -> None:
+        super().__init__(entries)
+        # Create a look-up table for source representations.
+        # The special tokens <unk>, <s>, </s> have NO reprs, thus are not
+        # stored.
+        self._index2repr = tuple(reprs)
+        assert len(self._index2text) == self.first_entry_num + len(self._index2repr)
 
     def to_source_text(self, idx: Vind) -> str:
-        text = self.to_text(idx)
-        if text == "<IDENTIFIER>":
-            return "ident"
-        elif text == "<STRING>":
-            return '"string"'
-        elif text == "<INTLITERAL>":
-            return "0"
-        elif text == "<DOUBLELITERAL>":
-            return "0.0"
-        elif text == "<CHARLITERAL>":
-            return r"'\0'"
-        elif text == "<LONGLITERAL>":
-            return "0L"
-        elif text == "<FLOATLITERAL>":
-            return "0.0F"
-        elif not (text.startswith('<') and text.endswith('>')):
-            return text
-        raise NoSourceRepresentationError(text)
+        if idx < self.first_entry_num:
+            raise NoSourceRepresentationError(idx)
+        return self._index2repr[idx - self.first_entry_num]
+
+    @staticmethod
+    def load() -> 'JavaVocabulary':
+        entries = []
+        reprs = []
+
+        # Load from a tab-separated-values file
+        with open(here / 'vocabulary.tsv') as vocab_file:
+            first_entry = JavaVocabulary.first_entry_num
+            for expected_num, line in enumerate(vocab_file, start=first_entry):
+                # src_repr -- source representation
+                num, entry, src_repr = line.rstrip().split()
+                assert expected_num == int(num)
+                entries.append(entry)
+                reprs.append(src_repr)
+
+        return JavaVocabulary(entries, reprs)
 
 
 def to_str(source: Union[str, bytes, IO[bytes]]) -> str:
@@ -113,21 +121,7 @@ class Java(Language):
         the Java language instance around the same time.
         """
         if not hasattr(self, '_java_server'):
-            # Start the finicky server.
             self._java_server = javac_parser.Java()
-
-            # Attempt to remove all references to the Java server to invoke its
-            # __del__. Do this at atexit, because atexits callbacks are invoked
-            # BEFORE Python tears down the interpreter and causes a lot of
-            # problems in doing so.
-            @atexit.register
-            def kill_server():
-                assert sys.getrefcount(self._java_server) in {1, 2}, "Too many references to Java server."
-                # to prevent anything from going wrong, EXPLICLITY call the
-                # "destructor"
-                self._java_server.__del__()
-                self._java_server = None
-
         return self._java_server
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
@@ -159,103 +153,7 @@ class Java(Language):
 
     def vocabularize_tokens(self, source: Iterable[Token]) -> Iterable[Tuple[Location, str]]:
         for token in source:
-            yield token.location, java2sensibility(token)
-
-
-# Big list of symbol names, derived from
-# com.sun.tools.javac.parser.Tokens.TokenKind
-RESERVED_WORDS_REPR = {
-    'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch',
-    'char', 'class', 'const', 'continue', 'default', 'do', 'double',
-    'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto',
-    'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long',
-    'native', 'new', 'package', 'private', 'protected', 'public', 'return',
-    'short', 'static', 'strictfp', 'super', 'switch', 'synchronized',
-    'this', 'throw', 'throws', 'transient', 'try', 'void', 'volatile',
-    'while', 'abstract', 'default', 'final', 'native', 'private',
-    'protected', 'public', 'static', 'strictfp', 'synchronized',
-    'transient', 'volatile', 'boolean', 'byte', 'char', 'double', 'float',
-    'int', 'long', 'short', 'true', 'false', 'null'
-}
-
-SYMBOLS_REPR = {
-    "_", "->", "::", "(", ")", "{", "}", "[", "]", ";", ",", ".", "...", "=",
-    ">", "<", "!", "~", "?", ":", "==", "<=", ">=", "!=", "&&", "||", "++",
-    "--", "+", "-", "*", "/", "&", "|", "^", "%", "<<", ">>", ">>>", "+=",
-    "-=", "*=", "/=", "&=", "|=", "^=", "%=", "<<=", ">>=", ">>>=", "@",
-}
-
-REPRESENTABLE_CLOSED_CLASSES = SYMBOLS_REPR | RESERVED_WORDS_REPR
-
-NON_REPRESENTABLE_CLOSED_CLASSES = {
-    'EOF', 'ERROR'
-}
-
-CLOSED_CLASSES = {
-    # Keywords and other reserved words
-    'ABSTRACT', 'ASSERT', 'BOOLEAN', 'BREAK', 'BYTE', 'CASE', 'CATCH',
-    'CHAR', 'CLASS', 'CONST', 'CONTINUE', 'DEFAULT', 'DO', 'DOUBLE',
-    'ELSE', 'ENUM', 'EXTENDS', 'FINAL', 'FINALLY', 'FLOAT', 'FOR', 'GOTO',
-    'IF', 'IMPLEMENTS', 'IMPORT', 'INSTANCEOF', 'INT', 'INTERFACE', 'LONG',
-    'NATIVE', 'NEW', 'PACKAGE', 'PRIVATE', 'PROTECTED', 'PUBLIC', 'RETURN',
-    'SHORT', 'STATIC', 'STRICTFP', 'SUPER', 'SWITCH', 'SYNCHRONIZED',
-    'THIS', 'THROW', 'THROWS', 'TRANSIENT', 'TRY', 'VOID', 'VOLATILE',
-    'WHILE', 'ABSTRACT', 'DEFAULT', 'FINAL', 'NATIVE', 'PRIVATE',
-    'PROTECTED', 'PUBLIC', 'STATIC', 'STRICTFP', 'SYNCHRONIZED',
-    'TRANSIENT', 'VOLATILE', 'BOOLEAN', 'BYTE', 'CHAR', 'DOUBLE', 'FLOAT',
-    'INT', 'LONG', 'SHORT',
-    # Reserved literals
-    'TRUE', 'FALSE', 'NULL',
-
-    # Symbols
-    'UNDERSCORE', 'ARROW', 'COLCOL', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
-    'LBRACKET', 'RBRACKET', 'SEMI', 'COMMA', 'DOT', 'ELLIPSIS', 'EQ', 'GT',
-    'LT', 'BANG', 'TILDE', 'QUES', 'COLON', 'EQEQ', 'LTEQ', 'GTEQ', 'BANGEQ',
-    'AMPAMP', 'BARBAR', 'PLUSPLUS', 'SUBSUB', 'PLUS', 'SUB', 'STAR', 'SLASH',
-    'AMP', 'BAR', 'CARET', 'PERCENT', 'LTLT', 'GTGT', 'GTGTGT', 'PLUSEQ',
-    'SUBEQ', 'STAREQ', 'SLASHEQ', 'AMPEQ', 'BAREQ', 'CARETEQ', 'PERCENTEQ',
-    'LTLTEQ', 'GTGTEQ', 'GTGTGTEQ', 'MONKEYS_AT',
-}
-
-NUMERIC_LITERALS = {
-    'INTLITERAL', 'LONGLITERAL', 'FLOATLITERAL', 'DOUBLELITERAL', 'CHARLITERAL',
-}
-OPEN_CLASSES = {'IDENTIFIER', 'STRINGLITERAL'} | NUMERIC_LITERALS
-
-
-def java2sensibility(lex: Lexeme) -> str:
-    """
-    Returns a simple string representation of the token. The string
-    representation is guaranteed to not include any whitespace.
-
-    Open classes and non-representable closed classes have a angle-bracket
-    delimited name, e.g., <IDENTIFIER>, <STRING>, <ERROR>. Special case is
-    EOF, which uses the NLP convention of </s> take to mean "end of sentence".
-
-    Other closed classes are represented by their in-source value.
-    """
-    # > Except for comments (§3.7), identifiers, and the contents of character
-    # > and string literals (§3.10.4, §3.10.5), all input elements (§3.5) in a
-    # > program are formed only from ASCII characters (or Unicode escapes (§3.3)
-    # > which result in ASCII characters).
-    # https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html
-    if lex.value in REPRESENTABLE_CLOSED_CLASSES:
-        return lex.value
-    elif lex.name in OPEN_CLASSES:
-        if lex.name in NUMERIC_LITERALS:
-            return f'<{lex.name}>'
-        elif lex.name == 'STRINGLITERAL':
-            return '<STRING>'
-        else:
-            assert lex.name == 'IDENTIFIER'
-            return '<IDENTIFIER>'
-    elif lex.name == 'EOF':
-        return '</s>'
-    elif lex.name == 'ERROR':
-        return '<ERROR>'
-    else:
-        # When I forgot to account for a token.
-        raise NotImplementedError(repr(lex))
+            yield token.location, token.name
 
 
 java: Language = Java()

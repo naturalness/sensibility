@@ -69,14 +69,14 @@ public class DaysAlivePrint
 
 
 def setup():
-    language.set_language('java')
+    language.set('java')
 
 
-def test_calculates_line_numbers_from_source() -> None:
+def test_calculates_line_numbers_from_source(c) -> None:
     event = determine_fix_event(error_file, fixed_file)
     assert isinstance(event.fix, Deletion)
     # One of the curly braces at the end of the ERROR file.
-    assert event.fix.original_token == language.vocabulary.to_index('}')
+    assert event.fix.original_token == language.vocabulary.to_index(c('}'))
     assert event.line_no in {19, 22, 23}
 
 

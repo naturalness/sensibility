@@ -23,16 +23,16 @@ from sensibility.source_vector import to_source_vector
 
 
 def setup():
-    language.set_language('java')
+    language.set('java')
 
 
-def test_delete() -> None:
+def test_delete(c) -> None:
     source_code = to_source_vector(b"""
     class Hello {
         }
     }
     """)
-    edit = Deletion(3, to_index('}'))
+    edit = Deletion(3, to_index(c('}')))
     mutant = edit.apply(source_code)
     expected = b'class ident { }'
     actual = mutant.to_source_code()
@@ -40,12 +40,12 @@ def test_delete() -> None:
     assert language.check_syntax(actual)
 
 
-def test_insert() -> None:
+def test_insert(c) -> None:
     source_code = to_source_vector(b"""
     @SuppressWarnings({"fake", 0x1.8p1)
     class Hello {}
     """)
-    edit = Insertion(7, to_index('}'))
+    edit = Insertion(7, to_index(c('}')))
     mutant = edit.apply(source_code)
     expected = b'@ ident ( { "string" , 0.0 } ) class ident { }'
     actual = mutant.to_source_code()
@@ -53,13 +53,13 @@ def test_insert() -> None:
     assert language.check_syntax(actual)
 
 
-def test_substitution() -> None:
+def test_substitution(c) -> None:
     source_code = to_source_vector(b"""
     @SuppressWarnings("fake"=0x1.8p1)
     class Hello {}
     """)
-    edit = Substitution(3, original_token=to_index('<STRING>'),
-                        replacement=to_index("<IDENTIFIER>"))
+    edit = Substitution(3, original_token=to_index(c('"fake"')),
+                        replacement=to_index(c('ident')))
     mutant = edit.apply(source_code)
     expected = b'@ ident ( ident = 0.0 ) class ident { }'
     actual = mutant.to_source_code()
