@@ -11,8 +11,9 @@ from hypothesis.strategies import (  # type: ignore
     composite, integers, lists, random_module, sampled_from
 )
 
-from sensibility import SourceFile, Insertion, Deletion, Substitution
+from sensibility import Insertion, Deletion, Substitution
 from sensibility import Vectors, Corpus
+from sensibility.source_file import SourceFile, Insertion, Deletion, Substitution
 from sensibility.evaluation.evaluate import Predictions
 from sensibility.mutations import Mutations
 from sensibility._paths import MODEL_DIR, VECTORS_PATH, SOURCES_PATH

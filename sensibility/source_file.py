@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from typing import Sequence, Sized, Optional
 
 from .corpus import Corpus
@@ -22,7 +23,6 @@ from .edit import Edit, Insertion, Deletion, Substitution
 from .source_vector import SourceVector
 from .lexical_analysis import Token
 from .vectors import Vectors
-from .tokenize_js import tokenize
 
 
 class SourceFile(Sized):
@@ -73,6 +73,8 @@ class SourceFile(Sized):
         """
         Original, parsed tokens, with position information (line and column).
         """
+        warnings.warn('This method assumes JavaScript code', DeprecationWarning)
+        from .tokenize_js import tokenize
         # We already have it stored!
         if self._source_tokens is not None:
             return self._source_tokens

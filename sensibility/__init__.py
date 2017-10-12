@@ -24,7 +24,6 @@ from .edit import Edit, Insertion, Deletion, Substitution
 from .language import Language, language
 from .lexical_analysis import Token, Location, Position
 from .sentences import Sentence, forward_sentences, backward_sentences
-from .source_file import SourceFile
 from .source_vector import SourceVector
 from .vectorize_tokens import serialize_tokens
 from .vectors import Vectors
@@ -33,7 +32,6 @@ from .vocabulary import Vind
 __all__ = [
     'Edit', 'Insertion', 'Deletion', 'Substitution',
     'Language', 'language',
-    'SourceFile',  # heh?
     'Vind',
     'Corpus',  # TODO: NO!
     'serialize_tokens',  # TODO: NO!
