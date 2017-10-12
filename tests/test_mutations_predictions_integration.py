@@ -12,8 +12,9 @@ from hypothesis.strategies import (  # type: ignore
 )
 
 from sensibility import Insertion, Deletion, Substitution
-from sensibility import Vectors, Corpus
+from sensibility.miner.corpus import Corpus
 from sensibility.source_file import SourceFile, Insertion, Deletion, Substitution
+from sensibility.evaluation.vectors import Vectors
 from sensibility.evaluation.evaluate import Predictions
 from sensibility.mutations import Mutations
 from sensibility._paths import MODEL_DIR, VECTORS_PATH, SOURCES_PATH
@@ -72,13 +73,13 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
         mutations.add_mutant(mutation)
 
         if test_predictions:
-          predictions = Predictions(0, filename=Path(':memory:'))
-          # Predict on the mutated file, regardless of whether the file is
-          # syntactically okay or not.
-          with NamedTemporaryFile(mode='w+', encoding='UTF-8') as mutant_file:
-              mutation.apply(source_vector).print(file=mutant_file)
-              mutant_file.flush()
-              predictions.predict(mutant_file.name)
+            predictions = Predictions(0, filename=Path(':memory:'))
+            # Predict on the mutated file, regardless of whether the file is
+            # syntactically okay or not.
+            with NamedTemporaryFile(mode='w+', encoding='UTF-8') as mutant_file:
+                mutation.apply(source_vector).print(file=mutant_file)
+                mutant_file.flush()
+                predictions.predict(mutant_file.name)
 
         assert len(mutations) == 1
         stored_source_file, stored_mutation = next(iter(mutations))

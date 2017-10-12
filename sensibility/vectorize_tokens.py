@@ -20,10 +20,10 @@ from typing import Sequence
 from .language import language
 from .lexical_analysis import Lexeme
 from .source_vector import SourceVector
-from .stringify_token import stringify_token
 
 
 def generated_vector(tokens):
+    from .stringify_token import stringify_token
     vocabulary = language.vocabulary
     for token in tokens:
         # XXX: HACK!

@@ -26,8 +26,11 @@ from typing import Union, Tuple, Sequence, Iterable
 
 from .lexical_analysis import Lexeme
 from .source_vector import SourceVector
-from .vectorize_tokens import serialize_tokens
 from .language import language
+
+
+warnings.warn("Use sensibility.evaluation.vectors instead",
+              DeprecationWarning)
 
 
 # Results are always the hash and the source vector.
@@ -225,6 +228,7 @@ class Vectors:
         """
         Insert tokens in the database of vectors.
         """
+        from .vectorize_tokens import serialize_tokens
         byte_string = serialize_tokens(tokens).to_bytes()
         assert len(byte_string) == len(tokens)
 

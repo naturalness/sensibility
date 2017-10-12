@@ -18,12 +18,9 @@
 import warnings
 
 from .lexical_analysis import Lexeme
-from .language.javascript import stringify_lexeme
-
-
-warnings.warn("deprecated", DeprecationWarning)
 
 
 def stringify_token(token: Lexeme) -> str:
-    warnings.warn("deprecated", DeprecationWarning)
+    from .language.javascript import stringify_lexeme
+    warnings.warn("Hardcoded for JavaScript", DeprecationWarning)
     return stringify_lexeme(token)
