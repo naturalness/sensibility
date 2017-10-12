@@ -21,7 +21,7 @@ from os import PathLike
 from typing import Dict, Iterable, NewType, Optional, Sequence, Sized
 from typing import cast
 
-__all__ = 'Vocabulary', 'Entry', 'Vind', 'vocabulary'
+__all__ = 'Vocabulary', 'Entry', 'Vind'
 
 # A vocabulary index that gets in your face.
 Vind = NewType('Vind', int)
