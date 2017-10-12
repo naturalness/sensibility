@@ -35,7 +35,6 @@ from sensibility.edit import Edit, Insertion, Deletion, Substitution
 from sensibility.evaluation.distance import FixEvent
 from sensibility.language import language
 from sensibility.lexical_analysis import Token
-from sensibility.model import Model
 from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
 from sensibility.source_file import SourceFile
 from sensibility.source_vector import SourceVector, to_source_vector
@@ -52,6 +51,31 @@ from typing import cast
 
 # A type that neatly summarizes the double contexts.
 Contexts = Iterable[Tuple[Sentence[Vind], Sentence[Vind]]]
+
+
+class Model:
+    """
+    REPLACE THIS WITH
+    sensibility.model.lstm.DualLSTMModel
+    """
+    context_length: int
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.error()
+
+    @staticmethod
+    def error() -> None:
+        raise NotImplementedError('This code must be upgraded to '
+                                  'sensibility.model.lstm.DualLSTMModel')
+
+    @classmethod
+    def from_filename(cls, *args, **kwargs) -> 'Model':
+        cls.error()
+        return cast('Model', None)
+
+    def predict(self, *args, **kwargs) -> np.ndarray:
+        self.error()
+        return cast(np.ndarray, None)
 
 
 class Predictions:
