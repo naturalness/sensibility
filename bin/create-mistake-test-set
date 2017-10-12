@@ -18,6 +18,8 @@
 """
 Selects N random mistakes from the mistakes database and creates a directory
 holding them.
+
+This is for Josh.
 """
 
 import argparse
@@ -93,7 +95,18 @@ rows = conn.execute('''
       FROM query NATURAL JOIN mistake NATURAL JOIN edit
 ''')
 
-code_to_word = dict(i='insertion', x='deletion', s='substitution')
+# To match difflib's opcodes
+code_to_word = dict(i='insert', x='delete', s='replace')
+
+
+# Josh likes angle-brackets
+def bracketophilia(tok):
+    if tok.startswith('<') and tok.endswith('>'):
+        return tok
+    else:
+        assert all((c in ascii_uppercase) for c in tok)
+        return f"<{tok}>"
+
 
 # For each random mistake, create the file.
 for row in tqdm(rows, total=len(files)):
@@ -108,9 +121,11 @@ for row in tqdm(rows, total=len(files)):
     with open(path / 'after.java', 'wb') as file:
         file.write(row['after'])
 
-    # Let's modify the dictionary, not dictionary!
+    # Can't modify an sqlite3.Row; gotta copy into our own dict.
     row_dict = dict(row)
     row_dict['fix'] = code_to_word[row['fix']]
     row_dict['mistake'] = code_to_word[row['mistake']]
+    row_dict['old_token'] = bracketophilia(row['old_token'])
+    row_dict['new_token'] = bracketophilia(row['new_token'])
 
     writer.writerow(dict(row))
