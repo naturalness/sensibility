@@ -17,7 +17,7 @@
 
 from hypothesis.strategies import lists, integers, composite  # type: ignore
 
-from sensibility import SourceVector, vocabulary
+from sensibility import SourceVector  # Deprecated?
 from sensibility.language import language
 
 

@@ -28,7 +28,7 @@ from .source_file import SourceFile
 from .source_vector import SourceVector
 from .vectorize_tokens import serialize_tokens
 from .vectors import Vectors
-from .vocabulary import Vind, vocabulary
+from .vocabulary import Vind
 
 __all__ = [
     'Edit', 'Insertion', 'Deletion', 'Substitution',
@@ -38,7 +38,6 @@ __all__ = [
     'Corpus',  # TODO: NO!
     'serialize_tokens',  # TODO: NO!
     'Vectors',   # TODO: NO!
-    'vocabulary',
     'Lexeme', 'Token', 'Location', 'Position',
     'Sentence', 'forward_sentences', 'backward_sentences',  # TODO: maybe?
     'Agreement',

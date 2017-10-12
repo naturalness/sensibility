@@ -44,6 +44,7 @@ class NoSourceRepresentationError(ValueError):
     token that can be inserted into the file.
     """
 
+
 class JavaVocabulary(Vocabulary):
     """
     The vocabulary, but with werid Java stuff.
