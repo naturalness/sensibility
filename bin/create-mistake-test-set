@@ -104,7 +104,8 @@ def bracketophilia(tok):
     if tok.startswith('<') and tok.endswith('>'):
         return tok
     else:
-        assert all((c in ascii_uppercase) for c in tok)
+        from string import ascii_uppercase
+        assert all(c in ascii_uppercase for c in tok)
         return f"<{tok}>"
 
 
