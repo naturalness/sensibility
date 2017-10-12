@@ -13,7 +13,7 @@ from hypothesis.strategies import (  # type: ignore
 
 from sensibility import SourceFile, Insertion, Deletion, Substitution
 from sensibility import Vectors, Corpus
-from sensibility.evaluation.evaluate import Model, Predictions
+from sensibility.evaluation.evaluate import Predictions
 from sensibility.mutations import Mutations
 from sensibility._paths import MODEL_DIR, VECTORS_PATH, SOURCES_PATH
 

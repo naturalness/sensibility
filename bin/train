@@ -26,7 +26,7 @@ from pathlib import Path
 
 from sensibility.language import language
 from sensibility.miner.util import filehashes
-from sensibility.model.lstm import ModelDescription, layers
+from sensibility.model.lstm.train import ModelDescription, layers
 from sensibility._paths import (
     get_validation_set_path, get_training_set_path, get_vectors_path
 )
@@ -116,7 +116,7 @@ def subset(xs: List[str], max_size: int) -> Set[str]:
     return set(xs[:max_size])
 
 
-def configure_gpu(prefered: int) -> int:
+def configure_gpu(prefered: int) -> None:
     device_id = prefered
 
     try:
