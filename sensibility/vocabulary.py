@@ -33,6 +33,12 @@ START_TOKEN = '<s>'
 END_TOKEN = '</s>'
 
 
+class OutOfVocabularyError(ValueError):
+    """
+    Raised when a token does not exist in the vocabulary.
+    """
+
+
 class Vocabulary(Sized):
     """
     One-to-one mapping of vocabulary strings to vocabulary indices (Vinds).
@@ -73,8 +79,22 @@ class Vocabulary(Sized):
     def to_text(self, index: Vind) -> str:
         return self._index2text[index]
 
-    def to_index(self, text: str) -> Vind:
-        return self._text2index[text]
+    def to_index(self, text: str, oov_to_unk=False) -> Vind:
+        """
+        Returns the cooresponding a vocabulary ID for the given entry.
+
+        Raises OutOfVocabularyError if it's not found.
+        """
+        try:
+            return self._text2index[text]
+        except KeyError:
+            raise OutOfVocabularyError(text)
+
+    def to_index_or_unk(self, text: str) -> Vind:
+        try:
+            return self.to_index(text)
+        except OutOfVocabularyError:
+            return self.unk_token_index
 
     def minimum_representable_index(self) -> Vind:
         """

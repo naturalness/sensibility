@@ -43,7 +43,7 @@ def encode(entries: Iterable[str]) -> str:
     # use area (PUA).
     # distance() works on code points, so this effectively makes distance()
     # work on token classes.
-    to_index = language.vocabulary.to_index
+    to_index = language.vocabulary.to_index_or_unk
     return ''.join(chr(PUA_B_START + to_index(entry)) for entry in entries)
 
 
