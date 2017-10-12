@@ -122,6 +122,14 @@ class Java(Language):
         """
         if not hasattr(self, '_java_server'):
             self._java_server = javac_parser.Java()
+
+            # Py4j usually crashes as Python is cleaning up after exit() so
+            # decrement the servers' reference count to lessen the chance of
+            # that happening.
+            @atexit.register
+            def remove_reference():
+                del self._java_server
+
         return self._java_server
 
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Iterable[Token]:
