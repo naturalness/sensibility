@@ -25,6 +25,7 @@ This is for Josh.
 import argparse
 import csv
 import sqlite3
+from string import ascii_uppercase
 from pathlib import Path
 
 from tqdm import tqdm
@@ -100,12 +101,13 @@ code_to_word = dict(i='insert', x='delete', s='replace')
 
 
 # Josh likes angle-brackets
-def bracketophilia(tok):
+def bracketophilia(tok, ACCEPTABLE_CHARS = '_' + ascii_uppercase):
+    if tok is None:
+        return None
     if tok.startswith('<') and tok.endswith('>'):
         return tok
     else:
-        from string import ascii_uppercase
-        assert all(c in ascii_uppercase for c in tok)
+        assert all(c in ACCEPTABLE_CHARS for c in tok), tok
         return f"<{tok}>"
 
 
@@ -129,4 +131,4 @@ for row in tqdm(rows, total=len(files)):
     row_dict['old_token'] = bracketophilia(row['old_token'])
     row_dict['new_token'] = bracketophilia(row['new_token'])
 
-    writer.writerow(dict(row))
+    writer.writerow(row_dict)
