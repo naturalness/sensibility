@@ -143,7 +143,7 @@ class ModelDescription:
                     EarlyStopping(patience=3, mode='auto')
                 ],
                 verbose=1,
-                pickle_safe=True,
+                use_multiprocessing=True,
             )
         except KeyboardInterrupt:
             model.summary()

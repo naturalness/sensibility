@@ -55,7 +55,7 @@ setup(
         'redis>=2.10.5',
         'requests==2.13.0',
         'SQLAlchemy>=1.1.9',
-        'Theano>=0.8.0, < 0.10.0',
+        'Theano>=0.8.0, < 0.9.0',
         'tqdm',
     ],
     extras_require={
