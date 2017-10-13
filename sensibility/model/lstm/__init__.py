@@ -23,8 +23,10 @@ from pathlib import Path
 from typing import Any, Sequence, Iterable, NamedTuple, Type, Union
 from typing import TYPE_CHECKING
 
-from .loop_batches import one_hot_batch
 from sensibility.vocabulary import Vind
+from sensibility.language import language
+from sensibility.sentences import forward_sentences, backward_sentences
+from sensibility.sentences import Sentence
 
 import numpy as np
 
@@ -35,7 +37,7 @@ if TYPE_CHECKING:
 
 
 class TokenResult(NamedTuple):
-    forwards: np.ndarray  # noqa
+    forwards: np.ndarray
     backwards: np.ndarray
 
 
@@ -60,24 +62,32 @@ class DualLSTMModel(ABC):
 
 class KerasDualLSTMModel(DualLSTMModel):
     def __init__(self, *, forwards: 'Model', backwards: 'Model') -> None:
+        self.logger = logging.getLogger(type(self).__name__)
         self.forwards = forwards
         self.backwards = backwards
         assert model_context_length(forwards) == model_context_length(backwards)
         self.context_length = model_context_length(forwards)
-        logger = logging.getLogger(type(self).__name__)
-        logger.info('Loaded models with context length %d (window size %d)',
-                    self.context_length, self.context_length + 1)
+        self.one_hot = OneHotter(context_length=self.context_length,
+                                 vocabulary_size=len(language.vocabulary))
+        self.logger.info('Loaded models with context length %d (window size %d)',
+                         self.context_length, self.context_length + 1)
 
     def predict_file(self, vector: Sequence[Vind]) -> Sequence[TokenResult]:
         """
         TODO: Create predict() for entire file as a batch?
         """
-        raise NotImplementedError
-        """
-        x, _ = one_hot_batch([(vector, 0)], batch_size=1,
-                             context_length=self.context_length)
-        return self.model.predict(x, batch_size=1)[0]
-        """
+        fw = self.one_hot.forwards(vector)
+        bw = self.one_hot.backwards(vector)
+        fw_predictions = self.forwards.predict(fw)
+        bw_predictions = self.backwards.predict(bw)
+
+        assert len(vector) == len(fw_predictions) == len(bw_predictions)
+
+        def generate_pairs():
+            for index in range(len(vector)):
+                yield TokenResult(fw_predictions[index],
+                                  bw_predictions[index])
+        return tuple(generate_pairs())
 
     @classmethod
     def from_directory(cls, dirname: Union[Path, str]) -> 'KerasDualLSTMModel':
@@ -99,6 +109,35 @@ class KerasDualLSTMModel(DualLSTMModel):
         return model
 
 
+class OneHotter:
+    def __init__(self, *, context_length: int, vocabulary_size: int) -> None:
+        self.context_length = context_length
+        self.vocabulary_size = vocabulary_size
+
+    def forwards(self, vector: Sequence[Vind]) -> np.ndarray:
+        return self._one_hot(vector, forward_sentences)
+
+    def backwards(self, vector: Sequence[Vind]) -> np.ndarray:
+        return self._one_hot(vector, backward_sentences)
+
+    def _one_hot(self, vector: Sequence[Vind], sentenizer) -> np.ndarray:
+        """
+        Create a 3D matrix, the size of the vector on the largest axis.
+        Each "slice" of the matrix is a sentence from the vector, one-hot
+        encoded.
+        """
+        dim = (len(vector), self.context_length, self.vocabulary_size)
+        xs: np.ndarray[bool] = np.zeros(dim, dtype=np.bool)
+        sentences: Iterable[Sentence] = sentenizer(vector)
+
+        # Fill in the matrix, sentence-by-sentence.
+        for index, (sentence, _adjacent_token) in enumerate(sentences):
+            for pos, vocab_id in enumerate(sentence):
+                xs[index, pos, vocab_id] = True
+
+        return xs
+
+
 def model_context_length(model: 'Model') -> int:
     """
     Return the context-length of a Keras model.
@@ -114,22 +153,28 @@ def model_context_length(model: 'Model') -> int:
         return length
 
 
-def test() -> None:
+def test(dirname: Path=None) -> None:
     from sensibility._paths import REPOSITORY_ROOT
-    from sensibility.language import language
     from sensibility.source_vector import to_source_vector
+    if dirname is None:
+        dirname = REPOSITORY_ROOT / 'tests'
 
     language.set('java')
-    model = KerasDualLSTMModel.from_directory(REPOSITORY_ROOT / 'tests')
+    model = KerasDualLSTMModel.from_directory(dirname)
     source = to_source_vector(rb'''
         package ca.ualberta.cs;
 
         class HelloWorld {
-            public static void main(String args[] /* Syntax error, delete token 20 to fix */ ... ) {
+            public static void main(String args[] /* Syntax error, delete token[19] to fix */ ... ) {
                 System.out.println("Hello, World!");
             }
         }
     ''')
 
     answer = model.predict_file(source)
-    raise NotImplementedError('I still have to write sane assertions')
+    assert len(answer) == len(source)
+    text = language.vocabulary.to_source_text
+    for expected, predictions in zip(source, answer):
+        actual_fw = text(predictions.forwards.argmax())  # type: ignore
+        actual_bw = text(predictions.backwards.argmax())  # type: ignore
+        print(f"{actual_fw:>14}\t{actual_bw:>14}\t{text(expected)}")
