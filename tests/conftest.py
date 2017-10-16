@@ -19,7 +19,8 @@ def pytest_addoption(parser):
 @pytest.fixture
 def c():
     """
-    Returns a function that tokenizes input, and
+    Returns a function that tokenizes input, and returns its canoncial
+    representation.
     """
     from sensibility.language import language
 
@@ -32,3 +33,15 @@ def c():
         assert len(tokens) == 1
         return tokens[0]
     return canonical_representation
+
+
+@pytest.fixture
+def i(c):
+    """
+    Returns a function that tokenizes its input and returns the vocabulary ID.
+    """
+    from sensibility import Vind, language
+
+    def index_of_input(text: str) -> Vind:
+        return language.vocabulary.to_index(c(text))
+    return index_of_input
