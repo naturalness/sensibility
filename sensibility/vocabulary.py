@@ -33,9 +33,22 @@ START_TOKEN = '<s>'
 END_TOKEN = '</s>'
 
 
-class OutOfVocabularyError(ValueError):
+class VocabularyError(Exception):
+    """
+    A generic vocabulary error.
+    """
+
+
+class OutOfVocabularyError(VocabularyError):
     """
     Raised when a token does not exist in the vocabulary.
+    """
+
+
+class NoSourceRepresentationError(VocabularyError):
+    """
+    Raise when there is no way to convert the Vocabulary index into a
+    token that can be inserted into the file.
     """
 
 

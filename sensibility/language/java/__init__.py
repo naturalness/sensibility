@@ -31,18 +31,10 @@ import javac_parser
 
 from .. import Language, SourceSummary
 from ...lexical_analysis import Lexeme, Location, Position, Token
-from ...vocabulary import Vocabulary, Vind
+from ...vocabulary import NoSourceRepresentationError, Vocabulary, Vind
 
 
 here = Path(__file__).parent
-
-
-# XXX: Should probably be elsewhere.
-class NoSourceRepresentationError(ValueError):
-    """
-    Raise when there is no way to convert the Vocabulary index into a
-    token that can be inserted into the file.
-    """
 
 
 class JavaVocabulary(Vocabulary):

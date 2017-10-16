@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Implements the fixing logic.
+Implements the logic to attempt to fix syntax errors.
 """
 
 from typing import Iterable, Iterator, List, NamedTuple, Sequence, SupportsFloat
@@ -33,6 +33,7 @@ from sensibility import (
 )
 from sensibility.model.lstm import DualLSTMModel
 from sensibility.source_vector import SourceVector, to_source_vector
+from sensibility.vocabulary import NoSourceRepresentationError
 
 
 class LSTMFixerUpper:
@@ -233,7 +234,6 @@ class Fixes(Iterable[Edit]):
         Actually apply the edit to the file. Add it to the fixes if it works.
         """
         # XXX: Move this import elsewhere.
-        from sensibility.language.java import NoSourceRepresentationError
         try:
             source_code = edit.apply(self.vector).to_source_code()
         except NoSourceRepresentationError:
