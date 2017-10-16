@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import pytest
 import numpy as np
 
@@ -11,10 +26,18 @@ from sensibility.edit import Deletion
 from sensibility.fix import LSTMFixerUpper
 
 
+def setup():
+    language.set('java')
+
+
 def test_fixer_upper(rigged_lstm_model: DualLSTMModel, i) -> None:
     """
     Test whether the fixer returns reasonable results.
+    The fake LSTM is rigged such that it claims everywhere in the file looks
+    100% as it should be, and only the area where the syntax error is looks
+    suspicious.
     """
+
     broken_source = b'''
         package ca.ualberta.cs;
 
@@ -45,7 +68,7 @@ def one_hot_result(entry: int, flip: bool=False) -> np.ndarray:
                    ⎩    0%, otherwise
     """
     vector: np.ndarray[float]
-    args = len(language.vocabulary), np.float32
+    args = (len(language.vocabulary),), np.float32
     if flip:
         vector = np.ones(*args)
         vector[entry] = 0.0
@@ -55,11 +78,14 @@ def one_hot_result(entry: int, flip: bool=False) -> np.ndarray:
     return vector
 
 
-# Taken from: https://stackoverflow.com/a/21032099/6626414
-def normalized(a, axis=-1, order=2):
-    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
-    l2[l2 == 0] = 1
-    return a / np.expand_dims(l2, axis)
+def normalize(a: np.ndarray) -> np.ndarray:
+    """
+    Given a "one-cold" vector (one-of-k, where it's all 1), returns a vector
+    with sum == 1.
+    """
+    assert len(a) >= 2
+    factor = len(a) - 1.
+    return a / factor
 
 
 @pytest.fixture
@@ -77,9 +103,11 @@ def rigged_lstm_model(i) -> DualLSTMModel:
                 for token in tokens:
                     # Invert the distribution when we get to the rigged token.
                     if token == i('...'):
-                        distr = normalized(one_hot_result(token, flip=True))
+                        distr = normalize(one_hot_result(token, flip=True))
                     else:
                         distr = one_hot_result(token)
+                    assert distr.shape == (len(language.vocabulary),)
+                    assert distr.sum() == pytest.approx(1.0)
                     # Perfect agreement.
                     yield TokenResult(distr, distr)
             return tuple(generate_pairs())
