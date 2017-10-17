@@ -50,11 +50,14 @@ sub model_rules {
             my $filename = model_filename $language, $dir, $part;
             print "$filename:\n";
             print "\tenv train -o $filename ";
-            print "--train-set-size=\$(TRAIN_SET_SIZE) ";
-            print "--validation-set-size=\$(VALIDATION_SET_SIZE) ";
-            print "--hidden-layers=\$(HIDDEN_LAYERS) ";
-	    print "--gpu=", $dir eq 'f' ? '0' : '1', ' ';
-            print "--context-length=\$(CONTEXT)\n";
+	    print '--gpu=', $dir eq 'f' ? '0' : '1', ' ';
+            print '--train-set-size=$(TRAIN_SET_SIZE) ';
+            print '--validation-set-size=$(VALIDATION_SET_SIZE) ';
+            print '--hidden-layers=$(HIDDEN_LAYERS) ';
+            print '--context-length=$(CONTEXT) ';
+            print '--batch-size=$(BATCH_SIZE) ';
+            print '--learning-rate=$(LEARNING_RATE) ';
+	    print "\n";
         }
     }
 }

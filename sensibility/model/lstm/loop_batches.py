@@ -65,7 +65,7 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         logger = logging.getLogger(type(self).__name__)
         batch_size = self.batch_size
         for batch in self._yield_batches_endlessly():
-            logger.info("Batch{%s}", LogBatch(batch))
+            logger.debug("Batch{%s}", LogBatch(batch))
             yield one_hot_batch(batch,
                                 batch_size=batch_size,
                                 context_length=self.context_length)
@@ -81,7 +81,7 @@ class LoopBatchesEndlessly(Iterable[Batch]):
             # Shuffle sentences randomly from each file.
             # This minimizes class imbalance per batch in languages that might
             # exhibit a large amount of repeating tokens like
-            #   <keyword> <identifier> . <identifier> . <identifier> ;
+            #   <identifier> <identifier> = <identifier> . <identifier> ;
             # *cough* java *cough*
             tokens = cast(Sequence[int], vectors[filehash])
             sentences = list(self.sentence_generator(tokens, context=context_length))

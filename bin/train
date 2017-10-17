@@ -145,7 +145,7 @@ def configure_gpu(prefered: int) -> None:
 
 # TODO: Support multiple models?
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, filename="train.log")
     args = infer_args(parser.parse_args())
 
     if args.partition is None:

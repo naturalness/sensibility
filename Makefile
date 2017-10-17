@@ -15,14 +15,19 @@
 # Augment path wih applications in ./bin/
 PATH := $(PWD)/bin:$(PATH)
 
-# Use parameters from Bhatia and Singh 2016
-CONTEXT = 20  # Window size of 10
+# Use parameters from White et al. 2015
+CONTEXT = 20  # Window size of 21
 HIDDEN_LAYERS = 300
 
 # How many files to train on
-TRAIN_SET_SIZE := 11000  # files
-VALIDATION_SET_SIZE := 5500  # files
+TRAIN_SET_SIZE := 11000
+VALIDATION_SET_SIZE := 5500
 TEST_SET_SIZE := $(TRAIN_SET_SIZE)
+
+# Use a small-ish batch size.
+BATCH_SIZE := 32
+# And a small-ish learning rate.
+LEARNING_RATE := 0.001
 
 # Always use the GNU versions of shuf(1) and split(1)
 # shuf(1) isn't installed as `shuf` on all systems (e.g., macOS...)
