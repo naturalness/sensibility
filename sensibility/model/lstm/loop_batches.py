@@ -19,8 +19,11 @@
 Loops batches for training and for validation (development) forever.
 """
 
+import logging
 from pathlib import Path
+from random import shuffle
 from typing import Iterable, Iterator, Sequence, Set, Tuple, cast
+from typing import Union
 
 import numpy as np
 from more_itertools import chunked
@@ -45,7 +48,7 @@ class LoopBatchesEndlessly(Iterable[Batch]):
                  context_length: int,
                  backwards: bool) -> None:
         assert vectors_path.exists()
-        self.filename = str(vectors_path)
+        self.filename = vectors_path
         self.filehashes = filehashes
         self.batch_size = batch_size
         self.context_length = context_length
@@ -59,8 +62,10 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         self.samples_per_epoch = get_samples_per_batches_hack(filehashes)
 
     def __iter__(self) -> Iterator[Batch]:
+        logger = logging.getLogger(type(self).__name__)
         batch_size = self.batch_size
         for batch in self._yield_batches_endlessly():
+            logger.info("Batch{%s}", LogBatch(batch))
             yield one_hot_batch(batch,
                                 batch_size=batch_size,
                                 context_length=self.context_length)
@@ -71,12 +76,17 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         """
         context_length = self.context_length
         # XXX: determines from language
-        vectors = Vectors()
+        vectors = Vectors.from_filename(self.filename)
         for filehash in self.filehashes:
-            tokens = vectors[filehash]
-            yield from self.sentence_generator(
-                cast(Sequence[int], tokens), context=context_length
-            )
+            # Shuffle sentences randomly from each file.
+            # This minimizes class imbalance per batch in languages that might
+            # exhibit a large amount of repeating tokens like
+            #   <keyword> <identifier> . <identifier> . <identifier> ;
+            # *cough* java *cough*
+            tokens = cast(Sequence[int], vectors[filehash])
+            sentences = list(self.sentence_generator(tokens, context=context_length))
+            shuffle(sentences)
+            yield from sentences
         vectors.disconnect()
 
     def _yield_batches_endlessly(self):
@@ -148,3 +158,43 @@ def one_hot_batch(batch, *,
         y = np.resize(y, ((samples_produced, vocabulary_size)))
 
     return x, y
+
+
+Number = Union[int, float]
+
+
+class LogBatch:
+    """
+    A hacky class to log the targets per batch.  This is to debug class
+    imbalance issues.
+    """
+    __slots__ = 'batch',
+
+    def __init__(self, batch: Sequence[Sentence]) -> None:
+        self.batch = batch
+
+    def __str__(self) -> str:
+        from collections import Counter
+        counter = Counter(target for _context, target in self.batch)
+
+        def generate_parts():
+            total = len(self.batch)
+            accounted_for = 0
+            for target, count in counter.most_common(5):
+                token = language.vocabulary.to_text(target)
+                yield f"{token}: {Pct(count, total)}"
+                accounted_for += count
+            remaining = total - accounted_for
+            if remaining:
+                yield f"[other]: {Pct(remaining, total)}"
+        return ', '.join(generate_parts())
+
+
+class Pct:
+    __slots__ = 'pct',
+
+    def __init__(self, amount: Number, total: Number) -> None:
+        self.pct = 100. * amount / total
+
+    def __format__(self, _format) -> str:
+        return f"{self.pct:6.2f}%"

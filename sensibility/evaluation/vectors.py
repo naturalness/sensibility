@@ -21,7 +21,7 @@ Goals: instantiate this automatically via language.
 import os
 import sqlite3
 from pathlib import Path
-from typing import Iterator, MutableMapping, Optional
+from typing import Iterator, MutableMapping, Optional, Union
 
 from ..lexical_analysis import Lexeme
 from ..source_vector import SourceVector
@@ -95,6 +95,10 @@ class Vectors(MutableMapping[str, SourceVector]):
 
     def __delitem__(self):
         raise NotImplementedError
+
+    @classmethod
+    def from_filename(cls, path: Union[str, os.PathLike]) -> 'Vectors':
+        return cls(sqlite3.connect(os.fspath(path)))
 
 
 def determine_from_language() -> sqlite3.Connection:
