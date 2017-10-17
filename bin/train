@@ -37,7 +37,10 @@ HIDDEN_LAYERS = (128,)
 CONTEXT_LENGTH = 9
 
 # This is arbitrary, but it should be fairly small.
-BATCH_SIZE = 64
+BATCH_SIZE = 32
+# Ideally, you'll find the right value for this by experimentation.
+LEARNING_RATE = 0.001
+
 
 # Match these names
 name_pattern = re.compile(r"""
@@ -99,6 +102,8 @@ parser.add_argument('--validation-set-size', type=int,
                     default=5500, help='Number of files to validate against')
 parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
+parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE,
+                    help=f"default: {LEARNING_RATE}")
 parser.add_argument('--base-dir', type=Path, default=Path('.'),
                     help=f"default: .")
 parser.add_argument('--output', '-o', type=Path,
@@ -158,13 +163,13 @@ if __name__ == '__main__':
         partition=partition,
         training_set=subset(training_set, args.train_set_size),
         validation_set=subset(validation_set, args.validation_set_size),
+        vectors_path=get_vectors_path(),
         backwards=args.backwards,
         base_dir=args.base_dir,
-        batch_size=args.batch_size,
         context_length=args.context_length,
         hidden_layers=args.hidden_layers,
-        vectors_path=get_vectors_path(),
-        learning_rate=0.01
+        learning_rate=args.learning_rate,
+        batch_size=args.batch_size,
     )
 
     model.train()

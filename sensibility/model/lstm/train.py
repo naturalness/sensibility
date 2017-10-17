@@ -194,7 +194,7 @@ class ModelDescription:
         model.add(Activation('softmax'))
 
         model.compile(loss='categorical_crossentropy',
-                      optimizer=RMSprop(lr=self.learning_rate, clipnorm=1.),
+                      optimizer=RMSprop(lr=self.learning_rate),
                       metrics=['categorical_accuracy'])
         return model
 
