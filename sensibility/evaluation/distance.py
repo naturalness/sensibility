@@ -21,7 +21,6 @@ Determines the Levenshtein distance between two source files.
 
 from typing import Iterable, Optional, Sequence, Tuple, cast
 
-from Levenshtein import distance, editops  # type: ignore
 from edit_distance import SequenceMatcher  # type: ignore
 
 from sensibility.language import language
@@ -30,25 +29,7 @@ from sensibility import Edit
 from sensibility.abram import at_least
 
 
-# Supplementary Private Use Area B
-PUA_B_START = 0x100000
-
-
 EditOp = Tuple[str, int, int, int, int]
-
-
-def encode(entries: Iterable[str]) -> str:
-    """
-    Converts a sequence of tokens into an encoded string, that preserves
-    distinctness between tokens. This string can be operated by the
-    Levenshtein module.
-    """
-    # Injective maps of each vocabulary entry to a code point in the private
-    # use area (PUA).
-    # distance() works on code points, so this effectively makes distance()
-    # work on token classes.
-    to_index = language.vocabulary.to_index_or_unk
-    return ''.join(chr(PUA_B_START + to_index(entry)) for entry in entries)
 
 
 def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
@@ -62,6 +43,7 @@ def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True)
         seq_a = to_value_stream(file_a)
         seq_b = to_value_stream(file_b)
     return SequenceMatcher(a=seq_a, b=seq_b).distance()
+
 
 class FixEvent:
     def __init__(self, fix: Edit, line_no: int) -> None:
@@ -100,16 +82,15 @@ def determine_fix_event(file_a: bytes, file_b: bytes, abstract_open_classes=True
     For two source files with Levenshtein distance of one, this returns the
     edit that converts the first file into the second file.
     """
+    src_toks = tuple(language.tokenize(file_a))
+    dest_toks = tuple(language.tokenize(file_b))
+    assert language.name == 'Java'
     if abstract_open_classes:
-        src_locs, src = lists(language.vocabularize_with_locations(file_a))
-        dest = to_abstraced_tokens(file_b)
+        src = tuple(token.name for token in src_toks)
+        dest = tuple(token.name for token in dest_toks)
     else:
-        src_locs = []
-        src = []
-        for token in language.tokenize(file_a):
-            src_locs.append(token.location)
-            src.append(token.value)
-        dest = to_value_stream(file_b)
+        src = tuple(token.value for token in src_toks)
+        dest = tuple(token.value for token in dest_toks)
 
     ops = differences_only(SequenceMatcher(a=src, b=dest).get_opcodes())
     # This only works for files with one edit!
@@ -117,21 +98,23 @@ def determine_fix_event(file_a: bytes, file_b: bytes, abstract_open_classes=True
 
     new: Optional[Vind]
     old: Optional[Vind]
-    to_index = language.vocabulary.to_index_or_unk
+
+    def to_index(token):
+        return language.vocabulary.to_index_or_unk(token.name)
 
     # Decode editop's format into our "Database-friendly" format.
     (type_name, src_pos, src_end, dest_pos, dest_end), = ops
     assert src_end in (src_pos, src_pos + 1)
     assert dest_end in (dest_pos, dest_pos + 1)
     if type_name == 'insert':
-        code, new, old = 'i', to_index(dest[dest_pos]), None
+        code, new, old = 'i', to_index(dest_toks[dest_pos]), None
         original_token_index = src_pos
         edit_index = dest_pos
     elif type_name == 'delete':
-        code, new, old = 'x', None, to_index(src[src_pos])
+        code, new, old = 'x', None, to_index(src_toks[src_pos])
         original_token_index = edit_index = src_pos
     elif type_name == 'replace':
-        code, new, old = 's', to_index(dest[dest_pos]), to_index(src[src_pos])
+        code, new, old = 's', to_index(dest_toks[dest_pos]), to_index(src_toks[src_pos])
         original_token_index = edit_index = src_pos
     else:
         raise ValueError(f'Cannot handle operation: {ops}')
@@ -140,7 +123,7 @@ def determine_fix_event(file_a: bytes, file_b: bytes, abstract_open_classes=True
     # BEFORE, which is exactly what Edit.deserialize wants; src_position also
     # works for deletions, and substitutions.
     edit = Edit.deserialize(code, edit_index, new, old)
-    error_token = src_locs[original_token_index]
+    error_token = src_toks[original_token_index]
 
     return FixEvent(edit, error_token.line)
 

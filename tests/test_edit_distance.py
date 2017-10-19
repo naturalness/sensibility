@@ -70,7 +70,7 @@ def test_out_of_vocabulary() -> None:
         pytest.fail(f'Wrong edit: {edit!r}')
 
 
-def test_unabstracted() -> None:
+def test_unabstracted_edit_distance() -> None:
     """
     Test edit distances when NOT using abstracted tokens.
     """
@@ -111,6 +111,38 @@ def test_get_edit(c) -> None:
         assert sub.index == 0
     else:
         pytest.fail(f'Wrong edit: {sub!r}')
+
+
+def test_get_unabstacted_edit(c) -> None:
+    ins = determine_edit(b'class Hello {',    b'class Hello {}',
+                         abstract_open_classes=False)
+    if isinstance(ins, Insertion):
+        assert ins.token == index_of(c('}'))
+        assert ins.index == 3
+    else:
+        pytest.fail(f'Wrong edit: {ins!r}')
+
+    delt = determine_edit(b'class Hello #{}',   b'class Hello {}',
+                          abstract_open_classes=False)
+    if isinstance(delt, Deletion):
+        assert delt.original_token == language.vocabulary.unk_token_index
+        assert delt.index == 2
+    else:
+        pytest.fail(f'Wrong edit: {delt!r}')
+
+    sub = determine_edit(b'goto label;', b'int label;',
+                         abstract_open_classes=False)
+    if isinstance(sub, Substitution):
+        assert sub.token == index_of(c('int'))
+        assert sub.original_token == index_of(c('goto'))
+        assert sub.index == 0
+    else:
+        pytest.fail(f'Wrong edit: {sub!r}')
+
+    # This should be a two-token difference.
+    with pytest.raises(AssertionError):
+        determine_edit(b'goto label;', b'int number;',
+                       abstract_open_classes=False)
 
 
 def test_edit_line(c) -> None:
