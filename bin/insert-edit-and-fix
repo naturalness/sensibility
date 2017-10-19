@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+# coding: UTF-8
+
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Given mistakes with edit distance == 0, determines the edit and the fix, and
+inserts it into the database.
+"""
+
+import sys
+import sqlite3
+import logging
+
+from tqdm import tqdm
+from sensibility.evaluation.mistakes import Mistakes
+from sensibility.evaluation.distance import determine_fix_event, tokenwise_distance
+from sensibility._paths import MISTAKE_FILE
+
+logger = logging.getLogger(sys.argv[0])
+logging.basicConfig(filename=f"insert-edit-and-fix.log")
+
+conn = sqlite3.connect(str(MISTAKE_FILE))
+# Make writes super speedy by disregarding durability.
+conn.execute('PRAGMA synchronous = OFF')
+mistakes = Mistakes(conn)
+
+# Iterates through mistakes all mistakes.
+for mistake in tqdm(mistakes.eligible_mistakes):
+    dist = tokenwise_distance(mistake.before, mistake.after)
+    mistakes.insert_distance(mistake, dist)
+    if dist == 1:
+        try:
+            fix_event = determine_fix_event(mistake.before, mistake.after)
+        except Exception:
+            logger.exception('Error determining fix for %s', mistake)
+        else:
+            mistakes.insert_fix_event(mistake, fix_event)
