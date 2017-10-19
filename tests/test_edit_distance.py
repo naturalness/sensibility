@@ -45,16 +45,22 @@ def test_general() -> None:
     assert 2 >= tokenwise_distance(b'enum Hello {}',    b'class Hello {')
 
 
-def test_extra() -> None:
-    # Regression: Lexer should be able to handle const and goto keywords,
-    # even though Java does not use them.
-    # https://docs.oracle.com/javase/tutorial/java/nutsandbolts/_keywords.html
+def test_unused_keywords() -> None:
+    """
+    Regression: Lexer should be able to handle const and goto keywords,
+    even though Java does not use them.
+    https://docs.oracle.com/javase/tutorial/java/nutsandbolts/_keywords.html
+    """
     assert 1 == tokenwise_distance(b'const int hello;', b'final int hello;')
     assert 1 == tokenwise_distance(b'goto label;', b'int label;')
 
-    # Regression: Distances should still be calculated if items are OOV
-    # ERROR and UNDERSCORE are out-of-vocabulary as well.
-    # In hindsight, const and goto should be OOV as well... :/
+
+def test_out_of_vocabulary() -> None:
+    """
+    Regression: Distances should still be calculated if items are OOV
+    ERROR and UNDERSCORE are out-of-vocabulary as well.
+    In hindsight, const and goto should be OOV as well... :/
+    """
     assert 1 == tokenwise_distance(b'int #label;', b'int label;')
     assert 1 == tokenwise_distance(b'int _;', b'int label;')
     edit = determine_edit(b'int #label;', b'int label;')
@@ -62,6 +68,16 @@ def test_extra() -> None:
         assert edit.original_token == language.vocabulary.unk_token_index
     else:
         pytest.fail(f'Wrong edit: {edit!r}')
+
+
+def test_unabstracted() -> None:
+    """
+    Test edit distances when NOT using abstracted tokens.
+    """
+    file_a = b"int new Value = 42;"
+    file_b = b"int newValue = 42;"
+    assert 1 == tokenwise_distance(file_a, file_b, abstract_open_classes=True)
+    assert 2 == tokenwise_distance(file_a, file_b, abstract_open_classes=False)
 
 
 @pytest.mark.skip  # Does an unnecessary database access.

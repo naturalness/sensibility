@@ -19,7 +19,7 @@
 Determines the Levenshtein distance between two source files.
 """
 
-from typing import Iterable, Optional, cast
+from typing import Iterable, Optional, Sequence, cast
 
 from Levenshtein import distance, editops  # type: ignore
 from edit_distance import SequenceMatcher  # type: ignore
@@ -48,13 +48,31 @@ def encode(entries: Iterable[str]) -> str:
     return ''.join(chr(PUA_B_START + to_index(entry)) for entry in entries)
 
 
-def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
+def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
     """
     Calculates the token-wise Levenshtein distance between two source files.
     """
-    seq_a = encode(language.vocabularize(file_a))
-    seq_b = encode(language.vocabularize(file_b))
+    if abstract_open_classes:
+        seq_a = to_abstraced_tokens(file_a)
+        seq_b = to_abstraced_tokens(file_b)
+    else:
+        seq_a = to_value_stream(file_a)
+        seq_b = to_value_stream(file_b)
     return SequenceMatcher(a=seq_a, b=seq_b).distance()
+
+
+def to_abstraced_tokens(source: bytes) -> Sequence[str]:
+    """
+    Turns the source code to a sequence of vocabulary tokens.
+    """
+    return tuple(language.vocabularize(source))
+
+
+def to_value_stream(source: bytes) -> Sequence[str]:
+    """
+    Turns the source code to sequence of tokens values.
+    """
+    return tuple(token.value for token in language.tokenize(source))
 
 
 class FixEvent:
