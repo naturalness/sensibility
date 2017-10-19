@@ -22,6 +22,7 @@ Determines the Levenshtein distance between two source files.
 from typing import Iterable, Optional, cast
 
 from Levenshtein import distance, editops  # type: ignore
+from edit_distance import SequenceMatcher  # type: ignore
 
 from sensibility.language import language
 from sensibility.vocabulary import Vind
@@ -53,7 +54,7 @@ def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
     """
     seq_a = encode(language.vocabularize(file_a))
     seq_b = encode(language.vocabularize(file_b))
-    return distance(seq_a, seq_b)
+    return SequenceMatcher(a=seq_a, b=seq_b).distance()
 
 
 class FixEvent:
