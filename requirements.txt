@@ -2,7 +2,7 @@ Keras==2.0.8
 Theano==0.8.2
 SQLAlchemy==1.1.9
 blessings
-edit-distance=1.0.1
+edit-distance==1.0.1
 github3.py==0.9.6
 h5py==2.6.0
 javac-parser==0.2.0

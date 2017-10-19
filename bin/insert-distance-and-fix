@@ -38,7 +38,7 @@ conn.execute('PRAGMA synchronous = OFF')
 mistakes = Mistakes(conn)
 
 # Iterates through mistakes all mistakes.
-for mistake in tqdm(mistakes.eligible_mistakes):
+for mistake in tqdm(mistakes):
     dist = tokenwise_distance(mistake.before, mistake.after)
     mistakes.insert_distance(mistake, dist)
     if dist == 1:
