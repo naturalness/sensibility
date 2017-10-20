@@ -100,8 +100,8 @@ class Vocabulary(Sized):
         """
         try:
             return self._text2index[text]
-        except KeyError:
-            raise OutOfVocabularyError(text)
+        except KeyError as cause:
+            raise OutOfVocabularyError(text) from cause
 
     def to_index_or_unk(self, text: str) -> Vind:
         try:
