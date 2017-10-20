@@ -19,30 +19,48 @@
 Determines the Levenshtein distance between two source files.
 """
 
-from typing import Iterable, Optional, Sequence, Tuple, cast
+from typing import Callable, Iterable, Optional, Sequence, Tuple, cast
 
 from edit_distance import SequenceMatcher  # type: ignore
 
+from sensibility.lexical_analysis import Token
 from sensibility.language import language
 from sensibility.vocabulary import Vind
 from sensibility import Edit
 from sensibility.abram import at_least
 
 
+TokenConverter = Callable[[Token], str]
 EditOp = Tuple[str, int, int, int, int]
+
+
+class TokenDistance:
+    def __init__(self, a: Iterable[Token], b: Iterable[Token],
+                 converter: TokenConverter) -> None:
+        self.a = tuple(a)
+        self.b = tuple(b)
+        self._convert = converter
+
+    def distance(self) -> int:
+        convert = self._convert
+        seq_a = tuple(convert(tok) for tok in self.a)
+        seq_b = tuple(convert(tok) for tok in self.b)
+        return SequenceMatcher(a=seq_a, b=seq_b).distance()
+
+    @classmethod
+    def of(cls, file_a: bytes, file_b: bytes, abstract: bool) -> 'TokenDistance':
+        from operator import attrgetter
+        assert language.name == 'Java'
+        return cls(language.tokenize(file_a),
+                   language.tokenize(file_b),
+                   converter=attrgetter('name') if abstract else attrgetter('value'))
 
 
 def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
     """
     Calculates the token-wise Levenshtein distance between two source files.
     """
-    if abstract_open_classes:
-        seq_a = to_abstraced_tokens(file_a)
-        seq_b = to_abstraced_tokens(file_b)
-    else:
-        seq_a = to_value_stream(file_a)
-        seq_b = to_value_stream(file_b)
-    return SequenceMatcher(a=seq_a, b=seq_b).distance()
+    return TokenDistance.of(file_a, file_b, abstract_open_classes).distance()
 
 
 class FixEvent:
