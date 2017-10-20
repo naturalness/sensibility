@@ -34,35 +34,6 @@ TokenConverter = Callable[[Token], str]
 EditOp = Tuple[str, int, int, int, int]
 
 
-class TokenDistance:
-    def __init__(self, a: Iterable[Token], b: Iterable[Token],
-                 converter: TokenConverter) -> None:
-        self.a = tuple(a)
-        self.b = tuple(b)
-        self._convert = converter
-
-    def distance(self) -> int:
-        convert = self._convert
-        seq_a = tuple(convert(tok) for tok in self.a)
-        seq_b = tuple(convert(tok) for tok in self.b)
-        return SequenceMatcher(a=seq_a, b=seq_b).distance()
-
-    @classmethod
-    def of(cls, file_a: bytes, file_b: bytes, abstract: bool) -> 'TokenDistance':
-        from operator import attrgetter
-        assert language.name == 'Java'
-        return cls(language.tokenize(file_a),
-                   language.tokenize(file_b),
-                   converter=attrgetter('name') if abstract else attrgetter('value'))
-
-
-def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
-    """
-    Calculates the token-wise Levenshtein distance between two source files.
-    """
-    return TokenDistance.of(file_a, file_b, abstract_open_classes).distance()
-
-
 class FixEvent:
     def __init__(self, fix: Edit, line_no: int) -> None:
         # Feature request: use the current language for each fix, then to
@@ -87,6 +58,90 @@ class FixEvent:
         return language.vocabulary.to_text(new) if new is not None else None
 
 
+class TokenDistance:
+    """
+    Determines the distance between two sequences of tokens.
+    """
+    def __init__(self, a: Iterable[Token], b: Iterable[Token],
+                 converter: TokenConverter) -> None:
+        self.a = tuple(a)
+        self.b = tuple(b)
+        self._convert = converter
+
+    def distance(self) -> int:
+        """
+        Levenshtein edit distance of the two sequences.
+        """
+        convert = self._convert
+        seq_a = tuple(convert(tok) for tok in self.a)
+        seq_b = tuple(convert(tok) for tok in self.b)
+        return SequenceMatcher(a=seq_a, b=seq_b).distance()
+
+    def determine_fix(self) -> FixEvent:
+        """
+        Edit operations between the two sequences.
+        """
+        convert = self._convert
+        src_toks = self.a
+        dest_toks = self.b
+
+        src = tuple(convert(tok) for tok in src_toks)
+        dest = tuple(convert(tok) for tok in dest_toks)
+
+        ops = differences_only(SequenceMatcher(a=src, b=dest).get_opcodes())
+        # This only works for files with one edit!
+        assert len(ops) == 1
+
+        new: Optional[Vind]
+        old: Optional[Vind]
+
+        def to_index(token):
+            return language.vocabulary.to_index_or_unk(token.name)
+
+        # Decode editop's format into our "Database-friendly" format.
+        (type_name, src_pos, src_end, dest_pos, dest_end), = ops
+        assert src_end in (src_pos, src_pos + 1)
+        assert dest_end in (dest_pos, dest_pos + 1)
+        if type_name == 'insert':
+            code, new, old = 'i', to_index(dest_toks[dest_pos]), None
+            original_token_index = src_pos
+            edit_index = dest_pos
+        elif type_name == 'delete':
+            code, new, old = 'x', None, to_index(src_toks[src_pos])
+            original_token_index = edit_index = src_pos
+        elif type_name == 'replace':
+            code, new, old = 's', to_index(dest_toks[dest_pos]), to_index(src_toks[src_pos])
+            original_token_index = edit_index = src_pos
+        else:
+            raise ValueError(f'Cannot handle operation: {ops}')
+
+        # Note: in the case of insertions, src_pos will be the index to insert
+        # BEFORE, which is exactly what Edit.deserialize wants; src_position also
+        # works for deletions, and substitutions.
+        edit = Edit.deserialize(code, edit_index, new, old)
+        error_token = src_toks[original_token_index]
+
+        return FixEvent(edit, error_token.line)
+
+    @classmethod
+    def of(cls, file_a: bytes, file_b: bytes, abstract: bool) -> 'TokenDistance':
+        """
+        Return a TokenDistance configured for the given files.
+        """
+        from operator import attrgetter
+        assert language.name == 'Java'
+        return cls(language.tokenize(file_a),
+                   language.tokenize(file_b),
+                   converter=attrgetter('name') if abstract else attrgetter('value'))
+
+
+def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
+    """
+    Calculates the token-wise Levenshtein distance between two source files.
+    """
+    return TokenDistance.of(file_a, file_b, abstract_open_classes).distance()
+
+
 def determine_edit(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> Edit:
     return determine_fix_event(file_a, file_b, abstract_open_classes).fix
 
@@ -100,50 +155,7 @@ def determine_fix_event(file_a: bytes, file_b: bytes, abstract_open_classes=True
     For two source files with Levenshtein distance of one, this returns the
     edit that converts the first file into the second file.
     """
-    src_toks = tuple(language.tokenize(file_a))
-    dest_toks = tuple(language.tokenize(file_b))
-    assert language.name == 'Java'
-    if abstract_open_classes:
-        src = tuple(token.name for token in src_toks)
-        dest = tuple(token.name for token in dest_toks)
-    else:
-        src = tuple(token.value for token in src_toks)
-        dest = tuple(token.value for token in dest_toks)
-
-    ops = differences_only(SequenceMatcher(a=src, b=dest).get_opcodes())
-    # This only works for files with one edit!
-    assert len(ops) == 1
-
-    new: Optional[Vind]
-    old: Optional[Vind]
-
-    def to_index(token):
-        return language.vocabulary.to_index_or_unk(token.name)
-
-    # Decode editop's format into our "Database-friendly" format.
-    (type_name, src_pos, src_end, dest_pos, dest_end), = ops
-    assert src_end in (src_pos, src_pos + 1)
-    assert dest_end in (dest_pos, dest_pos + 1)
-    if type_name == 'insert':
-        code, new, old = 'i', to_index(dest_toks[dest_pos]), None
-        original_token_index = src_pos
-        edit_index = dest_pos
-    elif type_name == 'delete':
-        code, new, old = 'x', None, to_index(src_toks[src_pos])
-        original_token_index = edit_index = src_pos
-    elif type_name == 'replace':
-        code, new, old = 's', to_index(dest_toks[dest_pos]), to_index(src_toks[src_pos])
-        original_token_index = edit_index = src_pos
-    else:
-        raise ValueError(f'Cannot handle operation: {ops}')
-
-    # Note: in the case of insertions, src_pos will be the index to insert
-    # BEFORE, which is exactly what Edit.deserialize wants; src_position also
-    # works for deletions, and substitutions.
-    edit = Edit.deserialize(code, edit_index, new, old)
-    error_token = src_toks[original_token_index]
-
-    return FixEvent(edit, error_token.line)
+    return TokenDistance.of(file_a, file_b, abstract_open_classes).determine_fix()
 
 
 def to_abstraced_tokens(source: bytes) -> Sequence[str]:

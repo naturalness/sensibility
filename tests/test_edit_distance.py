@@ -45,7 +45,6 @@ def test_general() -> None:
     assert 2 >= tokenwise_distance(b'enum Hello {}',    b'class Hello {')
 
 
-@pytest.mark.skip
 def test_unused_keywords() -> None:
     """
     Regression: Lexer should be able to handle const and goto keywords,
@@ -54,22 +53,6 @@ def test_unused_keywords() -> None:
     """
     assert 1 == tokenwise_distance(b'const int hello;', b'final int hello;')
     assert 1 == tokenwise_distance(b'goto label;', b'int label;')
-
-
-@pytest.mark.skip
-def test_out_of_vocabulary() -> None:
-    """
-    Regression: Distances should still be calculated if items are OOV
-    ERROR and UNDERSCORE are out-of-vocabulary as well.
-    In hindsight, const and goto should be OOV as well... :/
-    """
-    assert 1 == tokenwise_distance(b'int #label;', b'int label;')
-    assert 1 == tokenwise_distance(b'int _;', b'int label;')
-    edit = determine_edit(b'int #label;', b'int label;')
-    if isinstance(edit, Deletion):
-        assert edit.original_token == language.vocabulary.unk_token_index
-    else:
-        pytest.fail(f'Wrong edit: {edit!r}')
 
 
 def test_unabstracted_edit_distance() -> None:
@@ -82,16 +65,6 @@ def test_unabstracted_edit_distance() -> None:
     assert 2 == tokenwise_distance(file_a, file_b, abstract_open_classes=False)
 
 
-@pytest.mark.skip  # Does an unnecessary database access.
-def test_get_source() -> None:
-    import sqlite3
-    from sensibility._paths import MISTAKE_FILE
-    m = Mistakes(sqlite3.connect(str(MISTAKE_FILE)))
-    mistake = next(iter(m))
-    assert 0 < tokenwise_distance(mistake.before, mistake.after)
-
-
-@pytest.mark.skip
 def test_get_edit(c) -> None:
     ins = determine_edit(b'class Hello {',    b'class Hello {}')
     if isinstance(ins, Insertion):
@@ -116,7 +89,6 @@ def test_get_edit(c) -> None:
         pytest.fail(f'Wrong edit: {sub!r}')
 
 
-@pytest.mark.skip
 def test_get_unabstacted_edit(c) -> None:
     ins = determine_edit(b'class Hello {',    b'class Hello {}',
                          abstract_open_classes=False)
@@ -149,7 +121,21 @@ def test_get_unabstacted_edit(c) -> None:
                        abstract_open_classes=False)
 
 
-@pytest.mark.skip
+def test_out_of_vocabulary() -> None:
+    """
+    Regression: Distances should still be calculated if items are OOV
+    ERROR and UNDERSCORE are out-of-vocabulary as well.
+    In hindsight, const and goto should be OOV as well... :/
+    """
+    assert 1 == tokenwise_distance(b'int #label;', b'int label;')
+    assert 1 == tokenwise_distance(b'int _;', b'int label;')
+    edit = determine_edit(b'int #label;', b'int label;')
+    if isinstance(edit, Deletion):
+        assert edit.original_token == language.vocabulary.unk_token_index
+    else:
+        pytest.fail(f'Wrong edit: {edit!r}')
+
+
 def test_edit_line(c) -> None:
     head = [
         'class Hello {',
@@ -183,6 +169,15 @@ def test_edit_line(c) -> None:
     assert fix_event.line_no == error_line
     assert fix_event.new_token == c('{')
     assert fix_event.old_token is None
+
+
+@pytest.mark.skip(reason='Does an unnecessary database access')
+def test_get_source() -> None:
+    import sqlite3
+    from sensibility._paths import MISTAKE_FILE
+    m = Mistakes(sqlite3.connect(str(MISTAKE_FILE)))
+    mistake = next(iter(m))
+    assert 0 < tokenwise_distance(mistake.before, mistake.after)
 
 
 def index_of(token: str) -> Vind:
