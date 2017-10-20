@@ -180,6 +180,18 @@ def test_get_source() -> None:
     assert 0 < tokenwise_distance(mistake.before, mistake.after)
 
 
+from hypothesis import given  # type: ignore
+from hypothesis.strategies import text  # type: ignore
+@given(text(), text())
+def test_dependency(a, b):
+    """
+    Test the assumption that the number of editops is equivalent to the
+    Levenshtein edit distance.
+    """
+    from Levenshtein import distance, editops  # type: ignore
+    assert distance(a, b) == len(editops(a, b))
+
+
 def index_of(token: str) -> Vind:
     """
     Given a token in the vocabulary, returns its vocabulary index.

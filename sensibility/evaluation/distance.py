@@ -22,6 +22,7 @@ Determines the Levenshtein distance between two source files.
 from typing import Callable, Dict, Iterable, Optional, Sequence, Tuple, cast
 
 from edit_distance import SequenceMatcher  # type: ignore
+from Levenshtein import distance, editops  # type: ignore
 
 from sensibility.lexical_analysis import Token
 from sensibility.language import language
@@ -64,18 +65,22 @@ class TokenDistance:
     """
     def __init__(self, a: Iterable[Token], b: Iterable[Token],
                  converter: TokenConverter) -> None:
+        # TODO: rename to 'src_toks' and 'dest_toks'?
         self.a = tuple(a)
         self.b = tuple(b)
+        # TODO: precalcuate converted form?
         self._convert = converter
+        self._mapper = PrivateUseAreaMapper()
 
     def distance(self) -> int:
         """
         Levenshtein edit distance of the two sequences.
         """
         convert = self._convert
-        seq_a = tuple(convert(tok) for tok in self.a)
-        seq_b = tuple(convert(tok) for tok in self.b)
-        return SequenceMatcher(a=seq_a, b=seq_b).distance()
+        mapper = self._mapper
+        seq_a = ''.join(mapper[convert(tok)] for tok in self.a)
+        seq_b = ''.join(mapper[convert(tok)] for tok in self.b)
+        return distance(seq_a, seq_b)
 
     def determine_fix(self) -> FixEvent:
         """
