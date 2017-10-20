@@ -61,6 +61,9 @@ class FixEvent:
 class TokenDistance:
     """
     Determines the distance between two sequences of tokens.
+
+    Get the Levenshtein distance by calling .distance().
+    Get the single-token fix by calling .determine_fix().
     """
     def __init__(self, a: Iterable[Token], b: Iterable[Token],
                  convert: TokenConverter) -> None:
@@ -103,7 +106,7 @@ class TokenDistance:
         def to_index(token: Token) -> Vind:
             return language.vocabulary.to_index_or_unk(token.name)
 
-        # Decode editop's format into our "Database-friendly" format.
+        # Decode editop's format into our "database-friendly" format.
         (type_name, src_pos, dest_pos), = ops
         if type_name == 'insert':
             code, new, old = 'i', to_index(dest[dest_pos]), None
@@ -120,8 +123,6 @@ class TokenDistance:
         edit = Edit.deserialize(code, src_pos, new, old)
         error_token = src[at_least(0, src_pos - 1) if code == 'i' else src_pos]
         return FixEvent(edit, error_token.line)
-
-
 
     @classmethod
     def of(cls, file_a: bytes, file_b: bytes, abstract: bool) -> 'TokenDistance':
@@ -165,6 +166,8 @@ class PrivateUseAreaMapper:
         try:
             return self._map[string]
         except KeyError:
+            # Store the next free code point in the dictionary,
+            # and return it.
             return self._map.setdefault(string, self._get_next_code_point())
 
     def _get_next_code_point(self) -> str:
@@ -175,6 +178,8 @@ class PrivateUseAreaMapper:
         return chr(code_point)
 
 
+# ################################ Old API ################################ #
+
 def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
     """
     Calculates the token-wise Levenshtein distance between two source files.
@@ -183,11 +188,10 @@ def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True)
 
 
 def determine_edit(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> Edit:
+    """
+    Determine the single edit made in file_b that will fix file_a.
+    """
     return determine_fix_event(file_a, file_b, abstract_open_classes).fix
-
-
-def differences_only(ops) -> Sequence[EditOp]:
-    return tuple(op for op in ops if op[0] != 'equal')
 
 
 def determine_fix_event(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> FixEvent:
@@ -196,26 +200,3 @@ def determine_fix_event(file_a: bytes, file_b: bytes, abstract_open_classes=True
     edit that converts the first file into the second file.
     """
     return TokenDistance.of(file_a, file_b, abstract_open_classes).determine_fix()
-
-
-def to_abstraced_tokens(source: bytes) -> Sequence[str]:
-    """
-    Turns the source code to a sequence of vocabulary tokens.
-    """
-    return tuple(language.vocabularize(source))
-
-
-def to_value_stream(source: bytes) -> Sequence[str]:
-    """
-    Turns the source code to sequence of tokens values.
-    """
-    return tuple(token.value for token in language.tokenize(source))
-
-
-def lists(it):
-    a_list = []
-    b_list = []
-    for a, b in it:
-        a_list.append(a)
-        b_list.append(b)
-    return a_list, b_list
