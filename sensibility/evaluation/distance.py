@@ -64,34 +64,32 @@ class TokenDistance:
     Determines the distance between two sequences of tokens.
     """
     def __init__(self, a: Iterable[Token], b: Iterable[Token],
-                 converter: TokenConverter) -> None:
-        # TODO: rename to 'src_toks' and 'dest_toks'?
-        self.a = tuple(a)
-        self.b = tuple(b)
-        # TODO: precalcuate converted form?
-        self._convert = converter
+                 convert: TokenConverter) -> None:
+        self.src_toks = tuple(a)
+        self.dest_toks = tuple(b)
+        # Pre-compute the converted token stream.
+        self.src_text = tuple(convert(tok) for tok in self.src_toks)
+        self.dest_text = tuple(convert(tok) for tok in self.dest_toks)
         self._mapper = PrivateUseAreaMapper()
 
     def distance(self) -> int:
         """
         Levenshtein edit distance of the two sequences.
         """
-        convert = self._convert
         mapper = self._mapper
-        seq_a = ''.join(mapper[convert(tok)] for tok in self.a)
-        seq_b = ''.join(mapper[convert(tok)] for tok in self.b)
+        seq_a = ''.join(mapper[token] for token in self.src_text)
+        seq_b = ''.join(mapper[token] for token in self.dest_text)
         return distance(seq_a, seq_b)
 
     def determine_fix(self) -> FixEvent:
         """
         Edit operations between the two sequences.
         """
-        convert = self._convert
-        src_toks = self.a
-        dest_toks = self.b
+        src_toks = self.src_toks
+        dest_toks = self.dest_toks
 
-        src = tuple(convert(tok) for tok in src_toks)
-        dest = tuple(convert(tok) for tok in dest_toks)
+        src = self.src_text
+        dest = self.dest_text
 
         ops = differences_only(SequenceMatcher(a=src, b=dest).get_opcodes())
         # This only works for files with one edit!
@@ -137,7 +135,7 @@ class TokenDistance:
         assert language.name == 'Java'
         return cls(language.tokenize(file_a),
                    language.tokenize(file_b),
-                   converter=attrgetter('name') if abstract else attrgetter('value'))
+                   convert=attrgetter('name') if abstract else attrgetter('value'))
 
 
 class PrivateUseAreaMapper:

@@ -22,6 +22,8 @@ Tests mistakes and edit distance.
 from functools import lru_cache
 
 import pytest
+from hypothesis import given  # type: ignore
+from hypothesis.strategies import text  # type: ignore
 
 from sensibility.evaluation.mistakes import Mistakes
 from sensibility.evaluation.distance import (
@@ -180,8 +182,6 @@ def test_get_source() -> None:
     assert 0 < tokenwise_distance(mistake.before, mistake.after)
 
 
-from hypothesis import given  # type: ignore
-from hypothesis.strategies import text  # type: ignore
 @given(text(), text())
 def test_dependency(a, b):
     """
