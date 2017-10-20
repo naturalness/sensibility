@@ -125,7 +125,7 @@ class TokenDistance:
         return FixEvent(edit, error_token.line)
 
     @classmethod
-    def of(cls, file_a: bytes, file_b: bytes, abstract: bool) -> 'TokenDistance':
+    def of(cls, file_a: bytes, file_b: bytes, abstract: bool=False) -> 'TokenDistance':
         """
         Return a TokenDistance configured for the given files.
         """

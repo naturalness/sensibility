@@ -16,8 +16,8 @@
 # limitations under the License.
 
 """
-Given mistakes with edit distance == 0, determines the edit and the fix, and
-inserts it into the database.
+Given mistakes, determines the edit and the fix, and inserts it into the
+database.
 """
 
 import sys
@@ -26,7 +26,7 @@ import logging
 
 from tqdm import tqdm
 from sensibility.evaluation.mistakes import Mistakes
-from sensibility.evaluation.distance import determine_fix_event, tokenwise_distance
+from sensibility.evaluation.distance import TokenDistance
 from sensibility._paths import MISTAKE_FILE
 
 logger = logging.getLogger(sys.argv[0])
@@ -39,11 +39,20 @@ mistakes = Mistakes(conn)
 
 # Iterates through mistakes all mistakes.
 for mistake in tqdm(mistakes):
-    dist = tokenwise_distance(mistake.before, mistake.after)
-    mistakes.insert_distance(mistake, dist)
-    if dist == 1:
+    # Determine the distance first.
+    try:
+        ctx = TokenDistance.of(mistake.before, mistake.after, abstract=False)
+        distance = ctx.distance()
+    except Exception:
+        logger.exception('Error determining distance for %s', mistake)
+        continue
+    else:
+        mistakes.insert_distance(mistake, distance)
+
+    # When the file is exactly one edit away, determine the fix and insert.
+    if distance == 1:
         try:
-            fix_event = determine_fix_event(mistake.before, mistake.after)
+            fix_event = ctx.determine_fix()
         except Exception:
             logger.exception('Error determining fix for %s', mistake)
         else:
