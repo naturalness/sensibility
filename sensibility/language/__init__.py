@@ -194,6 +194,14 @@ class LanguageProxy(Language):
         self._language = self.load_langauge_by_name(name)
         return self
 
+    def unwrap(self) -> Language:
+        """
+        Returns the underlying Language object.
+        """
+        if self._language is not None:
+            return self._language
+        raise LanguageNotSpecifiedError
+
     def determine_language(self) -> Language:
         logger = logging.getLogger(self.__class__.__name__)
 
