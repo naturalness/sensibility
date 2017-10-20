@@ -22,8 +22,8 @@ Tests mistakes and edit distance.
 from functools import lru_cache
 
 import pytest
-from hypothesis import given  # type: ignore
-from hypothesis.strategies import text  # type: ignore
+from hypothesis import given
+from hypothesis.strategies import text
 
 from sensibility.evaluation.mistakes import Mistakes
 from sensibility.evaluation.distance import (
