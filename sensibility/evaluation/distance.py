@@ -19,7 +19,7 @@
 Determines the Levenshtein distance between two source files.
 """
 
-from typing import Callable, Iterable, Optional, Sequence, Tuple, cast
+from typing import Callable, Dict, Iterable, Optional, Sequence, Tuple, cast
 
 from edit_distance import SequenceMatcher  # type: ignore
 
@@ -133,6 +133,46 @@ class TokenDistance:
         return cls(language.tokenize(file_a),
                    language.tokenize(file_b),
                    converter=attrgetter('name') if abstract else attrgetter('value'))
+
+
+class PrivateUseAreaMapper:
+    """
+    Maps arbitrary strings into private use unicode code points.
+    This allows one to encode arbitrary sequences for use with
+    CERTAIN edit distance libraries that operate on plain strings exclusively.
+    Why private use code points? So that strings produced by this operation
+    are not as easily confused with real data.
+
+    >>> mapper = PrivateUseAreaMapper()
+    >>> sentence = 'A rose is a rose is a rose'.split()
+    >>> mappings = [mapper[word] for word in sentence]
+    >>> len(mappings)
+    8
+    >>> len(set(mappings))
+    4
+    """
+
+    # Supplementary Private Use Area B
+    PUA_B_START = 0x100000
+    # This is the largest possible Unicode code point.
+    MAXIMUM = 0x10FFFF
+
+    def __init__(self) -> None:
+        self._next_code_point = self.PUA_B_START
+        self._map: Dict[str, str] = {}
+
+    def __getitem__(self, string: str) -> str:
+        try:
+            return self._map[string]
+        except KeyError:
+            return self._map.setdefault(string, self._get_next_code_point())
+
+    def _get_next_code_point(self) -> str:
+        code_point = self._next_code_point
+        self._next_code_point += 1
+        if self._next_code_point > self.MAXIMUM:
+            raise OverflowError('Ran out of code points!')
+        return chr(code_point)
 
 
 def tokenwise_distance(file_a: bytes, file_b: bytes, abstract_open_classes=True) -> int:
