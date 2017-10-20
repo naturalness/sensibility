@@ -21,8 +21,7 @@ Determines the Levenshtein distance between two source files.
 
 from typing import Callable, Dict, Iterable, Optional, Sequence, Tuple, cast
 
-from edit_distance import SequenceMatcher  # type: ignore
-from Levenshtein import distance, editops  # type: ignore
+from Levenshtein import editops  # type: ignore
 
 from sensibility.lexical_analysis import Token
 from sensibility.language import language

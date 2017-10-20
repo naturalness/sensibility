@@ -52,7 +52,6 @@ setup(
         'more-itertools>=2.3',
         'numpy>=1.11.0',
         'python-dateutil>=2.6.0',
-        'edit-distance>=1.0.1',
         'python-Levenshtein>=0.12.0',
         'pyzmq>=16.0.2, <17.0.0',
         'redis>=2.10.5',
