@@ -25,9 +25,11 @@ Usage:
 
 import argparse
 from xmlrpc.server import SimpleXMLRPCServer  # type: ignore
+from xmlrpc.client import Binary  # type: ignore
 from pathlib import Path
 
 from sensibility.model.lstm import KerasDualLSTMModel
+from sensibility.source_vector import SourceVector
 from sensibility.utils import Timer
 
 parser = argparse.ArgumentParser()
@@ -45,10 +47,23 @@ if __name__ == '__main__':
         model = KerasDualLSTMModel.from_directory(args.model_dir)
     print(f"Loaded models in {timer.seconds:2.1f} seconds")
 
+    def predict_file(vector: Binary):
+        """
+        Does predictions for an entire file; the result
+        from the server will be a list of tuples, themselves being tuples.
+        """
+        vector = SourceVector.from_bytes(vector.data)
+        token_results = model.predict_file(vector)
+
+        def tupleize():
+            for fw, bw in token_results:
+                yield tuple(float(x) for x in fw), tuple(float(x) for x in bw)
+        return list(tupleize())
+
     # Only bind to localhost; making this service external is a bad idea.
     addr = 'localhost', args.port
     with SimpleXMLRPCServer(addr) as server:
-        server.register_instance(server)
+        server.register_function(predict_file)
         print("Server listening on", ':'.join(str(c) for c in addr))
         try:
             server.serve_forever()
