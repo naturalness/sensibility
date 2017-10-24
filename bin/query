@@ -23,8 +23,12 @@ import sys
 from sensibility.model.lstm.remote import RemoteDualLSTMModel
 from sensibility.source_vector import to_source_vector
 from pprint import pprint
+from sensibility import current_language
 
 model = RemoteDualLSTMModel.connect()
-source = sys.stdin.read().encode('UTF-8')
-results = model.predict_file(to_source_vector(source))
-pprint(results)
+source = to_source_vector(sys.stdin.read().encode('UTF-8'))
+results = model.predict_file(source)
+
+# TODO: actually do a fix with these results
+for token, (fw, bw) in zip(source, results):
+    print(f"{token:3d}  {fw.argmax():3d}  {bw.argmax():3d}")

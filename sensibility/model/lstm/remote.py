@@ -22,6 +22,8 @@ Provides a model-like class that queries a remote model via XMLRPC.
 from typing import Sequence, Iterable
 from xmlrpc.client import ServerProxy, Fault  # type: ignore
 
+import numpy as np
+
 from sensibility.source_vector import SourceVector
 from sensibility.vocabulary import Vind
 from . import DualLSTMModel, TokenResult
@@ -37,12 +39,20 @@ class RemoteDualLSTMModel:
     def predict_file(self, vector: Sequence[Vind]) -> Iterable[TokenResult]:
         from pprint import pprint
 
-        # The remote API is not quite the same.
-        # It requires vocabulary indices as bytes.
+        # The remote API is not quite the same.  It requires vocabulary
+        # indices as bytes.
         serialized = SourceVector(vector).to_bytes()
         result = self.server.predict_file(serialized)
-        pprint(result)
-        raise NotImplementedError
+
+        # The result is returned as a triple-nested list:
+        # Outermost list, corresponds to tokens.
+        # Inside that are pairs of predictions (forwards, backwards).
+        # Innermost is an array of float predictions.
+        def deserialize_result():
+            for fw, bw in result:
+                yield TokenResult(np.array(fw, dtype=np.float32),
+                                  np.array(bw, dtype=np.float32))
+        return tuple(deserialize_result())
 
     @classmethod
     def connect(cls, port: int=8080) -> 'RemoteDualLSTMModel':

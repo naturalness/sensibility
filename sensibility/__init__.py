@@ -19,14 +19,17 @@ Sensibility --- detect and fix syntax errors in source code.
 """
 
 from .edit import Edit, Insertion, Deletion, Substitution
-from .language import Language, language
+from .language import Language, language as current_language
 from .lexical_analysis import Lexeme, Token, Location, Position
 from .source_vector import SourceVector
 from .vocabulary import Vocabulary, Vind
 
+# Deprecated: this alias
+language = current_language
+
 __all__ = [
     'Edit', 'Insertion', 'Deletion', 'Substitution',
-    'Language', 'language',
+    'Language', 'language', 'current_language',
     'Lexeme', 'Token', 'Location', 'Position',
     'SourceVector',
     'Vocabulary', 'Vind',
