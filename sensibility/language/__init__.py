@@ -28,7 +28,7 @@ from typing import (
 from typing import no_type_check, cast, overload
 from abc import ABC, abstractmethod
 
-from ..vocabulary import Vocabulary
+from ..vocabulary import Vocabulary, Vind
 from ..lexical_analysis import Token, Location
 
 
@@ -105,6 +105,10 @@ class Language(ABC):
     def token_locations(self, source: Union[SourceCode, Tokens]) -> Iterable[Location]:
         stream = self.vocabularize_tokens(self._as_tokens(source))
         return (loc for loc, _tok in stream)
+
+    # API that delegates to vocabulary
+    def to_index(self, entry: str) -> Vind:
+        return self.vocabulary.to_index(entry)
 
     def __str__(self) -> str:
         return self.id
@@ -246,6 +250,9 @@ class LanguageProxy(Language):
 
     def vocabularize_tokens(self, *args, **kwargs):
         return self.wrapped_language.vocabularize_tokens(*args, **kwargs)
+
+    def to_index(self, *args, **kwargs):
+        return self.wrapped_language.to_index(*args, **kwargs)
 
 
 class ConcreteLanguageProxy(LanguageProxy):

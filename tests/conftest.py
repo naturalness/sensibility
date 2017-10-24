@@ -40,8 +40,8 @@ def i(c):
     """
     Returns a function that tokenizes its input and returns the vocabulary ID.
     """
-    from sensibility import Vind, language
+    from sensibility import Vind, current_language
 
     def index_of_input(text: str) -> Vind:
-        return language.vocabulary.to_index(c(text))
+        return current_language.to_index(c(text))
     return index_of_input
