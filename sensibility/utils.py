@@ -17,6 +17,7 @@
 
 
 import os
+import time
 from os import PathLike
 from pathlib import Path
 
@@ -76,3 +77,16 @@ def clamp(x: float, lower=0., upper=1.) -> float:
     elif isnan(x):
         raise FloatingPointError('clamp is undefined for NaN')
     return x
+
+
+class Timer:
+    def __enter__(self) -> 'Timer':
+        self.start = time.monotonic()
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        self.end = time.monotonic()
+
+    @property
+    def seconds(self) -> float:
+        return self.end - self.start
