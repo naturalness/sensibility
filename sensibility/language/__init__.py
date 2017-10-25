@@ -272,4 +272,6 @@ class ConcreteLanguageProxy(LanguageProxy):
         return getattr(self.wrapped_language, name)
 
 
-language: LanguageProxy = ConcreteLanguageProxy()
+current_language: LanguageProxy = ConcreteLanguageProxy()
+# XXX: Deprecated! Use current_language instead.
+language = current_language

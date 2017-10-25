@@ -19,12 +19,12 @@ Sensibility --- detect and fix syntax errors in source code.
 """
 
 from .edit import Edit, Insertion, Deletion, Substitution
-from .language import Language, language as current_language
+from .language import Language, current_language
 from .lexical_analysis import Lexeme, Token, Location, Position
 from .source_vector import SourceVector
 from .vocabulary import Vocabulary, Vind
 
-# Deprecated: this alias
+# XXX: Deprecated: this alias
 language = current_language
 
 __all__ = [
