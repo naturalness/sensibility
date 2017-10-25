@@ -54,7 +54,7 @@ class LSTMFixerUpper:
         If there are no possible fixes, the sequence will be empty.
         """
         # Get file vector for the error'd file.
-        file_vector = to_source_vector(file)
+        file_vector = to_source_vector(file, oov_to_unk=True)
         tokens = tuple(language.tokenize(file))
         predictions = self.model.predict_file(file_vector)
 

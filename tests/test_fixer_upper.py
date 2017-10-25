@@ -20,14 +20,14 @@ import pytest
 import numpy as np
 
 from sensibility.model.lstm import DualLSTMModel, TokenResult
-from sensibility.language import language
+from sensibility.language import current_language
 from sensibility.edit import Deletion
 
 from sensibility.fix import LSTMFixerUpper
 
 
 def setup():
-    language.set('java')
+    current_language.set('java')
 
 
 def test_fixer_upper(rigged_lstm_model: DualLSTMModel, i) -> None:
@@ -59,6 +59,38 @@ def test_fixer_upper(rigged_lstm_model: DualLSTMModel, i) -> None:
         pytest.fail(f"Did not get deletion; instead got: {top_result}")
 
 
+def test_fixer_upper_oov(rigged_lstm_model):
+    """
+    Regression: fixer upper should work, even in the presence of OoV tokens.
+    """
+
+    broken_source = b'''
+        package ca.ualberta.cs;
+
+        class HelloWorld {
+            public static void main(String args[] /* Syntax error, delete token[19] to fix */ # ) {
+                System.out.println("Hello, World!");
+            }
+        }
+    '''
+
+    # Set up the rigged model to report error tokens as unks.
+    UNK = current_language.vocabulary.unk_token_index
+    rigged_lstm_model.bad_token = UNK
+    fixer = LSTMFixerUpper(rigged_lstm_model)
+
+    # This is is where it used to crash:
+    results = fixer.fix(broken_source)
+    assert len(results) >= 1
+    top_result = results[0]
+
+    if isinstance(top_result, Deletion):
+        assert top_result.index == 19
+        assert top_result.original_token == UNK
+    else:
+        pytest.fail(f"Did not get deletion; instead got: {top_result}")
+
+
 def one_hot_result(entry: int, flip: bool=False) -> np.ndarray:
     """
     Turns a vocabulary index into a one-hot probability distributions. i.e.,
@@ -68,7 +100,7 @@ def one_hot_result(entry: int, flip: bool=False) -> np.ndarray:
                    ⎩    0%, otherwise
     """
     vector: np.ndarray[float]
-    args = (len(language.vocabulary),), np.float32
+    args = (len(current_language.vocabulary),), np.float32
     if flip:
         vector = np.ones(*args)
         vector[entry] = 0.0
@@ -98,15 +130,25 @@ def rigged_lstm_model(i) -> DualLSTMModel:
     """
 
     class FakeModel(DualLSTMModel):
+        @property
+        def bad_token(self):
+            if not hasattr(self, '_bad_token'):
+                self._bad_token = i('...')
+            return self._bad_token
+
+        @bad_token.setter
+        def bad_token(self, value):
+            self._bad_token = value
+
         def predict_file(self, tokens):
             def generate_pairs():
                 for token in tokens:
                     # Invert the distribution when we get to the rigged token.
-                    if token == i('...'):
+                    if token == self.bad_token:
                         distr = normalize(one_hot_result(token, flip=True))
                     else:
                         distr = one_hot_result(token)
-                    assert distr.shape == (len(language.vocabulary),)
+                    assert distr.shape == (len(current_language.vocabulary),)
                     assert distr.sum() == pytest.approx(1.0)
                     # Perfect agreement.
                     yield TokenResult(distr, distr)
