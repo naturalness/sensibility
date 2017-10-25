@@ -48,14 +48,14 @@ class LSTMFixerUpper:
         self.model = model
         self.k = k
 
-    def fix(self, file: bytes) -> Sequence[Edit]:
+    def fix(self, source_file: bytes) -> Sequence[Edit]:
         """
         Produces a ranked sequence of possible edits that will fix the file.
         If there are no possible fixes, the sequence will be empty.
         """
         # Get file vector for the error'd file.
-        file_vector = to_source_vector(file, oov_to_unk=True)
-        tokens = tuple(language.tokenize(file))
+        file_vector = to_source_vector(source_file, oov_to_unk=True)
+        tokens = tuple(language.tokenize(source_file))
         predictions = self.model.predict_file(file_vector)
 
         # Holds the lowest agreement at each point in the file.
