@@ -8,4 +8,9 @@ Pretty prints Java.lex() for stdin.
 import sys
 from pprint import pprint
 from javac_parser import Java
-pprint(Java().lex(sys.stdin.read()))
+source = sys.stdin.read()
+java = Java()
+pprint(java.lex(source))
+errors = java.check_syntax(source)
+if errors:
+    pprint(errors, stream=sys.stderr)

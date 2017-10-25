@@ -83,7 +83,7 @@ training/%: %-sources.sqlite3
 	bin/joshify $@ $<
 
 mistakes:
-	bin/create-mistake-test-set $(TRAIN_SET_SIZE) $@
+	bin/create-mistake-test-set $$(($(TRAIN_SET_SIZE)*2)) $@
 
 all-mistakes:
 	bin/all-mistakes $@
