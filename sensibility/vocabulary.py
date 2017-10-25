@@ -92,7 +92,7 @@ class Vocabulary(Sized):
     def to_text(self, index: Vind) -> str:
         return self._index2text[index]
 
-    def to_index(self, text: str, oov_to_unk=False) -> Vind:
+    def to_index(self, text: str) -> Vind:
         """
         Returns the cooresponding a vocabulary ID for the given entry.
 

@@ -17,6 +17,6 @@ def test_source_vector_unk_conversion():
     with pytest.raises(OutOfVocabularyError):
         to_source_vector(problematic_source)
 
-    results = to_source_vector(problematic_source, oov_to_unk=True)
-    assert 5 == len(result)
-    assert current_language.vocabulary.unk_token_index == result[1] == result[3]
+    vector = to_source_vector(problematic_source, oov_to_unk=True)
+    assert 5 == len(vector)
+    assert current_language.vocabulary.unk_token_index == vector[1] == vector[3]

@@ -162,8 +162,8 @@ class SourceVector(Sequence[Vind]):
         return SourceVector(tuple(cast(Sequence[Vind], as_array)))
 
 
-def to_source_vector(source: bytes) -> SourceVector:
-    from sensibility.language import language
-    to_index = language.vocabulary.to_index
+def to_source_vector(source: bytes, oov_to_unk: bool=False) -> SourceVector:
+    from sensibility.language import current_language as language
+    to_index = language.to_index_or_unk if oov_to_unk else language.to_index
     entries = language.vocabularize(source)
     return SourceVector(to_index(x) for x in entries)
