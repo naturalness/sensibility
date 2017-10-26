@@ -1,0 +1,51 @@
+/* Renders a bipartite graph of **programs** and **products**. */
+digraph {
+    rankdir=TB;
+
+    /* These are tasks. */
+    node [shape=box,style=filled,fillcolor=black,fontcolor=white];
+    corpus2vectors [fillcolor=grey];
+    discover_vocabulary;
+    download;
+    evaluate;
+    mark_minified_js;
+    get_repo_list;
+    mutate;
+    parse_and_insert_all;
+    create_partitions;
+    train;
+    uclearn;
+
+    /* The rest of the nodes are entities. */
+    node [shape=ellipse,style=solid,fillcolor=white,fontcolor=black];
+
+    /* Notation:
+
+        sources(source_summary) means the table or view called
+        "source_summary" in the "sources" SQLite3 database.
+
+        If a file is in sources(source_summary), it has syntactically-correct
+        source code (i.e., source_summary contains only parsable source code).
+
+        sources(eligible_source) is a view containing source code:
+         * That is syntatically-correct.
+         * [JavaScript] Does not end in *.min.js or *-min.js
+         * [JavaScript] Does not have a high token / line ratio
+           (around 100 tokens-per-line is a high ratio).
+    */
+
+    /* {inputs} -> program -> {output} */
+    { language } -> get_repo_list -> repository_list;
+    { repository_list } -> download -> "sources(source_file)";
+    { "sources(source_file)" } -> parse_and_insert_all -> "sources(source_summary)";
+    { "sources(source_summary)" } -> mark_minified_js -> "sources(eligible_source)";
+        /* This step is only applicable for JavaScript; it can be skipped for
+         * other languages. */
+    { "sources(eligible_source)" } -> discover_vocabulary -> vocabulary;
+    { "sources(eligible_source)", vocabulary } -> corpus2vectors -> vectors;
+    { "sources(eligible_source)" } -> create_partitions -> { train_partition, validation_partition, test_partition };
+    { vectors, train_partition } -> uclearn -> ngram_models;
+    { vectors, train_partition, validation_partition, vocabulary } -> train -> lstm_models;
+    { test_partition, vocabulary } -> mutate -> mutants;
+    { lstm_models, ngram_models, test_partition, mutants } -> evaluate;
+}
