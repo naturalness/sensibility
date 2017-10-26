@@ -44,7 +44,10 @@ class LSTMFixerUpper:
     TODO: Make an abc, probably.
     """
 
-    def __init__(self, model: DualLSTMModel, k: int=4) -> None:
+    def __init__(self, model: DualLSTMModel, k: int=3) -> None:
+        """
+        Set k to the ceil(average perplexity of model).
+        """
         self.model = model
         self.k = k
 
@@ -73,7 +76,7 @@ class LSTMFixerUpper:
 
             # Figure out the agreement between models, and against the ground
             # truth.
-            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, token)
+            result = IndexResult(index, file_vector, prefix_pred, suffix_pred, token, vind)
             results.append(result)
             print(result)
 
@@ -96,10 +99,12 @@ class LSTMFixerUpper:
         # For the top-k disagreements, synthesize fixes.
         # NOTE: k should be determined by the MRR of finding the syntax error!
         fixes = Fixes(file_vector)
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
+        print("Winners:")
         for disagreement in ranked_results[:self.k]:
             pos = disagreement.index
+            print(disagreement)
 
             likely_next: Vind = forwards_predictions[pos]
             likely_prev: Vind = backwards_predictions[pos]
@@ -124,19 +129,17 @@ class LSTMFixerUpper:
         return tuple(fixes)
 
 
+not_quite_zero = np.nextafter(np.float32(0), np.float32(1))
+
+
 class IndexResult(SupportsFloat):
     """
     Provides results for EACH INDIVIDUAL INDEX in a file.
     """
-    __slots__ = (
-        'index',
-        'cosine_similarity', 'indexed_prob',
-        'mutual_info', 'total_variation', 'token',
-        'a', 'b'
-    )
 
     def __init__(self, index: int, program: SourceVector,
-                 a: np.ndarray, b: np.ndarray, token: Token) -> None:
+                 a: np.ndarray, b: np.ndarray,
+                 token: Token, vind: Vind) -> None:
         self.a = a
         self.b = b
         assert 0 <= index < len(program)
@@ -150,12 +153,16 @@ class IndexResult(SupportsFloat):
         # 1.0 == both models completely agree the token should be here.
         # .25 == lukewarm---models kind of think this token should be here
         # 0.0 == at least one model finds this token absolutely unlikely
-        self.indexed_prob = a[program[index]] * b[program[index]]
+        self.indexed_prob = float(a[program[index]] * b[program[index]])
 
         # How similar are the two categorical distributions?
         # 1.0 == Exactly similar -- pointing in the same direction
         # 0.0 == Not similar --- pointing in orthogonal direction
-        self.cosine_similarity = (a @ b) / (norm(a) * norm(b))
+        self.cosine_similarity = float((a @ b) / (norm(a) * norm(b)))
+
+        # Cross-entropy
+        p = one_hot(vind, len(a))
+        self.xentropy = cross_entropy(p, a) + cross_entropy(p, b)
 
         # Use averaged KL-divergence?
         # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.332.4480&rep=rep1&type=pdf
@@ -204,14 +211,9 @@ class IndexResult(SupportsFloat):
 
         Smaller value => more likely to be a syntax error.
         """
-        # We can tweak λ to weigh local and global factors differently,
-        # but for now, weigh them equally.
-        # TODO: use sklearn's Lasso regression to find this coefficient?
-        # TODO:                 `-> fit_intercept=False
-        λ = .5
-        score = λ * self.indexed_prob + (1 - λ) * self.comp_total_variation
-        assert 0 <= score <= 1
-        return score
+        # The original paper had this metric:
+        # Agreement: elementwise harmonic mean of two vectors
+        return self.indexed_prob
 
     def __str__(self) -> str:
         """
@@ -222,18 +224,22 @@ class IndexResult(SupportsFloat):
         token = self.token.name
 
         return f"""
-                         ⎧{f1t:10}, {f1:3.2f}%                      ⎧{b1t:10}, {b1:3.2f}%
-        f({token:>11}) = ⎨{f2t:10}, {f2:3.2f}%     b({token:<11}) = ⎨{b2t:10}, {b2:3.2f}%
-                         ⎩{f3t:10}, {f3:3.2f}%                      ⎩{b3t:10}, {b3:3.2f}%
+                         ⎧{f1t:10}, {f1:6.2f}%                      ⎧{b1t:10}, {b1:6.2f}%
+        f({token:>11}) = ⎨{f2t:10}, {f2:6.2f}%     b({token:>11}) = ⎨{b2t:10}, {b2:6.2f}%
+                         ⎩{f3t:10}, {f3:6.2f}%                      ⎩{b3t:10}, {b3:6.2f}%
 
+                               xentropy = {self.xentropy:5}
                               total_var = {self.total_variation:5}
                              index_prob = {self.indexed_prob:5}
                              cosine_sim = {self.cosine_similarity:5}
         """
 
-    def _maxes(self, vector):
+    def _maxes(self, vector, k=3):
+        """
+        Yields percentage, and token text of top-k entries.
+        """
         from sensibility import current_language
-        for idx in vector.argsort()[-1:-4:-1]:
+        for idx in vector.argpartition(-k)[-k:][::-1]:  # for idx in vector.argsort()[-1:-4:-1]:
             yield 100. * vector[idx], current_language.to_text(idx)
 
 
@@ -293,3 +299,24 @@ def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
     """
     from math import isclose
     return isclose(norm(x, p), 1.0, rel_tol=tolerance)
+
+
+def nudge_zeros(dist: np.ndarray) -> np.ndarray:
+    "Ensure the distribution has no zeros"
+    return np.where(dist == 0, not_quite_zero, dist)
+
+
+def cross_entropy(true_dist: np.ndarray, est_dist: np.ndarray) -> float:
+    """
+    Calculate the average bits needed to describe true distribution using
+    estimated distribution.
+    """
+    assert len(true_dist) == len(est_dist)
+    return -(true_dist * np.log(nudge_zeros(est_dist))).sum()
+
+
+def one_hot(idx: Vind, size: int) -> np.ndarray:
+    from sensibility import current_language
+    dist: np.ndarray = np.zeros((size,), dtype=np.float32)
+    dist[idx] = 1.0
+    return dist
