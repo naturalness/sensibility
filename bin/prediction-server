@@ -60,10 +60,16 @@ if __name__ == '__main__':
                 yield tuple(float(x) for x in fw), tuple(float(x) for x in bw)
         return list(tupleize())
 
+    def get_language_name() -> str:
+        from sensibility import current_language
+        return current_language.name
+
     # Only bind to localhost; making this service external is a bad idea.
     addr = 'localhost', args.port
     with SimpleXMLRPCServer(addr) as server:
         server.register_function(predict_file)
+        server.register_function(get_language_name)
+
         print("Server listening on", ':'.join(str(c) for c in addr))
         try:
             server.serve_forever()

@@ -16,19 +16,46 @@
 # limitations under the License.
 
 """
-Queries a remote model.
+Queries a remote model (see: prediction-server).
+
+Usage:
+    query source.ext [...]
+    query < source.ext
+
 """
 
 import sys
+import argparse
+from pprint import pprint
+
+from sensibility import current_language
+from sensibility.fix import LSTMFixerUpper
 from sensibility.model.lstm.remote import RemoteDualLSTMModel
 from sensibility.source_vector import to_source_vector
-from pprint import pprint
-from sensibility import current_language
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('file', type=lambda n: open(n, "rb"),
+                    default=sys.stdin.buffer)
+parser.add_argument('--list-tokens', action='store_true')
+args = parser.parse_args()
+
 
 model = RemoteDualLSTMModel.connect()
-source = to_source_vector(sys.stdin.read().encode('UTF-8'))
-results = model.predict_file(source)
+current_language.set(model.language_name)
+fixer = LSTMFixerUpper(model)
 
-# TODO: actually do a fix with these results
-for token, (fw, bw) in zip(source, results):
-    print(f"{token:3d}  {fw.argmax():3d}  {bw.argmax():3d}")
+# Slurp the source file.
+with args.file:
+    source_bytes = args.file.read()
+
+if args.list_tokens:
+    vector = to_source_vector(source_bytes, oov_to_unk=True)
+
+    # Get tokenwise-results
+    results = model.predict_file(vector)
+
+    for token, (fw, bw) in zip(vector, results):
+        print(f"{token:3d}  {fw.argmax():3d}  {bw.argmax():3d}")
+
+pprint(fixer.fix(source_bytes))

@@ -24,21 +24,29 @@ from xmlrpc.client import ServerProxy, Fault  # type: ignore
 
 import numpy as np
 
+from sensibility import current_language
 from sensibility.source_vector import SourceVector
 from sensibility.vocabulary import Vind
 from . import DualLSTMModel, TokenResult
 
 
-class RemoteDualLSTMModel:
+class RemoteDualLSTMModel(DualLSTMModel):
     """
     Talks to a remotc XMLRPC server (see bin/prediction-server).
     """
     def __init__(self, server: ServerProxy) -> None:
         self.server = server
 
-    def predict_file(self, vector: Sequence[Vind]) -> Iterable[TokenResult]:
-        from pprint import pprint
+    @property
+    def language_name(self) -> str:
+        """
+        The name of the current language.
+        Intended use: the client can set its own language to match the one
+        reported by the remote.
+        """
+        return self.server.get_language_name()
 
+    def predict_file(self, vector: Sequence[Vind]) -> Iterable[TokenResult]:
         # The remote API is not quite the same.  It requires vocabulary
         # indices as bytes.
         serialized = SourceVector(vector).to_bytes()
