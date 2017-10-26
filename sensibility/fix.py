@@ -75,6 +75,7 @@ class LSTMFixerUpper:
             # truth.
             result = IndexResult(index, file_vector, prefix_pred, suffix_pred, token)
             results.append(result)
+            print(result)
 
             # Store the TOP prediction from each model.
             # TODO: document corner cases!
@@ -95,6 +96,8 @@ class LSTMFixerUpper:
         # For the top-k disagreements, synthesize fixes.
         # NOTE: k should be determined by the MRR of finding the syntax error!
         fixes = Fixes(file_vector)
+        import pdb
+        pdb.set_trace()
         for disagreement in ranked_results[:self.k]:
             pos = disagreement.index
 
@@ -128,11 +131,14 @@ class IndexResult(SupportsFloat):
     __slots__ = (
         'index',
         'cosine_similarity', 'indexed_prob',
-        'mutual_info', 'total_variation', 'token'
+        'mutual_info', 'total_variation', 'token',
+        'a', 'b'
     )
 
     def __init__(self, index: int, program: SourceVector,
                  a: np.ndarray, b: np.ndarray, token: Token) -> None:
+        self.a = a
+        self.b = b
         assert 0 <= index < len(program)
         self.index = index
         self.token = token
@@ -206,6 +212,29 @@ class IndexResult(SupportsFloat):
         score = λ * self.indexed_prob + (1 - λ) * self.comp_total_variation
         assert 0 <= score <= 1
         return score
+
+    def __str__(self) -> str:
+        """
+        Prints an elaborate debug display of metrics.
+        """
+        (f1, f1t), (f2, f2t), (f3, f3t) = self._maxes(self.a)
+        (b1, b1t), (b2, b2t), (b3, b3t) = self._maxes(self.b)
+        token = self.token.name
+
+        return f"""
+                         ⎧{f1t:10}, {f1:3.2f}%                      ⎧{b1t:10}, {b1:3.2f}%
+        f({token:>11}) = ⎨{f2t:10}, {f2:3.2f}%     b({token:<11}) = ⎨{b2t:10}, {b2:3.2f}%
+                         ⎩{f3t:10}, {f3:3.2f}%                      ⎩{b3t:10}, {b3:3.2f}%
+
+                              total_var = {self.total_variation:5}
+                             index_prob = {self.indexed_prob:5}
+                             cosine_sim = {self.cosine_similarity:5}
+        """
+
+    def _maxes(self, vector):
+        from sensibility import current_language
+        for idx in vector.argsort()[-1:-4:-1]:
+            yield 100. * vector[idx], current_language.to_text(idx)
 
 
 class FixResult(NamedTuple):

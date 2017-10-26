@@ -113,6 +113,9 @@ class Language(ABC):
     def to_index_or_unk(self, entry: str) -> Vind:
         return self.vocabulary.to_index_or_unk(entry)
 
+    def to_text(self, entry: Vind) -> str:
+        return self.vocabulary.to_text(entry)
+
     # Dunder methods
 
     def __str__(self) -> str:
@@ -261,6 +264,9 @@ class LanguageProxy(Language):
 
     def to_index_or_unk(self, *args, **kwargs):
         return self.wrapped_language.to_index_or_unk(*args, **kwargs)
+
+    def to_text(self, *args, **kwargs):
+        return self.wrapped_language.to_text(*args, **kwargs)
 
 
 class ConcreteLanguageProxy(LanguageProxy):
