@@ -1,4 +1,4 @@
 tox==2.6.0
 pytest==3.0.6
-mypy==0.511
+mypy==0.540
 hypothesis==3.6.1
