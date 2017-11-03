@@ -106,7 +106,8 @@ class LSTMFixerUpper:
         return tuple(fixes)
 
 
-not_quite_zero = np.nextafter(np.float32(0), np.float32(1))
+# The smallest positive (non-zero) float32.
+epsilon = np.nextafter(np.float32(0), np.float32(1))
 
 
 class IndexResult(SupportsFloat):
@@ -292,9 +293,12 @@ def is_normalized_vector(x: np.ndarray, p: int=2, tolerance=0.01) -> bool:
     return isclose(norm(x, p), 1.0, rel_tol=tolerance)
 
 
-def nudge_zeros(dist: np.ndarray) -> np.ndarray:
-    "Ensure the distribution has no zeros"
-    return np.where(dist == 0, not_quite_zero, dist)
+def zap_zeros_inplace(dist: np.ndarray) -> np.ndarray:
+    """
+    Ensure the distribution has no zeros
+    """
+    dist[dist == 0] = epsilon
+    return dist
 
 
 def cross_entropy(true_dist: np.ndarray, est_dist: np.ndarray) -> float:
@@ -303,7 +307,7 @@ def cross_entropy(true_dist: np.ndarray, est_dist: np.ndarray) -> float:
     estimated distribution.
     """
     assert len(true_dist) == len(est_dist)
-    return -(true_dist * np.log(nudge_zeros(est_dist))).sum()
+    return -(true_dist * np.log(zap_zeros_inplace(est_dist))).sum()
 
 
 def one_hot(idx: Vind, size: int) -> np.ndarray:
