@@ -19,7 +19,7 @@
 Get information about a filehash.
 
 Usage:
-      file-info [--db=DATABASE] FILEHASH
+      sources-info [--db=DATABASE] FILEHASH
 """
 
 import sys

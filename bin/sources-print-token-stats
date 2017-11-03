@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# encoding: UTF-8
 
 # Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
 #
@@ -15,29 +14,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Counts how many tokens there are in the given file hashes.
+
+Usage:
+    sources-print-token-stats <filehashes
+    sources-print-token-stats FILEHASH ...
+"""
+
 import sys
-from pathlib import Path
+from statistics import mean, median_grouped, mode
 
-from sensibility._paths import REPOSITORY_ROOT
-from sensibility.language import language
-from sensibility.miner.connection import get_sqlite3_connection
 from sensibility.miner.util import create_query_table
+from sensibility.miner.connection import get_sqlite3_connection
 
-output_dir = Path(sys.argv[1])
-print("saving files to ", output_dir, file=sys.stderr)
-output_dir.mkdir(parents=True, exist_ok=True)
 
 # Ingest all the hashes.
 conn = get_sqlite3_connection()
 create_query_table(conn)
 
-cursor = conn.execute('''
-    SELECT hash, source FROM source_file NATURAL JOIN query_hash
-''')
 
-# Get any file extension, minus nay preceeding dots.
-extension = next(iter(language.extensions)).lstrip('.')
+def n_tokens():
+    query = '''
+        SELECT n_tokens
+          FROM source_summary NATURAL JOIN temp.query_hash
+    '''
+    for n_token, in conn.execute(query):
+        yield n_token
 
-for filehash, source in cursor:
-    with open(output_dir / f'{filehash}.{extension}', 'wb') as output_file:
-        output_file.write(source)
+
+lengths = list(n_tokens())
+print(len(lengths),
+      sum(lengths),
+      mean(lengths),
+      median_grouped(lengths),
+      mode(lengths),
+      sep="\t")

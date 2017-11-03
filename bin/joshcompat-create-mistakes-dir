@@ -29,7 +29,7 @@ from tqdm import tqdm
 from sensibility._paths import MISTAKE_FILE
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('destination', type=Path, help="where to dump the files")
 args = parser.parse_args()
 

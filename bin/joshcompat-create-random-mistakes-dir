@@ -18,8 +18,6 @@
 """
 Selects N random mistakes from the mistakes database and creates a directory
 holding them.
-
-This is for Josh.
 """
 
 import argparse
@@ -33,7 +31,6 @@ from tqdm import tqdm
 from sensibility._paths import MISTAKE_FILE
 
 
-# TODO: get the ACTUAL error from the blackbox data.
 FIELD_NAMES = [
     'sfid', 'meid',
     'mistake', 'mistake_index',

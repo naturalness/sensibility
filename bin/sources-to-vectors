@@ -17,6 +17,9 @@
 
 """
 Converts all the source files in the corpus to compact vectors.
+
+Usage:
+    sources-to-vectors
 """
 
 import sys
@@ -36,7 +39,6 @@ def vectorize(source: bytes) -> SourceVector:
 
 
 if __name__ == '__main__':
-    # TODO: Magically get the corpus and language.
     corpus = Corpus(read_only=True)
     vectors = Vectors()
 

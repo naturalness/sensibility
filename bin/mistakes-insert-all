@@ -16,8 +16,8 @@
 # limitations under the License.
 
 """
-Given mistakes, determines the edit and the fix, and inserts it into the
-database.
+Given mistakes, determines the edit distance, and if applicable, the fix, and
+inserts it into the database.
 """
 
 import sys

@@ -20,7 +20,7 @@ Print the path of one or more filehashes.
 If no hashes are provided on the command line, checks stdin.
 
 Usage:
-      hash2path  [--prefix=PREFIX] [FILEHASH...]
+      sources-path  [--prefix=PREFIX] [FILEHASH...]
 """
 
 import sys

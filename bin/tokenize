@@ -20,26 +20,14 @@
 Tokenize stdin. Outputs pickled data.
 
 Usage:
-    tokenize <python-file > pickled-tokens
+    tokenize <python-file > tokens.py
 """
 
 import sys
-import pickle
 
 from sensibility.language import language
 
 
-def as_pickle(tokens):
-    with open(sys.stdout.fileno(), 'wb') as output_file:
-        pickle.dump(tokens, output_file)
-
-
-def as_python(tokens):
-    from pprint import pprint
-    pprint(tokens)
-
-
 if __name__ == '__main__':
-    dump = as_python if sys.argv[1:] == ['--python'] else as_pickle
     with open(sys.stdin.fileno(), 'rb') as input_file:
-        dump(language.tokenize(input_file))
+        pprint(language.tokenize(input_file))
