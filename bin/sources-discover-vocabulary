@@ -49,10 +49,3 @@ if __name__ == '__main__':
     for entry in unique_entries:
         assert '\n' not in entry
         print(entry)
-
-    # XXX: Java 8 specifies a few reserved words that are ALWAYS syntactically
-    # invalid (hence, they'll never appear in a valid source file). Therefore,
-    # print them no matter what!
-    if language.id == 'java':
-        print('const')
-        print('goto')
