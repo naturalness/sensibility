@@ -69,10 +69,6 @@ class Rule:
     def creates(self, *items: StrPath) -> 'Rule':
         return Rule(targets=list(items), sources=[], recipe=[])
 
-    @classmethod
-    def create_phony(self, name: str) -> 'Rule':
-        return PhonyRule(targets=[name], sources=[], recipe=[])
-
     def set_recipe(self, *commands: Command) -> 'Rule':
         self.recipe.extend(commands)
         return self
@@ -93,5 +89,5 @@ class PhonyRule(Rule):
     A phony rule is always run, without checking its prerequisites.
     """
     def print(self) -> None:
-        super().print()
         Rule.creates('.PHONY').depends_on(*self.targets).print()
+        super().print()

@@ -46,6 +46,11 @@ include extra-rules.mk
 %.mk: %.pl
 	perl $< > $@
 
+# This adds the rule 'experiments'
+include experiments.mk
+experiments.mk: libexec/experiments
+	$< > $@
+
 ################################################################################
 
 # When a language is active (see bin/shell),

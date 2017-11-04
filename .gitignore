@@ -95,8 +95,8 @@ results.*.csv
 results.csv
 results.csv.xz
 
-# Created by extra-rules.pl
-extra-rules.mk
+# Created by libexec/experiments
+experiments.mk
 
 # Mistake files.
 /*.squashfs
