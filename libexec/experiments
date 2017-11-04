@@ -27,68 +27,34 @@ The build matrix is the cartesian product of everything, and it provides a
 namespace to the commands
 """
 
-import io
-from contextlib import redirect_stdout
-from itertools import product
-from typing import Set, List, Dict, Any, NamedTuple
-from pprint import pprint
 
+from pathlib import Path
 
-class Matrix:
-    def __init__(self) -> None:
-        self.options: Dict[str, Set[Any]] = {}
-
-    def add(self, name: str, *values: Any) -> None:
-        self.options[name] = set(values)
-
-    def generate_all(self):
-        names = list(self.options.keys())
-        for prod in product(*(self.options[opt] for opt in names)):
-            yield dict(zip(names, prod))
-
-
-configurations = Matrix()
+from makefile import Command, Rule
+from configurations import Configurations
 
 
 # All the available languages.
 languages = {'java', 'javascript', 'python'}
 
-configurations.add('layers', '300', '100', '100,100')
-configurations.add('learning_rate', '0.001')
-configurations.add('batch_size', 32)
-configurations.add('context', '20', '10', '5')
+model_configs = Configurations(
+    layers={'300', '100', '100,100'},
+    learning_rate={'0.001'},
+    batch_size={32},
+    context={'20', '10', '5'}
+)
 
+eval_configs = model_configs.extend(
+)
 
-class Command:
-    def __init__(self, bin: str, *args: str, **kwargs) -> None:
-        self.bin = bin
+train = Command('sensibility', 'train-lstm')
 
-        def generate_kwargs():
-            for option, value in kwargs.items():
-                if len(option) == 1:
-                    yield '-' + option
-                else:
-                    yield '--' + option.replace('_', '-')
-                yield value
-        self.arguments = args + tuple(generate_kwargs())
-
-    def __str__(self) -> str:
-        return ' '.join((self.bin,) + self.arguments)
-
-
-class MakeRecipe(NamedTuple):
-    targets: List[str]
-    sources: List[str]
-    commands: List[Command]
-
-    def __str__(self) -> str:
-        f = io.StringIO()
-        with redirect_stdout(f):
-            print(*self.targets, sep=' ', end=': ')
-            print(*self.sources, sep=' ', end='\n')
-            for command in self.commands:
-                print('\t', command, sep='', end='\n')
-        return f.getvalue()
+for config in model_configs:
+    model_file = config.basename.with_suffix('.models')
+    Rule.creates(model_file).set_recipe(
+        train(o='$@', forwards=True, **config),
+        train(o='$@', backwards=True, **config)
+    ).print()
 
 
 # Okay, so the training command should produce a DIRECTORY.
@@ -99,9 +65,3 @@ command = Command('train',
                   context_size='300',
                   learning_rate='0.001',
                   batch_size='32')
-recipe = MakeRecipe(targets=['models/configuration'],
-                    sources=[],
-                    commands=[command])
-
-print(recipe)
-pprint(list(configurations.generate_all()))
