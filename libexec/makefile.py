@@ -37,11 +37,17 @@ class Command:
     def _add_arguments(self, *args: str, **kwargs: Any) -> 'Command':
         def generate_kwargs():
             for option, value in kwargs.items():
-                if len(option) == 1:
+                if value is False:
+                    continue
+                elif len(option) == 1:
                     yield '-' + option
                 else:
                     yield '--' + option.replace('_', '-')
-                yield str(value)
+                # Values that are set to boolean True, need be just present,
+                # with no argument.
+                if value is not True:
+                    yield str(value)
+
         self.arguments += args + tuple(generate_kwargs())
         return self
 
@@ -63,8 +69,16 @@ class Rule:
     def creates(self, *items: StrPath) -> 'Rule':
         return Rule(targets=list(items), sources=[], recipe=[])
 
+    @classmethod
+    def create_phony(self, name: str) -> 'Rule':
+        return PhonyRule(targets=[name], sources=[], recipe=[])
+
     def set_recipe(self, *commands: Command) -> 'Rule':
         self.recipe.extend(commands)
+        return self
+
+    def depends_on(self, *sources: StrPath) -> 'Rule':
+        self.sources.extend(sources)
         return self
 
     def print(self) -> None:
@@ -72,3 +86,12 @@ class Rule:
         print(*self.sources, sep=' ', end='\n')
         for command in self.recipe:
             print('\t', command, sep='', end='\n')
+
+
+class PhonyRule(Rule):
+    """
+    A phony rule is always run, without checking its prerequisites.
+    """
+    def print(self) -> None:
+        super().print()
+        Rule.creates('.PHONY').depends_on(*self.targets).print()

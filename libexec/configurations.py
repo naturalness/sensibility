@@ -14,8 +14,7 @@ class Configuration(Mapping[str, Any]):
     @property
     def basename(self) -> PurePath:
         items = sorted(self.__dict__.items())
-        return PurePath(','.join(f"{key}-{val}" for key, val in items) +
-                        '.ext')
+        return PurePath(','.join(f"{key}-{val}" for key, val in items))
 
     def __getitem__(self, key: str) -> Any:
         return self.__dict__[key]
