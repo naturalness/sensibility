@@ -35,6 +35,9 @@ setup(
     ],
 
     packages=find_packages(),
+    entry_points={
+        'console_scripts': ['sensibility=sensibility.__main__:main'],
+    },
 
     # Node.JS app is NOT zip safe!
     zip_safe=False,
