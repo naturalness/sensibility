@@ -19,22 +19,45 @@
 Trains an LSTM from sentences in the vectorized corpus.
 """
 
+import argparse
 import glob
 import logging
 import os
 import re
-import warnings
+import sys
 import typing
+import warnings
 from pathlib import Path
-from typing import Optional, Tuple, Iterable, Sequence, Set
+from typing import Iterable, List, Optional, Sequence, Set, Tuple, cast
+from random import choice
 
 from sensibility.language import language
+from sensibility.miner.util import filehashes
 from sensibility.utils import symlink_within_dir
+from sensibility._paths import (
+    get_validation_set_path, get_training_set_path, get_vectors_path
+)
 from .loop_batches import LoopBatchesEndlessly
 
 
-Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
+# === Default command line arguments === #
 
+# Based on (practically inapplicable) findings by Bhatia and Singh 2016
+HIDDEN_LAYERS = (128,)
+CONTEXT_LENGTH = 9
+
+# This is arbitrary, but it should be fairly small.
+BATCH_SIZE = 32
+# Ideally, you'll find the right value for this by experimentation.
+LEARNING_RATE = 0.001
+
+
+# === Other module-wide globals === #
+
+logger = logging.getLogger(__name__)
+
+
+# === The big training class === #
 
 class ModelDescription:
     """
@@ -44,6 +67,10 @@ class ModelDescription:
     This model is intended for evaluation, so it must belong to a "partition"
     of the full corpus.
     """
+
+    # A pair of a training and a validation batch generators .
+    Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
+
     def __init__(self, *,
                  backwards: bool,
                  base_dir: Path,
@@ -51,7 +78,7 @@ class ModelDescription:
                  context_length: int,
                  partition: int,
                  hidden_layers: Sequence[int],
-                 learning_rate: float=0.05,
+                 learning_rate: float,
                  training_set: Set[str],
                  validation_set: Set[str],
                  vectors_path: Path) -> None:
@@ -72,7 +99,6 @@ class ModelDescription:
         self.training_set = training_set
         self.validation_set = validation_set
 
-        logger = logging.getLogger(self.__class__.__name__)
         logger.info("Training %s", self.name)
         logger.info("%d training files", len(self.training_set))
         logger.info("%d validation files", len(self.validation_set))
@@ -120,7 +146,6 @@ class ModelDescription:
         training_batches, validation_batches = self.create_batches()
 
         self.save_summary(model)
-        logger = logging.getLogger(self.__class__.__name__)
         logger.info(f"Training on {training_batches.samples_per_epoch} samples "
                     f"using a batch size of {self.batch_size}")
 
@@ -280,3 +305,113 @@ def layers(string: str) -> Sequence[int]:
     result = tuple(int(layer) for layer in string.split(','))
     assert len(result) >= 1, "Must define at least one hidden layer!"
     return result
+
+
+# Create the argument parser.
+# TODO: infer from language.
+parser = argparse.ArgumentParser(description='Train from corpus '
+                                 'of vectors')
+parser.add_argument('-#', '--partition', type=int, help='which partition this is')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('--backwards', action='store_true', default=False)
+group.add_argument('--forwards', action='store_false', dest='backwards')
+parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
+                    help=f"default: {HIDDEN_LAYERS}")
+parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
+                    help=f"default: {CONTEXT_LENGTH}")
+parser.add_argument('--train-set-size', type=int,
+                    default=11_000, help='Number of files to train on')
+parser.add_argument('--validation-set-size', type=int,
+                    default=5500, help='Number of files to validate against')
+parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
+                    help=f"default: {BATCH_SIZE}")
+parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE,
+                    help=f"default: {LEARNING_RATE}")
+parser.add_argument('--base-dir', type=Path, default=Path('.'),
+                    help=f"default: .")
+parser.add_argument('--output', '-o', type=Path,
+                    help=f"Name of the directory to output")
+parser.add_argument('--gpu', type=int, default=None,
+                    help=f"Which GPU to use.")
+
+
+def slurp(filename: Path) -> List[str]:
+    """
+    Read the file into one big list of filehashes.
+    """
+    with open(filename, 'r') as hashes_file:
+        return list(filehashes(hashes_file))
+
+
+def subset(xs: List[str], max_size: int) -> Set[str]:
+    """
+    Return a subset of files from the list.
+    """
+    return set(xs[:max_size])
+
+
+def configure_gpu(prefered: Optional[int]) -> None:
+    """
+    Configure the CUDA GPU (if applicable).
+    """
+    try:
+        import GPUtil  # type: ignore
+    except ImportError:
+        warnings.warn("Could not import GPUtil: using prefered GPU.")
+        if prefered is None:
+            prefered = 0
+    else:
+        limits = dict(maxLoad=0.5, maxMemory=0.5, limit=1)
+        if prefered is None:
+            # Select an available GPU.
+            device_id, = GPUtil.getAvailable(order='random', **limits)
+        else:
+            # Get the GPUs with the LEAST memory utilization.
+            available = GPUtil.getAvailable(order='memory', **limits)
+            assert len(available) >= 1
+            if prefered in available:
+                device_id = prefered
+            else:
+                logger.warn("Requested GPU %d unavaible", prefered)
+                # Since the preference is unavailable, use the GPU with the least
+                # allocated memory.
+                device_id = available[0]
+
+        # Set the prefered GPU ID.
+        logger.info("Using GPU %d", device_id)
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+
+
+def main():
+    logging.basicConfig(level=logging.INFO, filename="train.log")
+    args = infer_args(parser.parse_args())
+
+    if args.partition is None:
+        parser.error('Require --partitions or --output')
+
+    partition = cast(int, args.partition)
+
+    training_set = slurp(get_training_set_path(partition))
+    validation_set = slurp(get_validation_set_path(partition))
+
+    configure_gpu(args.gpu)
+
+    # Determine language first!
+    model = ModelDescription(
+        partition=partition,
+        training_set=subset(training_set, args.train_set_size),
+        validation_set=subset(validation_set, args.validation_set_size),
+        vectors_path=get_vectors_path(),
+        backwards=args.backwards,
+        base_dir=args.base_dir,
+        context_length=args.context_length,
+        hidden_layers=args.hidden_layers,
+        learning_rate=args.learning_rate,
+        batch_size=args.batch_size,
+    )
+
+    model.train()
+
+
+if __name__ == '__main__':
+    main()

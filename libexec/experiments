@@ -75,7 +75,6 @@ results = []
 # - the training command should produce a **directory**.
 # - The directory should contain a manifest (in pretty-printed JSON?) indicating
 #   ALL of parameters.
-# - There should be a sentinel flag inside that indicates that the job is complete.
 # - Creates the directory with suffix .incomplete, then moves it to the real
 #   name.
 
