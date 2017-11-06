@@ -55,11 +55,12 @@ model_configs = Configurations(
     learning_rate={'0.001'},
     batch_size={32},
     context={'20', '10', '5'},
+    # TODO: Change this later to include all partitions
     partition={0}  # {0, 1, 2, 3, 4}
 )
 
 eval_configs = Configurations(
-    fix={'double', 'left', 'right'}
+    fix={'dual', 'left', 'right'}
 )
 
 
@@ -83,22 +84,25 @@ results = []
 
 # Create rules for the training models.
 for config in model_configs:
-    model_file = config.basename
-    Rule.creates(model_file).set_recipe(
+    forwards_model = f"{config.basename}.forwards"
+    backwards_model = f"{config.basename}.backwards"
+    Rule.creates(forwards_model).set_recipe(
         train(output_dir='$@', forwards=True, **config),
+    ).print()
+    Rule.creates(backwards_model).set_recipe(
         train(output_dir='$@', backwards=True, **config)
     ).print()
-    models.append(model_file)
+    models.append((forwards_model, backwards_model))
 
 print()
 
 # Creates rules for evaluating models.
 for config in eval_configs:
-    for model in models:
+    for forwards, backwards in models:
         eval_file = (
-            (base_dir / config.basename.stem / model).with_suffix('.sqlite3')
+            (base_dir / config.basename.stem / forwards).with_suffix('.sqlite3')
         )
-        Rule.creates(eval_file).depends_on(model).set_recipe(
+        Rule.creates(eval_file).depends_on(forwards, backwards).set_recipe(
             evaluate(i='$<', o='$@', **config)
         ).print()
         results.append(eval_file)
