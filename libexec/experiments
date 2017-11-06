@@ -82,8 +82,8 @@ results = []
 with Makefile() as make:
     # Create rules for the training models.
     for config in model_configs:
-        forwards_model = f"{config.basename}.forwards"
-        backwards_model = f"{config.basename}.backwards"
+        forwards_model = config.hashed_slug.with_suffix('.forwards')
+        backwards_model = config.hashed_slug.with_suffix('.backwards')
 
         make.rule(forwards_model).set_recipe(
             train(output_dir='$@', forwards=True, **config),
@@ -97,7 +97,7 @@ with Makefile() as make:
     for config in eval_configs:
         for forwards, backwards in models:
             eval_file = (
-                (base_dir / config.basename.stem / forwards).with_suffix('.sqlite3')
+                (base_dir / config.slug / forwards).with_suffix('.sqlite3')
             )
             make.rule(eval_file).depends_on(forwards, backwards).set_recipe(
                 evaluate(i='$<', o='$@', **config)

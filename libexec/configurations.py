@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import hashlib
 from itertools import product
 from types import SimpleNamespace
 from typing import Any, Iterator, Iterable, Set, Mapping
@@ -12,9 +13,14 @@ class Configuration(Mapping[str, Any]):
         self.__dict__.update(**kwargs)
 
     @property
-    def basename(self) -> PurePath:
+    def slug(self) -> PurePath:
         items = sorted(self.__dict__.items())
         return PurePath(','.join(f"{key}-{val}" for key, val in items))
+
+    @property
+    def hashed_slug(self) -> PurePath:
+        binary = str(self.slug).encode('UTF-8')
+        return PurePath(hashlib.sha256(binary).hexdigest())
 
     def __getitem__(self, key: str) -> Any:
         return self.__dict__[key]
