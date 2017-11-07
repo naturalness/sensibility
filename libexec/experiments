@@ -53,15 +53,16 @@ base_dir = Path('.')
 languages = {'java', 'javascript', 'python'}
 
 model_configs = Configurations(
-    hidden_layers={'128', '300', '400', '128,128', '128,128,128'},
+    hidden_layers={'50', '128', '200', '300', '400', '500', '128,128', '128,128,128'},
     context_length={5, 10, 20},
     batch_size={32},
     learning_rate={'0.001'},
     patience={10},
     dropout={0.75, None},
-    partition={0},  # TODO: {0, 1, 2, 3, 4},
+    optimizer={'adam', 'rmsprop'},
     train_set_size={32},
     validation_set_size={32},
+    partition={0},  # TODO: {0, 1, 2, 3, 4},
 )
 
 eval_configs = Configurations(

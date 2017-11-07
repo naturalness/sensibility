@@ -23,6 +23,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 import typing
 import warnings
 from pathlib import Path
@@ -49,6 +50,7 @@ BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 
 PATIENCE = 3
+OPTIMIZER = 'rmsprop'
 
 # === Other module-wide globals === #
 
@@ -83,6 +85,7 @@ class ModelDescription:
                  learning_rate: float,
                  patience: int,
                  dropout: Optional[float],
+                 optimizer: str,
                  training_set: Set[str],
                  validation_set: Set[str],
                  vectors_path: Path) -> None:
@@ -94,6 +97,7 @@ class ModelDescription:
         self.hidden_layers = hidden_layers
         self.learning_rate = learning_rate
         self.dropout = dropout
+        self.optimizer = optimizer
         self.patience = patience
 
         # The training and validation data. Note, each is provided explicitly,
@@ -174,7 +178,7 @@ class ModelDescription:
         from keras.models import Sequential
         from keras.layers import Dense, Activation, Dropout
         from keras.layers import LSTM
-        from keras.optimizers import RMSprop
+        from keras.optimizers import Optimizer, RMSprop, Nadam, Adam
 
         vocabulary = language.vocabulary
 
@@ -210,8 +214,19 @@ class ModelDescription:
         # Softmax makes the output look like a probability distribution.
         model.add(Activation('softmax'))
 
+        optimizer: Optimizer
+        if self.optimizer == 'rmsprop':
+            optimizer = RMSprop(lr=self.learning_rate)
+        elif self.optimizer == 'adam':
+            optimizer = Adam(lr=self.learning_rate)
+        elif self.optimizer == 'nadam':
+            optimizer = Nadam(lr=self.learning_rate)
+        else:
+            logger.error("Unknown optimizer: %r", self.optimizer)
+            sys.exit(2)
+
         model.compile(loss='categorical_crossentropy',
-                      optimizer=RMSprop(lr=self.learning_rate),
+                      optimizer=optimizer,
                       metrics=['categorical_accuracy'])
         return model
 
@@ -244,7 +259,7 @@ class ModelDescription:
         properties = (
             'direction partition training_set_size validation_set_size '
             'hidden_layers context_length batch_size '
-            'dropout learning_rate patience'
+            'dropout optimizer learning_rate patience '
         ).split()
 
         manifest = {prop: getattr(self, prop) for prop in properties}
@@ -345,6 +360,8 @@ parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE,
                     help=f"default: {LEARNING_RATE}")
 parser.add_argument('--dropout', type=float, default=None,
                     help=f"default: disabled")
+parser.add_argument('--optimizer', choices=('rmsprop', 'adam', 'nadam'),
+                    default=OPTIMIZER, help=f"default: {OPTIMIZER}")
 parser.add_argument('--patience', type=int, default=PATIENCE,
                     help='Number of bad epochs to wait before stopping'
                     f' (default: {PATIENCE})')
@@ -352,6 +369,38 @@ parser.add_argument('--patience', type=int, default=PATIENCE,
 # GPU settings.
 parser.add_argument('--gpu', type=int, default=None,
                     help=f"Which GPU to use.")
+
+
+def main() -> None:
+    # TODO: Figure out where to dump logging info
+    logging.basicConfig(level=logging.INFO)
+    args = parser.parse_args()
+
+    # Get the appropriate sets for the give partition
+    partition = cast(int, args.partition)
+    training_set = slurp(get_training_set_path(partition))
+    validation_set = slurp(get_validation_set_path(partition))
+
+    configure_gpu(args.gpu)
+
+    # Determine language first!
+    model = ModelDescription(
+        partition=partition,
+        training_set=subset(training_set, args.train_set_size),
+        validation_set=subset(validation_set, args.validation_set_size),
+        vectors_path=get_vectors_path(),
+        backwards=args.backwards,
+        output_dir=args.output_dir,
+        context_length=args.context_length,
+        hidden_layers=args.hidden_layers,
+        learning_rate=args.learning_rate,
+        patience=args.patience,
+        batch_size=args.batch_size,
+        dropout=args.dropout,
+        optimizer=args.optimizer,
+    )
+
+    model.train()
 
 
 def slurp(filename: Path) -> List[str]:
@@ -400,36 +449,6 @@ def configure_gpu(prefered: Optional[int]) -> None:
         logger.info("Using GPU %d", device_id)
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
 
-
-def main() -> None:
-    # TODO: Figure out where to dump logging info
-    logging.basicConfig(level=logging.INFO)
-    args = parser.parse_args()
-
-    # Get the appropriate sets for the give partition
-    partition = cast(int, args.partition)
-    training_set = slurp(get_training_set_path(partition))
-    validation_set = slurp(get_validation_set_path(partition))
-
-    configure_gpu(args.gpu)
-
-    # Determine language first!
-    model = ModelDescription(
-        partition=partition,
-        training_set=subset(training_set, args.train_set_size),
-        validation_set=subset(validation_set, args.validation_set_size),
-        vectors_path=get_vectors_path(),
-        backwards=args.backwards,
-        output_dir=args.output_dir,
-        context_length=args.context_length,
-        hidden_layers=args.hidden_layers,
-        learning_rate=args.learning_rate,
-        patience=args.patience,
-        batch_size=args.batch_size,
-        dropout=args.dropout,
-    )
-
-    model.train()
 
 
 if __name__ == '__main__':
