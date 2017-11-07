@@ -37,7 +37,8 @@ class Command:
     def _add_arguments(self, *args: str, **kwargs: Any) -> 'Command':
         def generate_kwargs():
             for option, value in kwargs.items():
-                if value is False:
+                if value is False or value is None:
+                    # Skip false or unspecified options.
                     continue
                 elif len(option) == 1:
                     yield '-' + option

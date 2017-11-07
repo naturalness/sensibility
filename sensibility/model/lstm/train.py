@@ -21,6 +21,7 @@ Trains an LSTM from sentences in the vectorized corpus.
 
 import argparse
 import glob
+import json
 import logging
 import os
 import re
@@ -51,10 +52,12 @@ BATCH_SIZE = 32
 # Ideally, you'll find the right value for this by experimentation.
 LEARNING_RATE = 0.001
 
+PATIENCE = 3
 
 # === Other module-wide globals === #
 
 logger = logging.getLogger(__name__)
+INDEFINITE = 2 ** 32 - 1  # Yes, 2**32 is technically infinity
 
 
 # === The big training class === #
@@ -70,114 +73,103 @@ class ModelDescription:
 
     # A pair of a training and a validation batch generators .
     Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
+    # Keras is poorly behaved, so only import these types when type-checking.
+    if typing.TYPE_CHECKING:
+        from keras.models import Sequential
 
     def __init__(self, *,
                  backwards: bool,
-                 base_dir: Path,
+                 output_dir: Path,
                  batch_size: int,
                  context_length: int,
                  partition: int,
                  hidden_layers: Sequence[int],
                  learning_rate: float,
+                 patience: int,
                  training_set: Set[str],
                  validation_set: Set[str],
                  vectors_path: Path) -> None:
 
-        base_dir.mkdir(parents=True, exist_ok=True)
-        assert vectors_path.exists()
         self.backwards = backwards
-        self.base_dir = base_dir
+        self.output_dir = output_dir
         self.batch_size = batch_size
         self.context_length = context_length
         self.hidden_layers = hidden_layers
         self.learning_rate = learning_rate
-        self.vectors_path = vectors_path
+        self.patience = patience
 
         # The training and validation data. Note, each is provided explicitly,
         # but we ask for a partition for labelling purposes.
         self.partition = partition
         self.training_set = training_set
         self.validation_set = validation_set
+        self.vectors_path = vectors_path
 
-        logger.info("Training %s", self.name)
+    def train(self) -> None:
+        """
+        Start traing this model.
+        """
+        if self.incomplete_path.exists():
+            self.train_from_existing()
+        else:
+            self.train_from_scratch()
+
+    def train_from_scratch(self):
+        """
+        Start training in a temporary directory.
+        """
+        assert not self.incomplete_path.exists()
+        self.incomplete_path.mkdir()
+        self._train()
+        self.save_manifest(model)
+
+    def train_from_existing(self):
+        """
+        Continue training from an existing directory.
+        """
+        raise NotImplementedError
+
+    def _train(self) -> None:
+        logger.info("Saving model to %s", self.model_path)
         logger.info("%d training files", len(self.training_set))
         logger.info("%d validation files", len(self.validation_set))
         logger.info("Loading file vectors from %s", self.vectors_path)
-        assert self.vectors_path.exists()
-        logger.info("Saving model to %s", self.model_path)
 
-    @property
-    def name(self) -> str:
-        direction = 'b' if self.backwards else 'f'
-        return f"{language.id}-{direction}{self.partition}"
-
-    @property
-    def model_path(self) -> Path:
-        return self.base_dir / f"{self.name}.hdf5"
-
-    @property
-    def log_path(self) -> Path:
-        return self.base_dir / f"{self.name}.csv"
-
-    @property
-    def summary_path(self) -> Path:
-        return self.base_dir / f"{self.name}.json"
-
-    @property
-    def weight_path_pattern(self) -> Path:
-        return self.base_dir / (
-            self.name + '-{epoch:02d}-{val_loss:.4f}.hdf5'
-        )
-
-    @property
-    def interrupted_path(self) -> Path:
-        return self.base_dir / (self.name + '.interrupted.hdf5')
-
-    def batches_per_epoch(self, training_samples: int) -> int:
-        """
-        Number of batches per sample.
-        """
-        return (training_samples // self.batch_size +
-                bool(training_samples % self.batch_size))
-
-    def train(self) -> None:
         # Compile the model and prepare the training and validation samples.
-        model = self.compile_model()
+        self._ensure_vectors_exist()
         training_batches, validation_batches = self.create_batches()
 
-        self.save_summary(model)
         logger.info(f"Training on {training_batches.samples_per_epoch} samples "
                     f"using a batch size of {self.batch_size}")
 
         from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
+        model = self.compile_model()
+
         try:
             model.fit_generator(
                 iter(training_batches),
-                self.batches_per_epoch(training_batches.samples_per_epoch),
-                epochs=2**31 - 1,  # Train indefinitely
+                self._batches_per_epoch(training_batches.samples_per_epoch),
+                epochs=INDEFINITE,  # Train until EarlyStopping says so.
                 validation_data=iter(validation_batches),
-                validation_steps=self.batches_per_epoch(validation_batches.samples_per_epoch),
+                validation_steps=self._batches_per_epoch(validation_batches.samples_per_epoch),
+                verbose=0,  # Use a callback instead to monitor progress.
                 callbacks=[
-                    ModelCheckpoint(
-                        str(self.weight_path_pattern),
-                        save_best_only=False,
-                        save_weights_only=False,
-                        mode='auto'
-                    ),
-                    CSVLogger(str(self.log_path), append=True),
-                    EarlyStopping(patience=3, mode='auto')
+                    ModelCheckpoint(str(self.weight_path_pattern),
+                                    save_best_only=False,
+                                    save_weights_only=False,
+                                    mode='auto'),
+                    CSVLogger(str(self.progress_path), append=True),
+                    EarlyStopping(patience=self.patience, mode='auto')
                 ],
-                verbose=1,
                 use_multiprocessing=True,
+                # TODO: initial_epoch when restarting.
             )
         except KeyboardInterrupt:
-            model.summary()
-            model.save(str(self.interrupted_path))  # type: ignore
-        finally:
-            self.update_symlink()
-
-    if typing.TYPE_CHECKING:
-        from keras.models import Sequential
+            model.save(str(self.interrupted_path))
+        else:
+            # Move the file over to the correct file path, so that Make can
+            # confirm that this model has completed training.
+            self.incomplete_path.rename(self.output_dir)
 
     def compile_model(self) -> 'Sequential':
         from keras.models import Sequential
@@ -244,53 +236,69 @@ class ModelDescription:
         )
         return training, validation
 
-    def save_summary(self, model: object) -> None:
-        # We're ready to go!
-        with open(str(self.summary_path), 'w') as summary_file:
-            print(model.to_json(), file=summary_file)  # type: ignore
-
-    def update_symlink(self) -> None:
+    def save_manifest(self) -> None:
         """
-        Symlinks the model to the saved model with the least validation loss,
-        i.e., the best model trained so far for this partition.
+        Saves a manifest with all of the relevant parameters for training this
+        model.
         """
-        # Find all existing saved models.
-        pattern = self.base_dir / f"{self.name}-*-*.hdf5"
-        existing_models = glob.glob(str(pattern))
-        if len(existing_models) == 0:
-            warnings.warn(f"No models found matching pattern: {pattern}")
-            return
+        properties = (
+            'direction partition training_set_size validation_set_size '
+            'context_length hidden_layers batch_size learning_rate'
+        ).split()
 
-        # Get the model with the lowest validation loss.
-        best_model = min(existing_models, key=validation_loss_by_filename)
-        # Make the symlink!
-        try:
-            symlink_within_dir(directory=self.base_dir,
-                               source=Path(Path(best_model).name),
-                               target=Path(Path(self.model_path).name))
-        except Exception as error:
-            warnings.warn(
-                f"Could not link {self.model_path} to {best_model}: {type(error)}: {error}"
-            )
-        finally:
-            print(f"The best model is {best_model}")
+        manifest = {prop: getattr(self, prop) for prop in properties}
+        with open(self.manifest_path, 'w') as summary_file:
+            json.dump(manifest, summary_file, indent=4)
 
+    def _batches_per_epoch(self, training_samples: int) -> int:
+        """
+        Number of batches per sample.
+        """
+        # TODO: Move this method to batch?
+        return (training_samples // self.batch_size +
+                bool(training_samples % self.batch_size))
 
-def validation_loss_by_filename(filename: str) -> float:
-    """
-    Returns the validation loss as written in the filename.
+    def _ensure_vectors_exist(self) -> None:
+        if not self.vectors_path.exists():
+            raise Exception(f"Could not find vectors at: {self.vectors_path}")
 
-    >>> validation_loss_by_filename("models/python-f0-02-0.9375.hdf5")
-    0.9375
-    >>> validation_loss_by_filename("models/javascript-f0-02-1.125.hdf5")
-    1.125
-    """
-    match = re.search(r'(\d{1,}[.]\d{1,})[.]hdf5$', filename)
-    if match:
-        return float(match.group(1))
-    else:
-        warnings.warn(f"Could not determine loss of {filename}")
-        return 0.0
+    @property
+    def incomplete_path(self) -> Path:
+        return Path(str(self.output_dir) + '.incomplete')
+
+    @property
+    def model_path(self) -> Path:
+        return self.incomplete_path / f"model.hdf5"
+
+    @property
+    def progress_path(self) -> Path:
+        return self.incomplete_path / f"progress.csv"
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.incomplete_path / f"manifest.json"
+
+    @property
+    def weight_path_pattern(self) -> Path:
+        return self.incomplete_path / (
+            'intermediate-{val_loss:.4f}-{epoch:02d}.hdf5'
+        )
+
+    @property
+    def interrupted_path(self) -> Path:
+        return self.output_dir / 'interrupted.hdf5'
+
+    @property
+    def training_set_size(self) -> int:
+        return len(self.training_set)
+
+    @property
+    def validation_set_size(self) -> int:
+        return len(self.validation_set)
+
+    @property
+    def direction(self) -> str:
+        return 'backwards' if self.backwards else 'forwards'
 
 
 def layers(string: str) -> Sequence[int]:
@@ -334,6 +342,9 @@ parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
 parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE,
                     help=f"default: {LEARNING_RATE}")
+parser.add_argument('--patience', type=int, default=PATIENCE,
+                    help='Number of bad epochs to wait before stopping'
+                    f' (default: {PATIENCE})')
 
 # GPU settings.
 parser.add_argument('--gpu', type=int, default=None,
@@ -406,10 +417,11 @@ def main() -> None:
         validation_set=subset(validation_set, args.validation_set_size),
         vectors_path=get_vectors_path(),
         backwards=args.backwards,
-        base_dir=args.output_dir,
+        output_dir=args.output_dir,
         context_length=args.context_length,
         hidden_layers=args.hidden_layers,
         learning_rate=args.learning_rate,
+        patience=args.patience,
         batch_size=args.batch_size,
     )
 

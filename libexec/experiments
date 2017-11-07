@@ -51,12 +51,13 @@ base_dir = Path('.')
 languages = {'java', 'javascript', 'python'}
 
 model_configs = Configurations(
-    layers={'300', '100', '100,100'},
-    learning_rate={'0.001'},
+    hidden_layers={'128', '300', '400', '128,128', '128,128,128'},
+    context_length={5, 10, 20},
     batch_size={32},
-    context={'20', '10', '5'},
-    # TODO: Change this later to include all partitions
-    partition={0}  # {0, 1, 2, 3, 4}
+    learning_rate={'0.001'},
+    patience={10},
+    dropout={0.75, None},
+    partition={0},  # TODO: {0, 1, 2, 3, 4},
 )
 
 eval_configs = Configurations(
@@ -85,10 +86,10 @@ with Makefile() as make:
         backwards_model = config.hashed_slug.with_suffix('.backwards')
 
         make.rule(forwards_model).set_recipe(
-            train(output_dir='$@', forwards=True, **config),
+            train(forwards=True, output_dir='$@', **config),
         )
         make.rule(backwards_model).set_recipe(
-            train(output_dir='$@', backwards=True, **config)
+            train(backwards=True, output_dir='$@', **config)
         )
         models.append((forwards_model, backwards_model))
 
