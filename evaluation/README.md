@@ -1,60 +1,34 @@
 Evaluation
 ==========
 
-Files created during evaluation.
+Files need for and created by the empirical evaluation.
 
-Sample file structure:
-
+Directory structure:
 
     .
-    ├── javascript
-    │   ├── partitions
-    │   │   ├── 0
-    │   │   │   ├── test
-    │   │   │   ├── training
-    │   │   │   └── validation
-    │   │   ├── 1
-    │   │   │   ├── test
-    │   │   │   ├── training
-    │   │   │   └── validation
-    │   │   ├── 2
-    │   │   │   ├── test
-    │   │   │   ├── training
-    │   │   │   └── validation
-    │   │   ├── 3
-    │   │   │   ├── test
-    │   │   │   ├── training
-    │   │   │   └── validation
-    │   │   └── 4
-    │   │       ├── test
-    │   │       ├── training
-    │   │       └── validation
-    │   ├── lstm
-    │   ├── ngram
-    │   └── vectors.sqlite3
-    └── python
-        ├── partitions
-        │   ├── 0
-        │   │   ├── test
-        │   │   ├── training
-        │   │   └── validation
-        │   ├── 1
-        │   │   ├── test
-        │   │   ├── training
-        │   │   └── validation
-        │   ├── 2
-        │   │   ├── test
-        │   │   ├── training
-        │   │   └── validation
-        │   ├── 3
-        │   │   ├── test
-        │   │   ├── training
-        │   │   └── validation
-        │   └── 4
-        │       ├── test
-        │       ├── training
-        │       └── validation
-        ├── lstm
-        ├── ngram
+    └── {language}/
+        ├── partitions/
+        │   └── {partition-number}/
+        │       ├── test
+        │       ├── training
+        │       └── validation
+        ├── results/
+        │   └── fix-(dual|left|right)-{configuration-id}.sqlite3
+        ├── mistakes.sqlite3
+        ├── sources.sqlite3
         └── vectors.sqlite3
 
+Partition files
+===============
+
+The corpus is partitioned into several different sets (currently 5), for
+the purposes of evaluating how consistent the results are across
+different data.
+
+For each partition, there is a directory corresponding to its number,
+that contains three flat files: training, validation, and test. These
+files are a set of file hashes (see sources), each separated by
+newlines.
+
+Results files
+=============

@@ -80,17 +80,12 @@ evaluate = sensibility('evaluate')
 models = []
 results = []
 
-# - the training command should produce a **directory**.
-# - The directory should contain a manifest (in pretty-printed JSON?) indicating
-#   ALL of parameters.
-# - Creates the directory with suffix .incomplete, then moves it to the real
-#   name.
-
 with Makefile() as make:
     # TODO: do not hard-code for language
     model_dir = base_dir / 'models' / 'java'
     eval_dir = base_dir / 'evaluation' / 'java' / 'results'
     model_dir.mkdir(parents=True, exist_ok=True)
+    eval_dir.mkdir(parents=True, exist_ok=True)
 
     # Create rules for the training models.
     for config in model_configs:
@@ -110,7 +105,7 @@ with Makefile() as make:
         for forwards, backwards in models:
             config_name = forwards.stem
             eval_file = (
-                (eval_dir / config.slug / config_name).with_suffix('.sqlite3')
+                (eval_dir / f"{config.slug}-{config_name}").with_suffix('.sqlite3')
             )
             make.rule(eval_file).depends_on(forwards, backwards).set_recipe(
                 evaluate(o='$@', models=config_name, **config)
