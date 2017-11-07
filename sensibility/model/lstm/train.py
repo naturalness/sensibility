@@ -20,17 +20,13 @@ Trains an LSTM from sentences in the vectorized corpus.
 """
 
 import argparse
-import glob
 import json
 import logging
 import os
-import re
-import sys
 import typing
 import warnings
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Set, Tuple, cast
-from random import choice
 
 from sensibility.language import language
 from sensibility.miner.util import filehashes
@@ -86,6 +82,7 @@ class ModelDescription:
                  hidden_layers: Sequence[int],
                  learning_rate: float,
                  patience: int,
+                 dropout: Optional[float],
                  training_set: Set[str],
                  validation_set: Set[str],
                  vectors_path: Path) -> None:
@@ -96,6 +93,7 @@ class ModelDescription:
         self.context_length = context_length
         self.hidden_layers = hidden_layers
         self.learning_rate = learning_rate
+        self.dropout = dropout
         self.patience = patience
 
         # The training and validation data. Note, each is provided explicitly,
@@ -118,10 +116,11 @@ class ModelDescription:
         """
         Start training in a temporary directory.
         """
+        assert not self.output_dir.exists()
         assert not self.incomplete_path.exists()
         self.incomplete_path.mkdir()
-        self._train()
         self.save_manifest(model)
+        self._train()
 
     def train_from_existing(self):
         """
@@ -204,7 +203,8 @@ class ModelDescription:
         # http://theorangeduck.com/page/neural-network-not-working#dropout
         # The rate should ideally be tweaked according to the size and nature
         # of the training data.
-        model.add(Dropout(0.75))
+        if self.dropout is not None:
+            model.add(Dropout(self.dropout))
         # Output is number of samples x size of hidden layer
         model.add(Dense(len(vocabulary)))
         # Softmax makes the output look like a probability distribution.
@@ -243,7 +243,8 @@ class ModelDescription:
         """
         properties = (
             'direction partition training_set_size validation_set_size '
-            'context_length hidden_layers batch_size learning_rate'
+            'hidden_layers context_length batch_size '
+            'dropout learning_rate patience'
         ).split()
 
         manifest = {prop: getattr(self, prop) for prop in properties}
@@ -342,6 +343,8 @@ parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
 parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE,
                     help=f"default: {LEARNING_RATE}")
+parser.add_argument('--dropout', type=float, default=None,
+                    help=f"default: disabled")
 parser.add_argument('--patience', type=int, default=PATIENCE,
                     help='Number of bad epochs to wait before stopping'
                     f' (default: {PATIENCE})')
@@ -423,6 +426,7 @@ def main() -> None:
         learning_rate=args.learning_rate,
         patience=args.patience,
         batch_size=args.batch_size,
+        dropout=args.dropout,
     )
 
     model.train()

@@ -33,10 +33,12 @@ Then you can run ALL of the experiments by issuing the command:
 
     make experiments
 
-RECOMMENDED:
+Recommended:
 
-    Add the --jobs argument alongside the --keep-running option.
-    Tweak --jobs=N to the largest N that will run on the machine.
+When running `make`:
+ - Add the --jobs argument (-j) alongside the --keep-running option (-k).
+ - Add --output-sync=line (-Oline) to buffer lines of parallel output.
+ - Tweak --jobs=N to the largest N that will efficiently run on the machine.
 """
 
 from pathlib import Path
@@ -58,6 +60,8 @@ model_configs = Configurations(
     patience={10},
     dropout={0.75, None},
     partition={0},  # TODO: {0, 1, 2, 3, 4},
+    training_set_size={32},
+    validation_set_size={32},
 )
 
 eval_configs = Configurations(
@@ -65,10 +69,12 @@ eval_configs = Configurations(
 )
 
 
+# All commands use the `sensibility` wrapper.
+sensibility = Command('sensibility', '-l', 'java')
 # The training command.
-train = Command('sensibility', 'train-lstm')
+train = sensibility('train-lstm')
 # The evaluation command.
-evaluate = Command('sensibility', 'evaluate')
+evaluate = sensibility('evaluate')
 
 models = []
 results = []
@@ -96,11 +102,12 @@ with Makefile() as make:
     # Creates rules for evaluating models.
     for config in eval_configs:
         for forwards, backwards in models:
+            config_name = forwards.stem
             eval_file = (
-                (base_dir / config.slug / forwards).with_suffix('.sqlite3')
+                (base_dir / config.slug / config_name).with_suffix('.sqlite3')
             )
             make.rule(eval_file).depends_on(forwards, backwards).set_recipe(
-                evaluate(i='$<', o='$@', **config)
+                evaluate(o='$@', models=config_name, **config)
             )
             results.append(eval_file)
 
