@@ -302,7 +302,7 @@ class ModelDescription:
 
     @property
     def interrupted_path(self) -> Path:
-        return self.output_dir / 'interrupted.hdf5'
+        return self.incomplete_path / 'interrupted.hdf5'
 
     @property
     def training_set_size(self) -> int:
