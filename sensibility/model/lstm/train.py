@@ -308,13 +308,20 @@ def layers(string: str) -> Sequence[int]:
 
 
 # Create the argument parser.
-# TODO: infer from language.
-parser = argparse.ArgumentParser(description='Train from corpus '
-                                 'of vectors')
-parser.add_argument('-#', '--partition', type=int, help='which partition this is')
-group = parser.add_mutually_exclusive_group()
-group.add_argument('--backwards', action='store_true', default=False)
-group.add_argument('--forwards', action='store_false', dest='backwards')
+parser = argparse.ArgumentParser(description='Train from corpus of vectors')
+
+# Input options
+parser.add_argument('-p', '--partition', type=int, required=True,
+                    help='which partition to use')
+group = parser.add_mutually_exclusive_group(required=True)
+
+# Output options
+parser.add_argument('-o', '--output-dir', type=Path, required=True,
+                    help=f"Name of the directory to output")
+
+# LSTM options.
+group.add_argument('-f', '--forwards', action='store_true')
+group.add_argument('-b', '--backwards', action='store_true')
 parser.add_argument('--hidden-layers', type=layers, default=HIDDEN_LAYERS,
                     help=f"default: {HIDDEN_LAYERS}")
 parser.add_argument('--context-length', type=int, default=CONTEXT_LENGTH,
@@ -327,10 +334,8 @@ parser.add_argument('--batch-size', type=int, default=BATCH_SIZE,
                     help=f"default: {BATCH_SIZE}")
 parser.add_argument('--learning-rate', type=float, default=LEARNING_RATE,
                     help=f"default: {LEARNING_RATE}")
-parser.add_argument('--base-dir', type=Path, default=Path('.'),
-                    help=f"default: .")
-parser.add_argument('--output', '-o', type=Path,
-                    help=f"Name of the directory to output")
+
+# GPU settings.
 parser.add_argument('--gpu', type=int, default=None,
                     help=f"Which GPU to use.")
 
@@ -382,15 +387,13 @@ def configure_gpu(prefered: Optional[int]) -> None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
 
 
-def main():
-    logging.basicConfig(level=logging.INFO, filename="train.log")
-    args = infer_args(parser.parse_args())
+def main() -> None:
+    # TODO: Figure out where to dump logging info
+    logging.basicConfig(level=logging.INFO)
+    args = parser.parse_args()
 
-    if args.partition is None:
-        parser.error('Require --partitions or --output')
-
+    # Get the appropriate sets for the give partition
     partition = cast(int, args.partition)
-
     training_set = slurp(get_training_set_path(partition))
     validation_set = slurp(get_validation_set_path(partition))
 
@@ -403,7 +406,7 @@ def main():
         validation_set=subset(validation_set, args.validation_set_size),
         vectors_path=get_vectors_path(),
         backwards=args.backwards,
-        base_dir=args.base_dir,
+        base_dir=args.output_dir,
         context_length=args.context_length,
         hidden_layers=args.hidden_layers,
         learning_rate=args.learning_rate,
