@@ -60,7 +60,7 @@ model_configs = Configurations(
     patience={10},
     dropout={0.75, None},
     partition={0},  # TODO: {0, 1, 2, 3, 4},
-    training_set_size={32},
+    train_set_size={32},
     validation_set_size={32},
 )
 
@@ -86,10 +86,15 @@ results = []
 #   name.
 
 with Makefile() as make:
+    # TODO: do not hard-code for language
+    model_dir = base_dir / 'models' / 'java'
+    eval_dir = base_dir / 'evaluation' / 'java' / 'results'
+    model_dir.mkdir(parents=True, exist_ok=True)
+
     # Create rules for the training models.
     for config in model_configs:
-        forwards_model = config.hashed_slug.with_suffix('.forwards')
-        backwards_model = config.hashed_slug.with_suffix('.backwards')
+        forwards_model = model_dir / config.hashed_slug.with_suffix('.forwards')
+        backwards_model = model_dir / config.hashed_slug.with_suffix('.backwards')
 
         make.rule(forwards_model).set_recipe(
             train(forwards=True, output_dir='$@', **config),
@@ -104,7 +109,7 @@ with Makefile() as make:
         for forwards, backwards in models:
             config_name = forwards.stem
             eval_file = (
-                (base_dir / config.slug / config_name).with_suffix('.sqlite3')
+                (eval_dir / config.slug / config_name).with_suffix('.sqlite3')
             )
             make.rule(eval_file).depends_on(forwards, backwards).set_recipe(
                 evaluate(o='$@', models=config_name, **config)

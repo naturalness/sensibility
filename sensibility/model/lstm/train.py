@@ -112,17 +112,17 @@ class ModelDescription:
         else:
             self.train_from_scratch()
 
-    def train_from_scratch(self):
+    def train_from_scratch(self) -> None:
         """
         Start training in a temporary directory.
         """
         assert not self.output_dir.exists()
         assert not self.incomplete_path.exists()
         self.incomplete_path.mkdir()
-        self.save_manifest(model)
+        self.save_manifest()
         self._train()
 
-    def train_from_existing(self):
+    def train_from_existing(self) -> None:
         """
         Continue training from an existing directory.
         """
