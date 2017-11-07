@@ -18,11 +18,11 @@
 # contain at least one token.
 #
 # Usage:
-#     list-elligible-sources > filehashes
+#     sensibility sources list-elligible > filehashes
 
 set -e
 
-language=$("$(dirname "$0")"/language-id "$@")
+language="$(sensibility language-id)"
 sqlite3 "${language}-sources.sqlite3" <<SQL
     SELECT hash FROM eligible_source;
 SQL
