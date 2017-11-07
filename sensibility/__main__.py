@@ -24,10 +24,10 @@ Usage:
     sensibility [-l LANGUAGE] <command> [<args>]
 """
 
-import argparse
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List, Tuple
 
 from sensibility._paths import REPOSITORY_ROOT
@@ -35,15 +35,10 @@ from sensibility._paths import REPOSITORY_ROOT
 
 bin_dir = REPOSITORY_ROOT / 'bin'
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-l', '--language', type=str, default=None,
-                    help="language to set")
-parser.add_argument('subcommand', nargs='*')
-
 
 def main() -> None:
     assert bin_dir.is_dir()
-    args = parser.parse_args()
+    args = parse_args()
 
     # Set up the environment
     env: Dict[str, str] = {}
@@ -62,7 +57,8 @@ def main() -> None:
 
 def run_subcommand(command, env) -> None:
     bin, args = get_bin_and_argv(command)
-    assert bin.exists()
+    if not bin.exists():
+        usage_error("Unknown executable:", bin)
     os.execve(str(bin.absolute()), args, env)
 
 
@@ -92,6 +88,36 @@ def get_bin_and_argv(command: List[str]) -> Tuple[Path, List[str]]:
 def is_executable(path: Path) -> bool:
     # access() is deprecated, but we're using it anyway!
     return os.access(path, os.X_OK)
+
+
+def parse_args(argv=sys.argv):
+    """
+    Roll my own parse because argparse will swallow up arguments that don't
+    belong to it.
+    """
+    argv = argv[1:]
+    args = SimpleNamespace()
+    args.language = None
+    args.subcommand = None
+
+    # Parse options one by one.
+    while argv:
+        arg = argv.pop(0)
+        if arg in ('-l', '--language'):
+            args.language = argv.pop(0)
+        elif arg.startswith('--language='):
+            _, args.language = arg.split('=', 1)
+        elif arg.startswith('-'):
+            usage_error(f"Unknown argument {arg!r}")
+        else:
+            args.subcommand = [arg] + argv[:]
+            break
+    return args
+
+
+def usage_error(*args):
+    print(f"{sys.argv[0]}:", *args, file=sys.stderr)
+    sys.exit(2)
 
 
 if __name__ == '__main__':
