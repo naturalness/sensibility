@@ -121,3 +121,8 @@ with Makefile() as make:
     #   make -j -k experiments
     # and do EVERYTHING!
     make.phony_rule('experiments').depends_on(*results)
+
+    # Make a phony rule for models too.
+    make.phony_rule('models').depends_on(
+        *(f for f, b in models), *(b for f, b in models)
+    )
