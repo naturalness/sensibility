@@ -20,7 +20,7 @@ Print the path of one or more filehashes.
 If no hashes are provided on the command line, checks stdin.
 
 Usage:
-      sources-path  [--prefix=PREFIX] [FILEHASH...]
+sources-path  [--prefix=PREFIX] [FILEHASH...]
 """
 
 import sys
@@ -37,13 +37,13 @@ parser.add_argument('-p', '--prefix', default='')
 
 
 if __name__ == '__main__':
-      args = parser.parse_args()
-      prefix = args.prefix
+    args = parser.parse_args()
+    prefix = args.prefix
 
-      # TODO: determine through command-line arguments
-      corpus = Corpus(read_only=True)
-      
-      filehashes = filehashes_from_stdin() if not args.filehashes else args.filehashes
-      for filehash in filehashes:
-          info = corpus.get_info(filehash)
-          print(f"{prefix}{info.owner}/{info.name}/{info.path}")
+    # TODO: determine through command-line arguments
+    corpus = Corpus(read_only=True)
+
+    filehashes = filehashes_from_stdin() if not args.filehashes else args.filehashes
+    for filehash in filehashes:
+        info = corpus.get_info(filehash)
+        print(f"{prefix}{info.owner}/{info.name}/{info.path}")
