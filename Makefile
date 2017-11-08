@@ -64,6 +64,9 @@ training/%: %-sources.sqlite3
 mistakes:
 	sensibility joshcompat create-mistakes-dir $@
 
+mistakes.txt: mistakes
+	sensibility joshcompat list-mistakes-path $< > $@
+
 
 # Generates a list of paths.
 ifdef SENSIBILITY_LANGUAGE

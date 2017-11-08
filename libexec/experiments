@@ -66,7 +66,8 @@ model_configs = Configurations(
 )
 
 eval_configs = Configurations(
-    fix={'dual', 'left', 'right'}
+    fix={'dual'},  # TODO: {'dual', 'left', 'right'},
+    mistakes={32},
 )
 
 
@@ -103,12 +104,16 @@ with Makefile() as make:
     # Creates rules for evaluating models.
     for config in eval_configs:
         for forwards, backwards in models:
-            config_name = forwards.stem
+            assert forwards.stem == backwards.stem
+            # The filename will indicate the kind of fix attempted.
             eval_file = (
-                (eval_dir / f"{config.slug}-{config_name}").with_suffix('.sqlite3')
+                (eval_dir / f"fix-{config.fix}-{forwards.stem}").with_suffix('.sqlite3')
             )
-            make.rule(eval_file).depends_on(forwards, backwards).set_recipe(
-                evaluate(o='$@', models=config_name, **config)
+            make.rule(eval_file).depends_on(forwards, backwards, 'mistakes.txt').set_recipe(
+                evaluate(o='$@',
+                         models=forwards.stem,
+                         mistakes_list='mistakes.txt',
+                         **config)
             )
             results.append(eval_file)
 
@@ -117,7 +122,7 @@ with Makefile() as make:
     # and do EVERYTHING!
     make.phony_rule('experiments').depends_on(*results)
 
-    # Make a phony rule for models too.
+    # Make a phony rule for models.
     make.phony_rule('models').depends_on(
         *(f for f, b in models), *(b for f, b in models)
     )

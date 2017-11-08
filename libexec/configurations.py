@@ -23,6 +23,11 @@ class Configuration(Mapping[str, Any]):
         return PurePath(hashlib.sha256(binary).hexdigest())
 
     def __getitem__(self, key: str) -> Any:
+        "For use like a dictionary."
+        return self.__dict__[key]
+
+    def __getattr__(self, key: str) -> Any:
+        "For use like a namespace."
         return self.__dict__[key]
 
     def __iter__(self):
