@@ -102,3 +102,5 @@ experiments.mk
 /*.squashfs
 /all-mistakes/
 /training/
+/mistakes/
+mistakes.txt

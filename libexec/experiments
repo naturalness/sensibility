@@ -57,12 +57,12 @@ model_configs = Configurations(
     context_length={5, 10, 15, 20},
     batch_size={32},
     learning_rate={'0.001'},
-    patience={10},
+    patience={10, 20},
     dropout={0.75, None},
     optimizer={'adam', 'rmsprop'},
     train_set_size={32},
     validation_set_size={32},
-    partition={0},  # TODO: {0, 1, 2, 3, 4},
+    partition={0, 1, 2, 3, 4},
 )
 
 eval_configs = Configurations(
@@ -103,6 +103,7 @@ with Makefile() as make:
 
     # Creates rules for evaluating models.
     for config in eval_configs:
+        # Evaluate each and every one of the models created in the last step.
         for forwards, backwards in models:
             assert forwards.stem == backwards.stem
             # The filename will indicate the kind of fix attempted.
@@ -111,7 +112,8 @@ with Makefile() as make:
             )
             make.rule(eval_file).depends_on(forwards, backwards, 'mistakes.txt').set_recipe(
                 evaluate(o='$@',
-                         models=forwards.stem,
+                         # The model directory without the extension.
+                         models=forwards.parent / forwards.stem,
                          mistakes_list='mistakes.txt',
                          **config)
             )
