@@ -22,24 +22,24 @@ Requirements
 
 Sensibility requires:
 
- * Python 3.6.
+* Python 3.6.
 
 For fixing Java files:
 
- * Java 8 SE
+* Java 8 SE
 
 For fixing JavaScript files:
 
- * Node.JS >= 6.0 and ZeroMQ_
-   (macOS: ``brew install zeromq``; Ubuntu: ``apt install libzmq-dev``)
+* Node.JS >= 6.0 and ZeroMQ_
+  (macOS: ``brew install zeromq``; Ubuntu: ``apt install libzmq-dev``)
 
 Researchers that wish to mine more repositories or languages will require:
 
- * A running Redis_ server.
+* A running Redis_ server.
 
 Researchers wishing to evaluate the current methods will require:
 
- * UnnaturalCode_
+* UnnaturalCode_
 
 .. _Redis: https://redis.io/
 .. _ZeroMQ: http://zeromq.org/
@@ -62,7 +62,8 @@ Once installed, there's one entry point to all the scripts and utilities include
 
    sensibility <SUBCOMMAND>
 
-Most subcommands require the specification of a language, with the `-l <LANGUAGE>` option before the subcommand.
+Most subcommands require the specification of a language,
+with the ``-l <LANGUAGE>`` option before the subcommand.
 
 For example, to train Java models::
 
@@ -72,14 +73,18 @@ For example, to train Java models::
 Development
 ===========
 
-The following diagram visualizes the data flow,
-starting from the name of the language you wish to train,
-all the way to the evaluation.
+The following diagram visualizes the data flow.
+Subcommands to ``sensibility`` are in black rectangles; white ovals are products.
+Please contact the author to obtain the mistake database,
+which is only applicable when evaluating the Java models.
 
 .. image:: https://raw.githubusercontent.com/naturalness/sensibility/master/docs/dependencies.png
     :width: 100%
     :align: center
 
+
+Tests
+-----
 
 To run the tests, install tox_ using Pip, then run tox.
 
@@ -89,27 +94,27 @@ To run the tests, install tox_ using Pip, then run tox.
 Mining repositories
 -------------------
 
- 1. You must create a GitHub OAuth token and save it as `.token` in the
-    repository root.
- 2. Run `redis-server` on localhost on the default port.
- 3. Use `sensibility mine find-repos` to get a list of the top ~10000 repos::
+1. You must create a GitHub OAuth token and save it as ``.token`` in the
+   repository root.
+2. Run ``redis-server`` on localhost on the default port.
+3. Use ``sensibility mine find-repos`` to get a list of the top ~10k repos::
 
-     sensibility mine find-repos javascript | sort -u > javascript-repos.txt
+    sensibility mine find-repos javascript | sort -u > javascript-repos.txt
 
- 4. Use `bin/enqueue-repo` to enqueue repos to download::
+4. Use ``bin/enqueue-repo`` to enqueue repos to download::
 
-     sensibility mine enqueue-repo < javascript-repos.txt
+    sensibility mine enqueue-repo < javascript-repos.txt
 
- 5. Start one or more downloaders. These will dequeue a repo from the running Redis server and download sources::
+5. Start one or more downloaders. These will dequeue a repo from the running Redis server and download sources::
 
-     sensibility mine download
+    sensibility mine download
 
 
 Evaluation
 ----------
 
-Type `make experiments` to train all of the models and evaluate each one.
-See `libexec/experiments` for more details.
+Type ``make experiments`` to train all of the models and evaluate each one.
+See ``libexec/experiments`` for more details.
 
 
 License

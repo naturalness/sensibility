@@ -3,18 +3,19 @@ digraph {
     rankdir=TB;
 
     /* These are tasks. */
-    node [shape=box,style=filled,fillcolor=black,fontcolor=white];
-    corpus2vectors [fillcolor=grey];
-    discover_vocabulary;
-    download;
-    evaluate;
-    mark_minified_js;
-    get_repo_list;
-    mutate;
-    parse_and_insert_all;
-    create_partitions;
-    train;
-    uclearn;
+    node [shape=box,style=filled,fillcolor=black,fontcolor=white,fontname="Courier"];
+    corpus2vectors       [label="sources to-vectors"];
+    discover_vocabulary  [label="sources discover-vocabulary"];
+    download             [label="mine download"];
+    evaluate             [label="evaluate"];
+    mark_minified_js     [label="sources insert-minified-js"];
+    get_repo_list        [label="mine find-repos"];
+    mutate               [label="mutate"];
+    parse_and_insert_all [label="sources parse-and-insert-all"];
+    create_partitions    [label="sources create-partitions"];
+    train                [label="train-lstm"];
+    insert_mistakes      [label="mistakes insert-all"];
+
 
     /* The rest of the nodes are entities. */
     node [shape=ellipse,style=solid,fillcolor=white,fontcolor=black];
@@ -44,8 +45,9 @@ digraph {
     { "sources(eligible_source)" } -> discover_vocabulary -> vocabulary;
     { "sources(eligible_source)", vocabulary } -> corpus2vectors -> vectors;
     { "sources(eligible_source)" } -> create_partitions -> { train_partition, validation_partition, test_partition };
-    { vectors, train_partition } -> uclearn -> ngram_models;
     { vectors, train_partition, validation_partition, vocabulary } -> train -> lstm_models;
     { test_partition, vocabulary } -> mutate -> mutants;
-    { lstm_models, ngram_models, test_partition, mutants } -> evaluate;
+    { lstm_models, test_partition, mutants, "mistakes(distance,edit)" } -> evaluate -> results;
+
+    { "mistakes(mistake)" } -> insert_mistakes -> { "mistakes(distance,edit)" };
 }
