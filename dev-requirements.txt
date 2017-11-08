@@ -1,0 +1,1 @@
+-e git+git@github.com:naturalness/unnaturalcode.git@eddie-eval#egg=unnaturalcode
