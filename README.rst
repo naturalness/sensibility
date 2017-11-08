@@ -2,8 +2,7 @@
 Sensibility
 ***********
 
-Finds and fixes syntax errors. Currently in development, and in less of
-a working stage.
+Finds and fixes syntax errors. In development.
 
     **NOTE**: The cmput680_ tag has a working proof-of-concept. Clone the
     `old repo`_ at the ``cmput680`` tag:
@@ -24,7 +23,14 @@ Requirements
 Sensibility requires:
 
  * Python 3.6.
- * The JavaScript back-end requires Node.JS >= 6.0 and ZeroMQ_
+
+For fixing Java files:
+
+ * Java 8 SE
+
+For fixing JavaScript files:
+
+ * Node.JS >= 6.0 and ZeroMQ_
    (macOS: ``brew install zeromq``; Ubuntu: ``apt install libzmq-dev``)
 
 Researchers that wish to mine more repositories or languages will require:
@@ -33,11 +39,11 @@ Researchers that wish to mine more repositories or languages will require:
 
 Researchers wishing to evaluate the current methods will require:
 
- * GNU shuf (macOS: `brew install coreutils`)
- * GNU parallel (macOS `brew install parallel`; Ubuntu: `apt install parallel`)
+ * UnnaturalCode_
 
 .. _Redis: https://redis.io/
 .. _ZeroMQ: http://zeromq.org/
+.. _UnnaturalCode: https://github.com/naturalness/unnaturalcode/tree/eddie-eval
 
 
 Install
@@ -49,42 +55,31 @@ Activate a virtualenv, if that's your thing. Then,
 
     pip install -e .
 
-> **TODO**: This section is out-dated! Consult the author.
-
-Download the `model data`_ and copy the ``*.h5`` and ``*.json`` files into the
-directory you'll run the tool.
-
-.. _model data: https://archive.org/details/lstm-javascript-tiny
-
-
 Usage
-=====
+-----
 
-> **TODO**: This section is out-dated! Consult the author.
+Once installed, there's one entry point to all the scripts and utilities included::
 
-To suggest a fix for a file:
+   sensibility <SUBCOMMAND>
 
-::
+Most subcommands require the specification of a language, with the `-l <LANGUAGE>` option before the subcommand.
 
-    $ bin/sensibility my-incorrect-file.js
-    my-incorrect-file.js:1:1: try inserting a '{'
-        if (name)
-                  ^
-                  {
+For example, to train Java models::
 
-To dump the model's token-by-token consensus about the file:
-
-::
-
-    $ bin/sensibility --dump my-incorrect-file.js
+   sensibility -l java train-list --help
 
 
 Development
 ===========
 
-To run the scripts in bin, do this::
+The following diagram visualizes the data flow,
+starting from the name of the language you wish to train,
+all the way to the evaluation.
 
-    pip install -e .
+.. image:: https://raw.githubusercontent.com/naturalness/sensibility/master/docs/dependencies.png
+    :width: 100%
+    :align: center
+
 
 To run the tests, install tox_ using Pip, then run tox.
 
@@ -97,25 +92,24 @@ Mining repositories
  1. You must create a GitHub OAuth token and save it as `.token` in the
     repository root.
  2. Run `redis-server` on localhost on the default port.
- 3. Use `bin/get-repo-list` to get a list of the top ~10000 repos::
+ 3. Use `sensibility mine find-repos` to get a list of the top ~10000 repos::
 
-     bin/get-repo-list javascript | sort -u > javascript-repos.txt
+     sensibility mine find-repos javascript | sort -u > javascript-repos.txt
 
  4. Use `bin/enqueue-repo` to enqueue repos to download::
 
-     bin/enqueue-repo < javascript-repos.txt
+     sensibility mine enqueue-repo < javascript-repos.txt
 
- 5. Start one or more downloaders. These will dequeue from Redis and download
-    sources::
+ 5. Start one or more downloaders. These will dequeue a repo from the running Redis server and download sources::
 
-     bin/download
+     sensibility mine download
 
-The following diagram the data flow, starting from the name of the language you
-wish to train, all the way to the mutant evaluation.
 
-.. image:: https://raw.githubusercontent.com/naturalness/sensibility/master/docs/dependencies.png
-    :width: 100%
-    :align: center
+Evaluation
+----------
+
+Type `make experiments` to train all of the models and evaluate each one.
+See `libexec/experiments` for more details.
 
 
 License
