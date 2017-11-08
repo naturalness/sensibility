@@ -75,8 +75,8 @@ with tempfile.TemporaryDirectory() as result_dir_name:
     # Setup the symlinks to the best models.
     forwards_model = path_to_best_model(args.models.with_suffix('.forwards'))
     backwards_model = path_to_best_model(args.models.with_suffix('.backwards'))
-    (result_dir / 'forwards.hdf5').symlink_to(forwards_model)
-    (result_dir / 'backwards.hdf5').symlink_to(backwards_model)
+    (result_dir / 'forwards.hdf5').symlink_to(forwards_model.resolve())
+    (result_dir / 'backwards.hdf5').symlink_to(backwards_model.resolve())
 
     # Invoke UnnaturalCode
     # XXX: Override sys.argv so that JavaValidation's main works
@@ -89,7 +89,7 @@ with tempfile.TemporaryDirectory() as result_dir_name:
         '--keep-corpus',
         '--mutation', 'null',
         '--pair-file-limit', str(args.mistakes),
-        '--pair-file-list', str(args.mistake_path),
+        '--pair-file-list', str(args.mistakes_list),
         '--output-dir', str(result_dir)
     ]
 

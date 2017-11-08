@@ -22,4 +22,6 @@
 
 folder="${1:?Must provide folder}"
 
-find "$folder" -name 'before.java' -exec realpath {} \;
+# XXX: Not resilient to newlines in file names.
+find "$folder" -name 'after.java' \
+	| awk '{printf("%s/%s\n", "'"$PWD"'", $0)}'
