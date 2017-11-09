@@ -49,7 +49,7 @@ def get_sqlite3_path() -> str:
     Path to the SQLite3 database for the active language.
     """
     # Delegate to _paths.
-    return get_sources_path()
+    return str(get_sources_path())
 
 
 @lru_cache(maxsize=1)

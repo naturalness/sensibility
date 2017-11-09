@@ -76,7 +76,7 @@ def get_mistakes_path() -> Path:
 
 
 def get_lstm_path(direction: str, partition: int) -> Path:
-    warnings.warn(f"Use models in {REPOSITORY_ROOT/models!s}", DeprecationWarning)
+    warnings.warn(f"Use models in {REPOSITORY_ROOT/'models'!s}", DeprecationWarning)
     return get_evaluation_dir() / 'models' / f'{language.id}-{direction}{partition}.hdf5'
 
 
