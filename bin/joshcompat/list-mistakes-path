@@ -22,6 +22,9 @@
 
 folder="${1:?Must provide folder}"
 
-# XXX: Not resilient to newlines in file names.
-find "$folder" -name 'after.java' \
-	| awk '{printf("%s/%s\n", "'"$PWD"'", $0)}'
+# This query with the '/' separator will build the absoulte path to the mistakes!
+# XXX: susceptible to SQL injection, but bah!
+sqlite3 -separator '/' "$(sensibility -l java where mistakes)" <<SQL
+    SELECT '$PWD', '$folder', source_file_id, before_id, "after.java"
+      FROM edit
+SQL
