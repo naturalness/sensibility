@@ -25,81 +25,73 @@ from sensibility.sentences import forward_sentences, backward_sentences
 from sensibility.language.javascript import javascript
 
 
-FILE = list(javascript.vocabularize(r'''
-    (name) => console.log(`Hello, ${name}!`);
-'''))
-
-
-assert len(FILE) == 13
-
-
-def test_forward_sentences(vocabulary) -> None:
+def test_forward_sentences(test_file, vocabulary) -> None:
     """
     Test creating padded forward sentences.
     """
     n = 10  # sentence length.
     m = n - 1  # context length.
 
-    sentences = list(forward_sentences(FILE, context=m, adjacent=1))
+    sentences = list(forward_sentences(test_file, context=m, adjacent=1))
 
     # Even with padding, there should be the same number of sentences as there
     # are tokens in the original vector.
-    assert len(sentences) == len(FILE)
+    assert len(sentences) == len(test_file)
 
     # Test each sentence generated.
     for i, (context, adjacent) in enumerate(sentences):
         assert len(context) == m
-        assert adjacent == FILE[i]
+        assert adjacent == test_file[i]
 
     # The first context should be a context with all padding.
     context, adjacent = sentences[0]
     assert all(index == vocabulary.start_token_index for index in context)
 
     # Try using ONLY sentence length. Should get the same result.
-    assert list(forward_sentences(FILE, sentence=n)) == sentences
+    assert list(forward_sentences(test_file, sentence=n)) == sentences
 
 
-def test_forward_sentences_too_big(vocabulary) -> None:
+def test_forward_sentences_too_big(test_file, vocabulary) -> None:
     """
     test for when sentence size is LARGER than file
     """
     n = 20
-    sentences = list(forward_sentences(FILE, sentence=n))
+    sentences = list(forward_sentences(test_file, sentence=n))
 
     # There should be the same number of sentences as tokens.
-    assert len(sentences) == len(FILE)
+    assert len(sentences) == len(test_file)
 
     # The first context should be a context with all padding.
     context, adjacent = sentences[0]
-    assert adjacent == FILE[0]
-    assert len(context) == n -1
+    assert adjacent == test_file[0]
+    assert len(context) == n - 1
     assert all(index == vocabulary.start_token_index for index in context)
 
     # Check the last sentence
     context, adjacent = sentences[-1]
-    assert adjacent == FILE[-1]
+    assert adjacent == test_file[-1]
     # It should still have padding!
-    padding = context[:-len(FILE) - 1]
+    padding = context[:-len(test_file) - 1]
     assert len(padding) > 0
     assert all(index == vocabulary.start_token_index for index in padding)
 
 
-def test_backward_sentences(vocabulary) -> None:
+def test_backward_sentences(test_file, vocabulary) -> None:
     """
     Test creating padded backwards sentences.
     """
     n = 10  # sentence length.
     m = n - 1  # context length.
 
-    sentences = list(backward_sentences(FILE, context=m, adjacent=1))
+    sentences = list(backward_sentences(test_file, context=m, adjacent=1))
 
     # Even with padding, there should be the same number of sentences as there
     # are tokens in the original vector.
-    assert len(sentences) == len(FILE)
+    assert len(sentences) == len(test_file)
 
     # Test each sentence generated.
     for i, (context, adjacent) in enumerate(sentences):
-        assert adjacent == FILE[i]
+        assert adjacent == test_file[i]
         assert len(context) == m, str(i) + ': ' + vocabulary.to_text(adjacent)
 
     # The first context should be all NON padding!
@@ -111,11 +103,11 @@ def test_backward_sentences(vocabulary) -> None:
     assert all(index == vocabulary.end_token_index for index in context)
 
     # Try using ONLY sentence length. Should get the same result.
-    assert list(backward_sentences(FILE, sentence=n)) == sentences
+    assert list(backward_sentences(test_file, sentence=n)) == sentences
 
 
-def test_both_sentences():
-    args = (FILE,)
+def test_both_sentences(test_file):
+    args = (test_file,)
     kwargs = dict(sentence=10)
     combined = zip(forward_sentences(*args, **kwargs),
                    backward_sentences(*args, **kwargs))
@@ -123,6 +115,18 @@ def test_both_sentences():
     # Check if both adjacent are THE SAME.
     for (_, t1), (_, t2) in combined:
         assert t1 == t2
+
+
+@pytest.fixture
+def test_file():
+    """
+    Parses a sample file with exactly 13 tokens!
+    """
+    entries = list(javascript.vocabularize(r'''
+        (name) => console.log(`Hello, ${name}!`);
+    '''))
+    assert len(entries) == 13
+    return entries
 
 
 @pytest.fixture
