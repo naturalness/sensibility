@@ -26,7 +26,7 @@ from functools import lru_cache
 import redis
 import github3
 
-from ..language import language
+from .._paths import get_sources_path
 
 
 __all__ = [
@@ -48,7 +48,8 @@ def get_sqlite3_path() -> str:
     """
     Path to the SQLite3 database for the active language.
     """
-    return f'{language.id}-sources.sqlite3'
+    # Delegate to _paths.
+    return get_sources_path()
 
 
 @lru_cache(maxsize=1)

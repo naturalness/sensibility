@@ -22,7 +22,6 @@
 
 set -e
 
-language="$(sensibility language-id)"
-sqlite3 "${language}-sources.sqlite3" <<SQL
+sqlite3 "$(sensibility where sources)" <<SQL
     SELECT hash FROM eligible_source;
 SQL

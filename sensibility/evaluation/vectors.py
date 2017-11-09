@@ -25,7 +25,7 @@ from typing import Iterator, MutableMapping, Optional, Union
 
 from ..lexical_analysis import Lexeme
 from ..source_vector import SourceVector
-from .._paths import EVALUATION_DIR
+from .._paths import get_vectors_path
 
 
 SCHEMA = """
@@ -102,6 +102,5 @@ class Vectors(MutableMapping[str, SourceVector]):
 
 
 def determine_from_language() -> sqlite3.Connection:
-    from ..language import language
-    path = os.fspath(EVALUATION_DIR / language.id / f'vectors.sqlite3')
+    path = os.fspath(get_vectors_path())
     return sqlite3.connect(path)

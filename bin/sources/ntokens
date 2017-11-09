@@ -25,8 +25,9 @@ Usage:
 
 import sqlite3
 from sensibility.miner.util import filehashes
+from sensibility._paths import get_sources_path
 
-conn = sqlite3.connect('java-sources.sqlite3')
+conn = sqlite3.connect(str(get_sources_path()))
 
 # Optimization: Create a temporary table with the subset. This speeds up
 # things considerably.

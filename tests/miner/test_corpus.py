@@ -22,6 +22,7 @@ import pytest  # type: ignore
 from sqlalchemy import create_engine  # type: ignore
 from sqlalchemy.sql import select  # type: ignore
 
+from sensibility._paths import get_sources_path
 from sensibility.language import SourceSummary
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.models import (
@@ -246,12 +247,8 @@ def test_real_database():
     """
     Connects to the real, actual, database, and ENSURES all the files exists
     and have sources.
-
-    The database MUST be in the following directory:
-
-    ../data/javascript-source.sqlite3
     """
-    path = _DIRECTORY.parent / 'data' / 'javascript-sources.sqlite3'
+    path = get_sources_path()
     assert path.exists()
     corpus = Corpus.connect_to(path)
     assert len(corpus) >= 400_000

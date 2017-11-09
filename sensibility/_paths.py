@@ -19,6 +19,8 @@
 Paths for internal use.
 """
 
+import warnings
+
 from sensibility.language import language
 from pathlib import Path
 
@@ -45,6 +47,14 @@ def get_evaluation_dir() -> Path:
     return EVALUATION_DIR / language.id
 
 
+def get_sources_path() -> Path:
+    return get_evaluation_dir() / 'sources.sqlite3'
+
+
+def get_vectors_path() -> Path:
+    return get_evaluation_dir() / 'vectors.sqlite3'
+
+
 def get_partitions_path() -> Path:
     return get_evaluation_dir() / 'partitions'
 
@@ -66,12 +76,10 @@ def get_mistakes_path() -> Path:
 
 
 def get_lstm_path(direction: str, partition: int) -> Path:
+    warnings.warn(f"Use models in {REPOSITORY_ROOT/models!s}", DeprecationWarning)
     return get_evaluation_dir() / 'models' / f'{language.id}-{direction}{partition}.hdf5'
 
 
 def get_cache_path() -> Path:
+    warnings.warn(f"Don't ever use this again", DeprecationWarning)
     return get_evaluation_dir() / 'models' / f'{language.id}-predictions.sqlite3'
-
-
-def get_vectors_path() -> Path:
-    return get_evaluation_dir() / 'vectors.sqlite3'

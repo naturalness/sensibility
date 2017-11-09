@@ -17,12 +17,11 @@
 # Prints hashes of files that have been downloaded, but have not been parsed.
 # 
 # Usage:
-#    list-unparsed-sources > filehashes
+#    sensibility sources list-unparsed > filehashes
 
 set -e
 
-language=$("$(dirname "$0")"/language-id "$@")
-sqlite3 "${language}-sources.sqlite3" <<SQL
+sqlite3 "$(sensibility where sources)" <<SQL
     SELECT hash FROM source_file
         EXCEPT SELECT hash from source_summary
         EXCEPT SELECT hash FROM failure;
