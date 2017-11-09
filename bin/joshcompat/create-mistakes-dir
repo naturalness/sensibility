@@ -26,14 +26,14 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from sensibility._paths import MISTAKE_FILE
+from sensibility._paths import get_mistakes_path
 
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('destination', type=Path, help="where to dump the files")
 args = parser.parse_args()
 
-conn = sqlite3.connect(str(MISTAKE_FILE))
+conn = sqlite3.connect(str(get_mistakes_path()))
 
 # Creates a BRAND NEW directory as the destination.
 # Intentionally do not catch an error it the directory already exists.

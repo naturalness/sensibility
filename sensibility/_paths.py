@@ -39,7 +39,6 @@ EVALUATION_DIR = REPOSITORY_ROOT / 'evaluation'
 SOURCES_PATH = DATA_DIR / 'javascript-sources.sqlite3'
 VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'
 MUTATIONS_PATH = DATA_DIR / 'java-mutations.sqlite3'
-MISTAKE_FILE = REPOSITORY_ROOT / 'java-mistakes.sqlite3'
 
 
 def get_evaluation_dir() -> Path:
@@ -63,7 +62,7 @@ def get_test_set_path(partition: int) -> Path:
 
 
 def get_mistakes_path() -> Path:
-    return get_evaluation_dir() / f'{language.id}-mistakes.sqlite3'
+    return get_evaluation_dir() / 'mistakes.sqlite3'
 
 
 def get_lstm_path(direction: str, partition: int) -> Path:

@@ -173,15 +173,6 @@ def test_edit_line(c) -> None:
     assert fix_event.old_token is None
 
 
-@pytest.mark.skip(reason='Does an unnecessary database access')
-def test_get_source() -> None:
-    import sqlite3
-    from sensibility._paths import MISTAKE_FILE
-    m = Mistakes(sqlite3.connect(str(MISTAKE_FILE)))
-    mistake = next(iter(m))
-    assert 0 < tokenwise_distance(mistake.before, mistake.after)
-
-
 @given(text(), text())
 def test_dependency(a, b):
     """
