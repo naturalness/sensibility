@@ -27,12 +27,12 @@ import logging
 from tqdm import tqdm
 from sensibility.evaluation.mistakes import Mistakes
 from sensibility.evaluation.distance import TokenDistance
-from sensibility._paths import MISTAKE_FILE
+from sensibility._paths import get_mistakes_path
 
 logger = logging.getLogger(sys.argv[0])
 logging.basicConfig(filename=f"insert-edit-and-fix.log")
 
-conn = sqlite3.connect(str(MISTAKE_FILE))
+conn = sqlite3.connect(str(get_mistakes_path()))
 # Make writes super speedy by disregarding durability.
 conn.execute('PRAGMA synchronous = OFF')
 mistakes = Mistakes(conn)
