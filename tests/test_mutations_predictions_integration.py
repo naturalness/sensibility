@@ -15,7 +15,6 @@ from sensibility import Insertion, Deletion, Substitution
 from sensibility.miner.corpus import Corpus
 from sensibility.source_file import SourceFile, Insertion, Deletion, Substitution
 from sensibility.evaluation.vectors import Vectors
-from sensibility.evaluation.evaluate import Predictions
 from sensibility.mutations import Mutations
 from sensibility._paths import MODEL_DIR, VECTORS_PATH, SOURCES_PATH
 
@@ -46,7 +45,7 @@ def exists(index):
     try:
         SourceFile.vectors[index]
         return True
-    except:
+    except KeyError:
         return False
 
 
@@ -58,7 +57,6 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
     """
 
     mutations = Mutations(Path(':memory:'))
-    test_predictions = False
 
     # Create a random mutation and apply it.
     source_vector = source_file.vector
@@ -71,15 +69,6 @@ def test_mutations_and_predictions(source_file, edit_class, seed):
 
         mutations.program = source_file
         mutations.add_mutant(mutation)
-
-        if test_predictions:
-            predictions = Predictions(0, filename=Path(':memory:'))
-            # Predict on the mutated file, regardless of whether the file is
-            # syntactically okay or not.
-            with NamedTemporaryFile(mode='w+', encoding='UTF-8') as mutant_file:
-                mutation.apply(source_vector).print(file=mutant_file)
-                mutant_file.flush()
-                predictions.predict(mutant_file.name)
 
         assert len(mutations) == 1
         stored_source_file, stored_mutation = next(iter(mutations))
