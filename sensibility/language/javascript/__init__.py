@@ -46,10 +46,6 @@ class JavaScript(Language):
     def tokenize(self, source: Union[str, bytes, IO[bytes]]) -> Sequence[Token]:
         """
         Tokenizes the given JavaScript file.
-
-        >>> tokens = javascript.tokenize('import $')
-        >>> len(tokens)
-        2
         """
 
         with SafeSourceFile(source) as source_file:
