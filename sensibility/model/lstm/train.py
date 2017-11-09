@@ -450,6 +450,5 @@ def configure_gpu(prefered: Optional[int]) -> None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
 
 
-
 if __name__ == '__main__':
     main()

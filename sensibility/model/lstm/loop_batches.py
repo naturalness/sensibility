@@ -36,6 +36,9 @@ from sensibility.language import language
 Batch = Tuple[np.ndarray, np.ndarray]
 
 
+# TODO: Inherit from Kera's Sequence?
+# https://keras.io/utils/#sequence
+
 class LoopBatchesEndlessly(Iterable[Batch]):
     """
     Loops batches of vectors endlessly from the given filehashes.
