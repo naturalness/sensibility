@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-import pytest  # type: ignore
+import pytest
+import shutil
 
 from sensibility import Language
 from sensibility.language.javascript import javascript
@@ -9,6 +10,14 @@ from sensibility import Position
 
 from location_factory import LocationFactory
 
+
+# Only run tests in this module if Node.js is installed.
+pytestmark = pytest.mark.skipif(
+    not (shutil.which('node') or shutil.which('nodejs')),
+    reason="Requires Node.JS"
+)
+
+# Use this as as decorator to mark slow tests.
 slow = pytest.mark.skipif(
         not pytest.config.getoption("--runslow"),
         reason="need --runslow option to run"
@@ -65,7 +74,7 @@ def test_vocabularize() -> None:
         # See: Parser#matchContextualKeyword() in
         # https://github.com/jquery/esprima/blob/master/src/parser.ts
         (loc.space().across(len("from")),   '<IDENTIFIER>'),
-        #(loc.space().across(len("from")),   'from'),
+        # (loc.space().across(len("from")),   'from'),
 
         (loc.space().across(len("'-_-'")),  '<STRING>'),
         (loc.across(1),                    ';'),
@@ -117,4 +126,3 @@ def test_round_trip():
         # TODO: do not rely on id_to_token to make Token instances for you.
         entry_token = id_to_token(entry_id)
         assert stringify_token(entry_token) == entry_text
-
