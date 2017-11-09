@@ -40,13 +40,15 @@ class Server:
     Provides a convenient interface for accessing the Esprima interface
     server.
 
-    All that's required is a the path of the UNIX domain socket where the
+    All that's required is the path of the UNIX domain socket where the
     already instantiated server is running.
     """
 
     def __init__(self, socket_path: Path, process) -> None:
         context = zmq.Context()
         self._socket = context.socket(zmq.REQ)
+        # Wait for a maximum of 5 seconds before forfeiting the request.
+        self._socket.RCVTIMEO = 5000
         self._socket.connect(f"ipc://{socket_path}")
         self._process = process
 
