@@ -30,19 +30,12 @@ T = TypeVar('T')
 Sentence = Tuple[Sequence[T], T]
 
 
-def forward_sentences(
-        vector: Sequence[T],
-        context: int=None,
-        adjacent: int=1,
-        sentence: int=20
-) -> Iterable[Sentence]:
+def forward_sentences(vector: Sequence[T], context: int) -> Iterable[Sentence]:
     """
     Yield "sentences" which consist of a context, and the token immediately to
     the RIGHT of the context (c.f., backward_sentences()).
     """
     from .abram import at_least
-    if context is None:
-        context = sentence - adjacent
 
     padding_token = language.vocabulary.start_token_index
 
@@ -61,18 +54,11 @@ def forward_sentences(
             yield tuple(real_context), element
 
 
-def backward_sentences(
-        vector: Sequence[T],
-        context: int=None,
-        adjacent: int=1,
-        sentence: int=20
-) -> Iterable[Sentence]:
+def backward_sentences(vector: Sequence[T], context: int) -> Iterable[Sentence]:
     """
     Yield "sentences" which consist of a context, and the token immediately to
     the LEFT of the context (c.f., forward_sentences()).
     """
-    if context is None:
-        context = sentence - adjacent
 
     padding_token = language.vocabulary.end_token_index
     vector_length = len(vector)

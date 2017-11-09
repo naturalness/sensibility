@@ -32,7 +32,7 @@ def test_forward_sentences(test_file, vocabulary) -> None:
     n = 10  # sentence length.
     m = n - 1  # context length.
 
-    sentences = list(forward_sentences(test_file, context=m, adjacent=1))
+    sentences = list(forward_sentences(test_file, context=m))
 
     # Even with padding, there should be the same number of sentences as there
     # are tokens in the original vector.
@@ -47,16 +47,13 @@ def test_forward_sentences(test_file, vocabulary) -> None:
     context, adjacent = sentences[0]
     assert all(index == vocabulary.start_token_index for index in context)
 
-    # Try using ONLY sentence length. Should get the same result.
-    assert list(forward_sentences(test_file, sentence=n)) == sentences
-
 
 def test_forward_sentences_too_big(test_file, vocabulary) -> None:
     """
     test for when sentence size is LARGER than file
     """
     n = 20
-    sentences = list(forward_sentences(test_file, sentence=n))
+    sentences = list(forward_sentences(test_file, context=n))
 
     # There should be the same number of sentences as tokens.
     assert len(sentences) == len(test_file)
@@ -64,7 +61,7 @@ def test_forward_sentences_too_big(test_file, vocabulary) -> None:
     # The first context should be a context with all padding.
     context, adjacent = sentences[0]
     assert adjacent == test_file[0]
-    assert len(context) == n - 1
+    assert len(context) == n
     assert all(index == vocabulary.start_token_index for index in context)
 
     # Check the last sentence
@@ -83,7 +80,7 @@ def test_backward_sentences(test_file, vocabulary) -> None:
     n = 10  # sentence length.
     m = n - 1  # context length.
 
-    sentences = list(backward_sentences(test_file, context=m, adjacent=1))
+    sentences = list(backward_sentences(test_file, context=m))
 
     # Even with padding, there should be the same number of sentences as there
     # are tokens in the original vector.
@@ -102,13 +99,10 @@ def test_backward_sentences(test_file, vocabulary) -> None:
     context, adjacent = sentences[-1]
     assert all(index == vocabulary.end_token_index for index in context)
 
-    # Try using ONLY sentence length. Should get the same result.
-    assert list(backward_sentences(test_file, sentence=n)) == sentences
-
 
 def test_both_sentences(test_file):
     args = (test_file,)
-    kwargs = dict(sentence=10)
+    kwargs = dict(context=9)
     combined = zip(forward_sentences(*args, **kwargs),
                    backward_sentences(*args, **kwargs))
 
