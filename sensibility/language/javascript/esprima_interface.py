@@ -44,10 +44,11 @@ class Server:
     already instantiated server is running.
     """
 
-    def __init__(self, socket_path: Path) -> None:
+    def __init__(self, socket_path: Path, process) -> None:
         context = zmq.Context()
-        socket = self._socket = context.socket(zmq.REQ)
-        socket.connect(f"ipc://{socket_path}")
+        self._socket = context.socket(zmq.REQ)
+        self._socket.connect(f"ipc://{socket_path}")
+        self._process = process
 
     def check_syntax(self, source: bytes) -> bool:
         return self._communicate(b'c', source)
@@ -58,11 +59,20 @@ class Server:
     def exit(self) -> None:
         response = self._communicate(b'x')
         assert response is True
+        # Remove this reference right here to:
+        #  - prevent wonkiness when shutting down
+        #  - cause errors if a future request is made.
+        del self._process
 
     def _communicate(self, type_code: bytes, payload: bytes=None) -> Any:
+        self._ensure_alive()
         self._socket.send(type_code + payload if payload else type_code)
         response = self._socket.recv()
         return json.loads(response)
+
+    def _ensure_alive(self) -> None:
+        if self._process.poll() is not None:
+            raise RuntimeError('Server process is dead.')
 
 
 # A global instance of the parse server.
@@ -85,12 +95,12 @@ def start() -> Server:
     global _instance
     argv0 = str(here / 'esprima-interface')
     socket_path = Path(f'/tmp/esprima-server.{os.getpid()}')
-    subprocess.Popen([argv0, '--server', f"ipc://{socket_path}"],
-                     stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL,
-                     shell=False)
+    proc = subprocess.Popen([argv0, '--server', f"ipc://{socket_path}"],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            shell=False)
 
-    _instance = Server(socket_path)
+    _instance = Server(socket_path, proc)
 
     @atexit.register
     def cleanup():
