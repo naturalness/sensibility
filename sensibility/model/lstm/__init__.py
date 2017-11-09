@@ -128,7 +128,7 @@ class OneHotter:
         """
         dim = (len(vector), self.context_length, self.vocabulary_size)
         xs: np.ndarray[bool] = np.zeros(dim, dtype=np.bool)
-        sentences: Iterable[Sentence] = sentenizer(vector)
+        sentences: Iterable[Sentence] = sentenizer(vector, context=self.context_length)
 
         # Fill in the matrix, sentence-by-sentence.
         for index, (sentence, _adjacent_token) in enumerate(sentences):
