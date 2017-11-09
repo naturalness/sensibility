@@ -14,11 +14,11 @@ digraph {
     parse_and_insert_all [label="sources parse-and-insert-all"];
     create_partitions    [label="sources create-partitions"];
     train                [label="train-lstm"];
-    insert_mistakes      [label="mistakes insert-all"];
+    insert_mistakes      [label="mistakes insert-edit-and-fix"];
 
 
     /* The rest of the nodes are entities. */
-    node [shape=ellipse,style=solid,fillcolor=white,fontcolor=black];
+    node [shape=ellipse,style=solid,fillcolor=white,fontcolor=black,fontname="Helvetica"];
 
     /* Notation:
 
