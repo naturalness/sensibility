@@ -70,6 +70,7 @@ CREATE TABLE model(
 );
 
 CREATE TABLE result(
+    model_id    TEXT,
     {RESULTS_FIELDS},
     PRIMARY KEY (id)
 );
@@ -86,7 +87,7 @@ def insert_model(model_dir: Path) -> str:
     del metadata['direction']
     # SQLite won't want to insert a list into a column, so
     # map "hidden layers" into a categorical variable.
-    metadata['hidden_layers'] = ','.join(metadata['hidden_layers'])
+    metadata['hidden_layers'] = ','.join(str(nodes) for nodes in metadata['hidden_layers'])
 
     # Ensure all the keys are valid.
     assert all(is_sqlite_id(key) for key in metadata.keys())
@@ -94,9 +95,10 @@ def insert_model(model_dir: Path) -> str:
     keys = list(metadata.keys())
     columns = ', '.join(keys)
     binds = ', '.join(f":{key}" for key in keys)
-    conn.execute(f'''
-        INSERT INTO model ({columns}) VALUES ({binds});
-    ''', metadata)
+    with conn:
+        conn.execute(f'''
+            INSERT INTO model ({columns}) VALUES ({binds});
+        ''', metadata)
 
     return metadata['id']
 
@@ -110,11 +112,12 @@ def insert_results(model_id: str, result_db: Path) -> None:
     ''', dict(db_path=db_path))
 
     # Transfer everything over.
-    conn.execute('''
-        INSERT INTO result (model_id, {RESULTS_FIELDS})
-        SELECT :model_id, {RESULTS_FIELDS}
-        FROM other.results
-    ''', dict(model_id=model_id))
+    with conn:
+        conn.execute(f'''
+            INSERT INTO result (model_id, {RESULTS_FIELDS})
+            SELECT :model_id, {RESULTS_FIELDS}
+            FROM other.results
+        ''', dict(model_id=model_id))
 
     conn.execute('''
         DETACH DATABASE other
@@ -139,13 +142,17 @@ except FileNotFoundError:
     pass
 
 conn = sqlite3.connect(os.fspath(args.output))
-conn.executescript(SCHEMA)
+with conn:
+    conn.executescript(SCHEMA)
 
 for model_dir in args.models.glob('*.forwards'):
     if not model_dir.is_dir():
         print("Skipping weird file:", model_dir)
+        continue
     model_id = insert_model(model_dir)
     # TODO: HARDCODED ONLY FOR DUAL RESULTS!
     results_db = args.results / f"fix-dual-{model_id}.sqlite3"
-    assert results_db.exists()
+    if not results_db.exists():
+        print("Skipping results of", results_db)
+        continue
     insert_results(model_id, results_db)
