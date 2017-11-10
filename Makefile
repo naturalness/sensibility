@@ -25,6 +25,9 @@ include experiments.mk
 experiments.mk: libexec/experiments
 	$< > $@
 
+results.sqlite3:
+	sensibility merge-results --models models/java/ --results evaluation/java/results/ results.sqlite3
+
 ################################################################################
 
 # When a language is active (see bin/shell),
