@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+# Copyright 2017 Eddie Antonio Santos <easantos@ualberta.ca>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Merges all of the results and model metadata into one big SQLite3 database.
+
+Usage:
+
+    sensibility merge-results --models MODELS_DIR --results RESULTS_DIR MERGED.sqlite3
+"""
+
+import argparse
+import json
+import os
+import re
+import sqlite3
+from pathlib import Path
+
+RESULTS_FIELDS = (
+    'id, mutation, good_file, bad_file, iteration, tool, change_operation,'
+    'good_token_type, good_token_value, bad_token_type, bad_token_value,'
+    'change_token_index, change_start_line, change_start_col, change_end_line,'
+    'change_end_col, line_location_rank, line_location_index,'
+    'line_location_start_line, line_location_start_col, line_location_end_line,'
+    'line_location_end_col, line_location_token_type,'
+    'line_location_token_value, line_location_operation, window_location_rank,'
+    'window_location_index, window_location_start_line,'
+    'window_location_start_col, window_location_end_line,'
+    'window_location_end_col, window_location_token_type,'
+    'window_location_token_value, window_location_operation,'
+    'exact_location_rank, exact_location_index, exact_location_start_line,'
+    'exact_location_start_col, exact_location_end_line, exact_location_end_col,'
+    'exact_location_token_type, exact_location_token_value,'
+    'exact_location_operation, valid_fix_rank, valid_fix_index,'
+    'valid_fix_start_line, valid_fix_start_col, valid_fix_end_line,'
+    'valid_fix_end_col, valid_fix_token_type, valid_fix_token_value,'
+    'valid_fix_operation, true_fix_rank, true_fix_index, true_fix_start_line,'
+    'true_fix_start_col, true_fix_end_line, true_fix_end_col,'
+    'true_fix_token_type, true_fix_token_value, true_fix_operation'
+)
+
+# The schema for the current models.
+SCHEMA = f"""
+CREATE TABLE model(
+    id                  TEXT PRIMARY KEY,
+    partition           INT,
+    training_set_size   INT,
+    validation_set_size INT,
+    hidden_layers       TEXT,
+    context_length      TEXT,
+    batch_size          INT,
+    dropout             INT,
+    optimizer           TEXT,
+    learning_rate       FLOAT,
+    patience            INT
+);
+
+CREATE TABLE result(
+    {RESULTS_FIELDS},
+    PRIMARY KEY (id)
+);
+"""
+
+
+def insert_model(model_dir: Path) -> str:
+    with open(model_dir / 'manifest.json') as manifest:
+        metadata = json.load(manifest)
+    # Add the ID, so that we can join later.
+    metadata['id'] = model_dir.stem
+    # Since this covers both forwards and backwards directions,
+    # this key is not needed
+    del metadata['direction']
+    # SQLite won't want to insert a list into a column, so
+    # map "hidden layers" into a categorical variable.
+    metadata['hidden_layers'] = ','.join(metadata['hidden_layers'])
+
+    # Ensure all the keys are valid.
+    assert all(is_sqlite_id(key) for key in metadata.keys())
+    # Insert each key in the dictionary, in order.
+    keys = list(metadata.keys())
+    columns = ', '.join(keys)
+    binds = ', '.join(f":{key}" for key in keys)
+    conn.execute(f'''
+        INSERT INTO model ({columns}) VALUES ({binds});
+    ''', metadata)
+
+    return metadata['id']
+
+
+def insert_results(model_id: str, result_db: Path) -> None:
+    # To ensure we attach to the right database, we'll attach to the ABSOLUTE
+    # path of the database.
+    db_path = os.fspath(result_db.resolve())
+    conn.execute('''
+        ATTACH DATABASE :db_path AS other
+    ''', dict(db_path=db_path))
+
+    # Transfer everything over.
+    conn.execute('''
+        INSERT INTO result (model_id, {RESULTS_FIELDS})
+        SELECT :model_id, {RESULTS_FIELDS}
+        FROM other.results
+    ''', dict(model_id=model_id))
+
+    conn.execute('''
+        DETACH DATABASE other
+    ''')
+
+
+def is_sqlite_id(text):
+    return re.match('[a-z][a-z_]*$', text)
+
+
+parser = argparse.ArgumentParser(__doc__)
+parser.add_argument('--models', type=Path, required=True)
+parser.add_argument('--results', type=Path, required=True)
+parser.add_argument('output', type=Path)
+args = parser.parse_args()
+
+
+# Delete the existing results database if it exists.
+try:
+    args.output.unlink()
+except FileNotFoundError:
+    pass
+
+conn = sqlite3.connect(os.fspath(args.output))
+conn.executescript(SCHEMA)
+
+for model_dir in args.models.glob('*.forwards'):
+    if not model_dir.is_dir():
+        print("Skipping weird file:", model_dir)
+    model_id = insert_model(model_dir)
+    # TODO: HARDCODED ONLY FOR DUAL RESULTS!
+    results_db = args.results / f"fix-dual-{model_id}.sqlite3"
+    assert results_db.exists()
+    insert_results(model_id, results_db)
