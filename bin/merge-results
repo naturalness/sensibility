@@ -88,7 +88,7 @@ def best_loss_of(direction: str, model_dir: Path) -> float:
     ("forwards", or "backwards").
     """
     actual_dir = model_dir.with_suffix(f".{direction}")
-    assert actual_dir.is_dir()
+    assert actual_dir.is_dir(), str(actual_dir)
     model_name = path_to_best_model(actual_dir)
     return validation_loss(model_name)
 
@@ -173,6 +173,10 @@ for model_dir in args.models.glob('*.forwards'):
     if not model_dir.is_dir():
         print("Skipping weird file:", model_dir)
         continue
+    if not model_dir.with_suffix('.backwards').is_dir():
+        print("Skipping model without counterpart:", model_dir)
+        continue
+
     model_id = insert_model(model_dir)
     # TODO: HARDCODED ONLY FOR DUAL RESULTS!
     results_db = args.results / f"fix-dual-{model_id}.sqlite3"
