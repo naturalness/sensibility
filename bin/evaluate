@@ -22,12 +22,12 @@ Evaluate the Java models.
 # TODO: check sensibility.current_language instead of hard-coding this for Java.
 
 import argparse
-import re
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
+from sensibility.model.lstm.train import validation_loss, path_to_best_model
 from unnaturalcode.validation.languages.java import JavaValidationMain  # type: ignore
 
 
@@ -46,25 +46,6 @@ args = parser.parse_args()
 
 if args.fix != 'dual':
     raise NotImplementedError("I didn't get around to that yet.")
-
-
-def validation_loss(filename: Path) -> float:
-    """
-    >>> validation_loss(Path('models/intermediate-2.1664-00.hdf5'))
-    2.1664
-    """
-    pat = re.compile(r'intermediate-(\d+\.\d+)-')
-    return float(pat.match(filename.stem).group(1))
-
-
-def path_to_best_model(model_dir: Path) -> Path:
-    """
-    Given a directory, returns the path to the model with the lowest
-    validation loss.
-    """
-    assert model_dir.is_dir()
-    models = list(model_dir.glob('intermediate-*.hdf5'))
-    return min(models, key=validation_loss)
 
 
 # UnnaturalCode wants a directory to read models from, and to dump results

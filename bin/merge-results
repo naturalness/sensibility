@@ -30,6 +30,9 @@ import re
 import sqlite3
 from pathlib import Path
 
+from sensibility.model.lstm.train import validation_loss, path_to_best_model
+
+
 RESULTS_FIELDS = (
     'id, mutation, good_file, bad_file, iteration, tool, change_operation,'
     'good_token_type, good_token_value, bad_token_type, bad_token_value,'
@@ -66,7 +69,9 @@ CREATE TABLE model(
     dropout             INT,
     optimizer           TEXT,
     learning_rate       FLOAT,
-    patience            INT
+    patience            INT,
+    forwards_val_loss   FLOAT,
+    backwards_val_loss  FLOAT
 );
 
 CREATE TABLE result(
@@ -77,7 +82,21 @@ CREATE TABLE result(
 """
 
 
+def best_loss_of(direction: str, model_dir: Path) -> float:
+    """
+    Returns the validation loss of the best model for the given direction
+    ("forwards", or "backwards").
+    """
+    actual_dir = model_dir.with_suffix(f".{direction}")
+    assert actual_dir.is_dir()
+    model_name = path_to_best_model(actual_dir)
+    return validation_loss(model_name)
+
+
 def insert_model(model_dir: Path) -> str:
+    """
+    Inserts metadata about the dual models. Returns the model ID.
+    """
     with open(model_dir / 'manifest.json') as manifest:
         metadata = json.load(manifest)
     # Add the ID, so that we can join later.
@@ -89,8 +108,12 @@ def insert_model(model_dir: Path) -> str:
     # map "hidden layers" into a categorical variable.
     metadata['hidden_layers'] = ','.join(str(nodes) for nodes in metadata['hidden_layers'])
 
+    # Get the validation loss of the models evaluated.
+    metadata['forwards_val_loss'] = best_loss_of('forwards', model_dir)
+    metadata['backwards_val_loss'] = best_loss_of('backwards', model_dir)
+
     # Ensure all the keys are valid.
-    assert all(is_sqlite_id(key) for key in metadata.keys())
+    assert all(is_sqlite_identifier(key) for key in metadata.keys())
     # Insert each key in the dictionary, in order.
     keys = list(metadata.keys())
     columns = ', '.join(keys)
@@ -124,7 +147,8 @@ def insert_results(model_id: str, result_db: Path) -> None:
     ''')
 
 
-def is_sqlite_id(text):
+def is_sqlite_identifier(text):
+    "Return true if `text` looks like a valid identifier in SQLite3"
     return re.match('[a-z][a-z_]*$', text)
 
 

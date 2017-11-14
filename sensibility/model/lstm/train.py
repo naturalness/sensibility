@@ -317,6 +317,28 @@ class ModelDescription:
         return 'backwards' if self.backwards else 'forwards'
 
 
+def validation_loss(filename: Path) -> float:
+    """
+    Determine the validation loss encoded in a model filename.
+
+    >>> validation_loss(Path('models/intermediate-2.1664-00.hdf5'))
+    2.1664
+    """
+    import re
+    pat = re.compile(r'intermediate-(\d+\.\d+)-')
+    return float(pat.match(filename.stem).group(1))
+
+
+def path_to_best_model(model_dir: Path) -> Path:
+    """
+    Given a directory, returns the path to the model with the lowest
+    validation loss.
+    """
+    assert model_dir.is_dir()
+    models = list(model_dir.glob('intermediate-*.hdf5'))
+    return min(models, key=validation_loss)
+
+
 def layers(string: str) -> Sequence[int]:
     """
     Parse hidden layer notation.
