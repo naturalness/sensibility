@@ -418,6 +418,16 @@ def subset(xs: List[str], max_size: int) -> Set[str]:
     return set(xs[:max_size])
 
 
+def full_cores_available() -> int:
+    # TODO: use this? lscpu -pcore | sed '/^#/d' | sort -u
+    threads = os.cpu_count()
+    if threads is None:
+        raise RuntimeError("Could not determine CPU cores")
+    else:
+        # HACK FOR FOS: It's hyperthreaded so half the number of logical CPUs.
+        return threads // 2
+
+
 def configure_gpu(prefered: Optional[int]) -> None:
     """
     Configure the CUDA GPU (if applicable).
@@ -425,11 +435,12 @@ def configure_gpu(prefered: Optional[int]) -> None:
     try:
         import GPUtil  # type: ignore
     except ImportError:
-        warnings.warn("Could not import GPUtil: using prefered GPU.")
-        if prefered is None:
-            prefered = 0
+        warnings.warn("Could not import GPUtil: using default GPU.")
     else:
-        limits = dict(maxLoad=0.5, maxMemory=0.5, limit=1)
+        # Use an equal slice of the machine as the number of physical cores.
+        # This is usually the ideal number of processes before resource contention.
+        max_resources = 1. - 1. / full_cores_available()
+        limits = dict(maxLoad=max_resources, maxMemory=max_resources, limit=1)
         if prefered is None:
             # Select an available GPU.
             device_id, = GPUtil.getAvailable(order='random', **limits)
