@@ -136,9 +136,9 @@ def test_single_sentence(test_file) -> None:
         assert token == adjacent
         assert len(context) == context_len
         if position > context_len:
-            assert test_file[position - context_len:position] == context
+            assert tuple(test_file[position - context_len:position]) == context
 
-    # TODO: Test fof backwards sentences
+    # TODO: Test for backwards sentences
 
 
 @pytest.fixture

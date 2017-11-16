@@ -20,9 +20,10 @@ Yields contexts in both forwards and backwards directions.
 """
 
 from itertools import chain, repeat
-from typing import Sequence, TypeVar, Iterable, Tuple
+from typing import Sequence, TypeVar, Iterable, Tuple, Union, overload
+from sensibility.abram import at_least
 
-from .language import language
+from sensibility import current_language
 
 
 # Types
@@ -30,14 +31,53 @@ T = TypeVar('T')
 Sentence = Tuple[Sequence[T], T]
 
 
-class Sentences:
+class Sentences(Sequence[Sentence]):
+    def __init__(self, seq: Sequence[T], context_length: int) -> None:
+        self.seq = seq
+        self.context_length = context_length
+
+    def __len__(self) -> int:
+        return len(self.seq)
+
+    @overload
+    def __getitem__(self, index: int) -> Sentence:
+        pass
+
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[Sentence]:
+        pass
+
+    def __getitem__(self, index: Union[int, slice]):
+        if isinstance(index, slice):
+            raise NotImplementedError
+        else:
+            return self.make_sentence(index)
+
+    def make_sentence(self, index: int) -> Sentence:
+        raise NotImplementedError
+
     @staticmethod
     def forwards_from(seq: Sequence[T], context_length: int) -> 'ForwardSentences':
-        raise NotImplementedError
+        return ForwardSentences(seq, context_length)
 
 
 class ForwardSentences(Sentences):
-    ...
+    def make_sentence(self, index: int) -> Sentence:
+        padding_token = current_language.vocabulary.start_token_index
+        context = self.context_length
+        vector = self.seq
+        element = vector[index]
+        # Ensure the beginning of the slice is AT LEAST 0 (or else the slice
+        # will start from THE END of the vector!)
+        beginning = at_least(0, index - context)
+        real_context = vector[beginning:index]
+        # Need to add padding when index is less than the context size.
+        if index < context:
+            padding = repeat(padding_token, context - index)
+            return tuple(chain(padding, real_context)), element
+        else:
+            # All tokens come from the vector
+            return tuple(real_context), element
 
 
 class BackwardSentences(Sentences):
@@ -51,7 +91,7 @@ def forward_sentences(vector: Sequence[T], context: int) -> Iterable[Sentence]:
     """
     from .abram import at_least
 
-    padding_token = language.vocabulary.start_token_index
+    padding_token = current_language.vocabulary.start_token_index
 
     # Generate a sentence for each element in the vector.
     for i, element in enumerate(vector):
@@ -74,7 +114,7 @@ def backward_sentences(vector: Sequence[T], context: int) -> Iterable[Sentence]:
     the LEFT of the context (c.f., forward_sentences()).
     """
 
-    padding_token = language.vocabulary.end_token_index
+    padding_token = current_language.vocabulary.end_token_index
     vector_length = len(vector)
 
     # Generate a sentence for each element in the vector.
