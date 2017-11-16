@@ -42,16 +42,22 @@ When running `make`:
 """
 
 from pathlib import Path
+from typing import Tuple
 
 from makefile import Command, Makefile, Rule, PhonyRule
-from configurations import Configurations
+from configurations import Configuration, Configurations
 
+
+SMALL_SET_SIZE = 32
+MEDIUM_SET_SIZE = 512
 
 base_dir = Path('.')
 
 # All the available languages.
 languages = {'java', 'javascript', 'python'}
 
+
+# Define a grid search for hyperparameters.
 model_configs = Configurations(
     hidden_layers={'50', '100', '200', '300', '400', '1000'},
     context_length={5, 10, 15, 20},
@@ -60,14 +66,33 @@ model_configs = Configurations(
     patience={10, 20},
     dropout={0.75, None},
     optimizer={'adam', 'rmsprop'},
-    train_set_size={32},
-    validation_set_size={32},
+    train_set_size={SMALL_SET_SIZE},
+    validation_set_size={SMALL_SET_SIZE},
+    partition={0, 1, 2, 3, 4},
+)
+eval_configs = Configurations(
+    fix={'dual'},  # TODO: {'dual', 'left', 'right'},
+    mistakes={SMALL_SET_SIZE},
+)
+
+# After the grid search, these are the configurations worth further
+# investigating.
+medium_model_configs = Configurations(
+    hidden_layers={'100'},
+    context_length={5, 10},
+    batch_size={32},
+    learning_rate={'0.001'},
+    patience={10},
+    dropout={0.9},
+    optimizer={'adam'},
+    train_set_size={MEDIUM_SET_SIZE},
+    validation_set_size={MEDIUM_SET_SIZE // 2},
     partition={0, 1, 2, 3, 4},
 )
 
-eval_configs = Configurations(
-    fix={'dual'},  # TODO: {'dual', 'left', 'right'},
-    mistakes={32},
+medium_eval_configs = Configurations(
+    fix={'dual'},
+    mistakes={MEDIUM_SET_SIZE},
 )
 
 
@@ -78,8 +103,6 @@ train = sensibility('train-lstm')
 # The evaluation command.
 evaluate = sensibility('evaluate')
 
-models = []
-results = []
 
 with Makefile() as make:
     # TODO: do not hard-code for language
@@ -88,8 +111,7 @@ with Makefile() as make:
     model_dir.mkdir(parents=True, exist_ok=True)
     eval_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create rules for the training models.
-    for config in model_configs:
+    def create_training_rule(config: Configuration) -> Tuple[Path, Path]:
         forwards_model = model_dir / config.hashed_slug.with_suffix('.forwards')
         backwards_model = model_dir / config.hashed_slug.with_suffix('.backwards')
 
@@ -99,25 +121,39 @@ with Makefile() as make:
         make.rule(backwards_model).set_recipe(
             train(backwards=True, output_dir='$@', **config)
         )
-        models.append((forwards_model, backwards_model))
+        return forwards_model, backwards_model
+
+    def create_evaluation_rule(config, forwards, backwards) -> Path:
+        assert forwards.stem == backwards.stem
+        # The filename will indicate the kind of fix attempted.
+        eval_file = (
+            (eval_dir / f"fix-{config.fix}-{forwards.stem}").with_suffix('.sqlite3')
+        )
+        make.rule(eval_file).depends_on(forwards, backwards, 'mistakes.txt').set_recipe(
+            evaluate(o='$@',
+                     # The model directory without the extension.
+                     models=forwards.parent / forwards.stem,
+                     mistakes_list='mistakes.txt',
+                     **config)
+        )
+        return eval_file
+
+    # === Small, exploratory configurations === #
+
+    models = []
+    results = []
+
+    # Create rules for the training models.
+    for config in model_configs:
+        models.append(create_training_rule(config))
 
     # Creates rules for evaluating models.
     for config in eval_configs:
         # Evaluate each and every one of the models created in the last step.
         for forwards, backwards in models:
-            assert forwards.stem == backwards.stem
-            # The filename will indicate the kind of fix attempted.
-            eval_file = (
-                (eval_dir / f"fix-{config.fix}-{forwards.stem}").with_suffix('.sqlite3')
-            )
-            make.rule(eval_file).depends_on(forwards, backwards, 'mistakes.txt').set_recipe(
-                evaluate(o='$@',
-                         # The model directory without the extension.
-                         models=forwards.parent / forwards.stem,
-                         mistakes_list='mistakes.txt',
-                         **config)
-            )
-            results.append(eval_file)
+            results.append(create_evaluation_rule(
+                config, forwards, backwards
+            ))
 
     # Create the phony rule so that you can just run:
     #   make -j -k experiments
@@ -128,3 +164,24 @@ with Makefile() as make:
     make.phony_rule('models').depends_on(
         *(f for f, b in models), *(b for f, b in models)
     )
+
+    medium_models = []
+    medium_results = []
+
+    # === Medium configurations === #
+    # Create rules for the training models.
+    for config in medium_model_configs:
+        medium_models.append(create_training_rule(config))
+
+    # Creates rules for evaluating models.
+    for config in medium_eval_configs:
+        # Evaluate each and every one of the models created in the last step.
+        for forwards, backwards in medium_models:
+            medium_results.append(create_evaluation_rule(
+                config, forwards, backwards
+            ))
+
+    # Create the phony rule so that you can just run:
+    #   make -j -k experiments
+    # and do EVERYTHING!
+    make.phony_rule('medium-evaluation').depends_on(*medium_results)
