@@ -35,7 +35,6 @@ from sensibility.utils import symlink_within_dir
 from sensibility._paths import (
     get_validation_set_path, get_training_set_path, get_vectors_path
 )
-from .loop_batches import LoopBatchesEndlessly
 
 
 # === Default command line arguments === #
@@ -70,10 +69,11 @@ class ModelDescription:
     """
 
     # A pair of a training and a validation batch generators .
-    Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
     # Keras is poorly behaved, so only import these types when type-checking.
     if typing.TYPE_CHECKING:
         from keras.models import Sequential
+        from .loop_batches import LoopBatchesEndlessly
+        Batches = Tuple[LoopBatchesEndlessly, LoopBatchesEndlessly]
 
     def __init__(self, *,
                  backwards: bool,
@@ -230,11 +230,12 @@ class ModelDescription:
                       metrics=['categorical_accuracy'])
         return model
 
-    def create_batches(self) -> Batches:
+    def create_batches(self) -> 'Batches':
         """
         Return a tuple of infinite training and validation examples,
         respectively.
         """
+        from .loop_batches import LoopBatchesEndlessly
         training = LoopBatchesEndlessly(
             filehashes=self.training_set,
             vectors_path=self.vectors_path,

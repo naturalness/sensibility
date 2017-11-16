@@ -17,18 +17,22 @@
 
 """
 Loops batches for training and for validation (development) forever.
+
+NOTE: imports Keras, which performs side-effects!
 """
 
 import logging
 from pathlib import Path
 from random import shuffle
-from typing import Iterable, Iterator, Sequence, Set, Tuple, cast
+from typing import Optional, Iterable, Iterator, Sequence, Set, Tuple, cast
 from typing import Union
 
 import numpy as np
 from more_itertools import chunked
+from keras.utils import Sequence as KerasSequence
 
 from sensibility.evaluation.vectors import Vectors
+from sensibility.sentences import Sentences, T
 from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
 from sensibility.language import language
 
@@ -36,8 +40,33 @@ from sensibility.language import language
 Batch = Tuple[np.ndarray, np.ndarray]
 
 
-# TODO: Inherit from Kera's Sequence?
-# https://keras.io/utils/#sequence
+class Batches(KerasSequence):
+    _offset_table: Sequence[int]
+
+    def __init__(self, *,
+                 vectors_path: Path,
+                 filehashes: Set[str],
+                 batch_size: int,
+                 context_length: int,
+                 backwards: bool) -> None:
+        assert vectors_path.exists()
+        assert len(filehashes) > 0
+        self.vectors_path = vectors_path
+
+        self.filehashes = list(filehashes)
+        self.batch_size = batch_size
+        self.context_length = context_length
+        self.backwards = backwards
+
+        self._offset_table = None
+
+    @property
+    def lookup_table(self) -> Sequence[int]:
+        if not hasattr(self, '_lookup_table'):
+            self._create_lookup_table()
+        return self._lookup_table  # type: ignore
+
+
 
 class LoopBatchesEndlessly(Iterable[Batch]):
     """
