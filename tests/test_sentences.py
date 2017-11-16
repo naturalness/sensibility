@@ -19,10 +19,15 @@
 Tests the generation of sentences.
 """
 
-import pytest  # type: ignore
+import pytest
 
 from sensibility.sentences import forward_sentences, backward_sentences
-from sensibility.language.javascript import javascript
+from sensibility.language.python import python
+from sensibility import current_language
+
+
+def setup() -> None:
+    current_language.set('python')
 
 
 def test_forward_sentences(test_file, vocabulary) -> None:
@@ -116,13 +121,14 @@ def test_file():
     """
     Parses a sample file with exactly 13 tokens!
     """
-    entries = list(javascript.vocabularize(r'''
-        (name) => console.log(`Hello, ${name}!`);
+    entries = list(python.vocabularize(r'''
+def hello(name):
+    print("Hello, %s!" % name)
     '''))
-    assert len(entries) == 13
+    assert len(entries) == 16
     return entries
 
 
 @pytest.fixture
 def vocabulary():
-    return javascript.vocabulary
+    return python.vocabulary
