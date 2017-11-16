@@ -21,7 +21,9 @@ Tests the generation of sentences.
 
 import pytest
 
-from sensibility.sentences import forward_sentences, backward_sentences
+from sensibility.sentences import (
+    forward_sentences, backward_sentences, Sentences
+)
 from sensibility.language.python import python
 from sensibility import current_language
 
@@ -55,9 +57,10 @@ def test_forward_sentences(test_file, vocabulary) -> None:
 
 def test_forward_sentences_too_big(test_file, vocabulary) -> None:
     """
-    test for when sentence size is LARGER than file
+    Test for when sentence size is LARGER than file
     """
     n = 20
+    assert n > len(test_file)
     sentences = list(forward_sentences(test_file, context=n))
 
     # There should be the same number of sentences as tokens.
@@ -106,6 +109,10 @@ def test_backward_sentences(test_file, vocabulary) -> None:
 
 
 def test_both_sentences(test_file):
+    """
+    Test that the adjacent token is the same for all forwards, backwards
+    pairs.
+    """
     args = (test_file,)
     kwargs = dict(context=9)
     combined = zip(forward_sentences(*args, **kwargs),
@@ -114,6 +121,24 @@ def test_both_sentences(test_file):
     # Check if both adjacent are THE SAME.
     for (_, t1), (_, t2) in combined:
         assert t1 == t2
+
+
+def test_single_sentence(test_file) -> None:
+    """
+    Tests getting a single sentence from the file.
+    """
+    context_len = 10
+
+    # Test for forwards sentences.
+    sentences = Sentences.forwards_from(test_file, context_length=context_len)
+    for position, token in enumerate(test_file):
+        context, adjacent = sentences[position]
+        assert token == adjacent
+        assert len(context) == context_len
+        if position > context_len:
+            assert test_file[position - context_len:position] == context
+
+    # TODO: Test fof backwards sentences
 
 
 @pytest.fixture

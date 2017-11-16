@@ -30,6 +30,20 @@ T = TypeVar('T')
 Sentence = Tuple[Sequence[T], T]
 
 
+class Sentences:
+    @staticmethod
+    def forwards_from(seq: Sequence[T], context_length: int) -> 'ForwardSentences':
+        raise NotImplementedError
+
+
+class ForwardSentences(Sentences):
+    ...
+
+
+class BackwardSentences(Sentences):
+    ...
+
+
 def forward_sentences(vector: Sequence[T], context: int) -> Iterable[Sentence]:
     """
     Yield "sentences" which consist of a context, and the token immediately to
