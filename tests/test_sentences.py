@@ -123,22 +123,42 @@ def test_both_sentences(test_file):
         assert t1 == t2
 
 
-def test_single_sentence(test_file) -> None:
+def test_sentences_forwards_from(test_file, vocabulary) -> None:
     """
-    Tests getting a single sentence from the file.
+    Tests getting single prefix sentences from the file.
     """
     context_len = 10
 
     # Test for forwards sentences.
     sentences = Sentences.forwards_from(test_file, context_length=context_len)
+    assert len(sentences) == len(test_file)
     for position, token in enumerate(test_file):
         context, adjacent = sentences[position]
         assert token == adjacent
         assert len(context) == context_len
         if position > context_len:
             assert tuple(test_file[position - context_len:position]) == context
+    assert all(vocabulary.start_token_index == token for token in sentences[0][0])
 
-    # TODO: Test for backwards sentences
+
+def test_sentences_backwards_from(test_file, vocabulary) -> None:
+    """
+    Tests getting single suffix sentences from the file.
+    """
+    context_len = 10
+
+    # Test for backwards sentences
+    sentences = Sentences.backwards_from(test_file, context_length=context_len)
+    assert len(sentences) == len(test_file)
+    for position, token in enumerate(test_file):
+        context, adjacent = sentences[position]
+        assert token == adjacent
+        assert len(context) == context_len
+        if position < len(test_file) - context_len:
+            actual_context = test_file[position + 1:position + 1 + context_len]
+            assert tuple(actual_context) == context
+    print(sentences[-1])
+    assert all(vocabulary.end_token_index == token for token in sentences[-1][0])
 
 
 @pytest.fixture

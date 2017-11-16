@@ -32,6 +32,11 @@ Sentence = Tuple[Sequence[T], T]
 
 
 class Sentences(Sequence[Sentence]):
+    """
+    Turn a sequence of tokens into a sequence of sentences.
+    DO NOT INSTANTIATE THIS CLASS DIRECTLY: instead use the .forwards_from()
+    or .backwards_from() static methods to instantiate a subclass.
+    """
     def __init__(self, seq: Sequence[T], context_length: int) -> None:
         self.seq = seq
         self.context_length = context_length
@@ -50,22 +55,38 @@ class Sentences(Sequence[Sentence]):
     def __getitem__(self, index: Union[int, slice]):
         if isinstance(index, slice):
             raise NotImplementedError
-        else:
+        # Conver a negative index into a positive one.
+        if index < 0:
+            index = len(self) + index
+        if 0 <= index < len(self):
             return self.make_sentence(index)
+        else:
+            raise IndexError
 
     def make_sentence(self, index: int) -> Sentence:
+        """
+        Returns a single sentence at the given index.
+        """
         raise NotImplementedError
 
     @staticmethod
     def forwards_from(seq: Sequence[T], context_length: int) -> 'ForwardSentences':
         return ForwardSentences(seq, context_length)
 
+    @staticmethod
+    def backwards_from(seq: Sequence[T], context_length: int) -> 'BackwardSentences':
+        return BackwardSentences(seq, context_length)
+
 
 class ForwardSentences(Sentences):
+    """
+    Addresses the prefix and the adjacent token from a token stream.
+    """
     def make_sentence(self, index: int) -> Sentence:
-        padding_token = current_language.vocabulary.start_token_index
-        context = self.context_length
         vector = self.seq
+        assert 0 <= index < len(vector)
+        context = self.context_length
+        padding_token = current_language.vocabulary.start_token_index
         element = vector[index]
         # Ensure the beginning of the slice is AT LEAST 0 (or else the slice
         # will start from THE END of the vector!)
@@ -81,7 +102,27 @@ class ForwardSentences(Sentences):
 
 
 class BackwardSentences(Sentences):
-    ...
+    """
+    Addresses the suffix and the adjacent token from a token stream.
+    """
+    def make_sentence(self, index: int) -> Sentence:
+        vector = self.seq
+        assert 0 <= index < len(vector)
+        padding_token = current_language.vocabulary.end_token_index
+        context = self.context_length
+
+        element = vector[index]
+        c_start = index + 1
+        c_end = c_start + context
+
+        real_context = vector[c_start:c_end]
+        # Must add padding when the context goes over the size of the vector.
+        if c_end > len(vector):
+            padding = repeat(padding_token, c_end - len(vector))
+            return tuple(chain(real_context, padding)), element
+        else:
+            # All tokens come from the vector
+            return tuple(real_context), element
 
 
 def forward_sentences(vector: Sequence[T], context: int) -> Iterable[Sentence]:
