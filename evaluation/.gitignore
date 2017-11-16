@@ -20,3 +20,4 @@ training
 
 # n-gram model files
 *.arpa
+.Rhistory
