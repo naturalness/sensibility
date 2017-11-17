@@ -1,25 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+import tempfile
+from pathlib import Path
+
 import pytest
 
 from sensibility.evaluation.vectors import Vectors
-from sensibility.language import language
+from sensibility.source_vector import to_source_vector
 
-FILEHASH = 'hash'
-VECTOR = b'hello, world'
 
-@pytest.mark.skip
-def test_creates_file():
-    language.set_language('Python')
-    # TODO: test correct file path
+def setup():
+    from sensibility import current_language
+    current_language.set('python')
 
-    vectors = Vectors()
-    vectors[FILEHASH] = VECTOR
+
+def test_creates_file(new_vectors_path):
+    """
+    Create a new vector database, and test that reconnecting to it persists
+    changes.
+    """
+    hello_vector = to_source_vector('print("hello, world!")')
+    vectors = Vectors.from_filename(new_vectors_path)
+    vectors['hello'] = hello_vector
     vectors.disconnect()
 
-    vector = Vectors()
-    assert VECTOR == vector[FILEHASH]
+    vectors = Vectors.from_filename(new_vectors_path)
+    assert hello_vector == vectors['hello']
 
     with pytest.raises(KeyError):
         vector['non-existent']
+
+
+@pytest.fixture
+def new_vectors_path():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield Path(temp_dir) / 'vectors.sqlite3'
