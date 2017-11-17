@@ -21,12 +21,5 @@ Stuff that depends on the actual databases that exist.
 
 import pytest
 
-
-@pytest.mark.xfail
-def test_get_samples_per_batches_hack() -> None:
-    from sensibility.language import language
-    from sensibility.model.lstm.loop_batches import get_samples_per_batches_hack
-    language.set_language('python')
-    assert 252 == get_samples_per_batches_hack({
-        '7bd4a8a55e103450d99a049ac68daa0edee1646d416fbc96c97eeb73ff8a28d0'
-    })
+# TODO: Write integration tests that CREATE Vectors databases, and test their
+# crazy methods.

@@ -12,6 +12,14 @@ from sensibility import Edit, Insertion, Deletion, Substitution
 edit_classes = Insertion, Deletion, Substitution
 
 
+def setup():
+    """
+    The language needs to be set up for this test to work; any will do.
+    """
+    from sensibility import current_language
+    current_language.set('python')
+
+
 @given(programs(), random_module())
 def test_create_substitution(program, random):
     mutation = Substitution.create_random_mutation(program)
