@@ -36,12 +36,6 @@ MODEL_DIR = REPOSITORY_ROOT / 'models'
 
 EVALUATION_DIR = REPOSITORY_ROOT / 'evaluation'
 
-# Paths to specific databases.
-# TODO: allow this to vary by language.
-SOURCES_PATH = DATA_DIR / 'javascript-sources.sqlite3'
-VECTORS_PATH = DATA_DIR / 'javascript-vectors.sqlite3'
-MUTATIONS_PATH = DATA_DIR / 'java-mutations.sqlite3'
-
 
 def get_evaluation_dir() -> Path:
     return EVALUATION_DIR / language.id
