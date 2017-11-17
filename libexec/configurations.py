@@ -3,8 +3,9 @@
 
 import hashlib
 from itertools import product
+from functools import reduce
 from types import SimpleNamespace
-from typing import Any, Iterator, Iterable, Set, Mapping
+from typing import Any, Iterator, Iterable, Set, Mapping, Sized
 from pathlib import PurePath
 
 
@@ -37,7 +38,7 @@ class Configuration(Mapping[str, Any]):
         return len(self.__dict__)
 
 
-class Configurations(Iterable[Configuration]):
+class Configurations(Sized, Iterable[Configuration]):
     def __init__(self, **configs: Set[Any]) -> None:
         self.options = configs
 
@@ -48,6 +49,12 @@ class Configurations(Iterable[Configuration]):
         names = list(self.options.keys())
         for prod in product(*(self.options[opt] for opt in names)):
             yield Configuration(**dict(zip(names, prod)))
+
+    def __len__(self) -> int:
+        """
+        Return the number of possible configurations.
+        """
+        return reduce(lambda acc, val: acc * len(val), self.options.values(), 1)
 
     def extend(self, **kwargs) -> 'Configurations':
         new_options = self.options.copy()
