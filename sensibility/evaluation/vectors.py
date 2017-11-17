@@ -73,7 +73,7 @@ class Vectors(MutableMapping[str, SourceVector]):
                 SELECT SUM(LENGTH(array))
                   FROM vector NATURAL JOIN query
             ''').fetchone()
-        return n_tokens
+        return n_tokens or 0
 
     def disconnect(self) -> None:
         self.conn.close()
