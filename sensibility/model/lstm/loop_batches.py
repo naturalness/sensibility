@@ -36,9 +36,6 @@ from sensibility.language import language
 Batch = Tuple[np.ndarray, np.ndarray]
 
 
-# TODO: Inherit from Kera's Sequence?
-# https://keras.io/utils/#sequence
-
 class LoopBatchesEndlessly(Iterable[Batch]):
     """
     Loops batches of vectors endlessly from the given filehashes.
@@ -52,7 +49,7 @@ class LoopBatchesEndlessly(Iterable[Batch]):
                  backwards: bool) -> None:
         assert vectors_path.exists()
         self.filename = vectors_path
-        self.filehashes = filehashes
+        self.filehashes = list(filehashes)
         self.batch_size = batch_size
         self.context_length = context_length
         self.sentence_generator = (
@@ -60,9 +57,10 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         )
 
         # Samples are number of tokens in the filehash set.
-        # TODO: Get number of samples: sum the number of tokens
-        # in each partition
-        self.samples_per_epoch = get_samples_per_batches_hack(filehashes)
+        self.samples_per_epoch = (
+            Vectors.from_filename(vectors_path)
+                   .length_of_vectors(filehashes)
+        )
 
     def __iter__(self) -> Iterator[Batch]:
         logger = logging.getLogger(type(self).__name__)
@@ -78,7 +76,10 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         Yields all sentences from the corpus exactly once.
         """
         context_length = self.context_length
-        # XXX: determines from language
+
+        # Shuffle the files on each iteration.
+        shuffle(self.filehashes)
+
         vectors = Vectors.from_filename(self.filename)
         for filehash in self.filehashes:
             # Shuffle sentences randomly from each file.
@@ -101,22 +102,6 @@ class LoopBatchesEndlessly(Iterable[Batch]):
         while True:
             yield from chunked(self._yield_sentences_from_corpus(),
                                batch_size)
-
-
-def get_samples_per_batches_hack(hashes: Set[str]) -> int:
-    """
-    Returns the number of samples present in the given set of hashes.
-    Note that n_tokens == n_samples.
-    """
-    # XXX: This should take from arguments, but relies on globals instead.
-    from sensibility.evaluation.vectors import determine_from_language
-    conn = determine_from_language()
-    query = r'SELECT length(array) FROM vector where filehash = ?'
-    n_tokens = 0
-    for filehash in hashes:
-        (count,), = conn.execute(query, (filehash,))
-        n_tokens += count
-    return n_tokens
 
 
 def one_hot_batch(batch, *,

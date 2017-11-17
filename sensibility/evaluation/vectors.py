@@ -20,8 +20,9 @@ Goals: instantiate this automatically via language.
 
 import os
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, MutableMapping, Optional, Union
+from typing import Iterator, Iterable, MutableMapping, Optional, Union
 
 from ..lexical_analysis import Lexeme
 from ..source_vector import SourceVector
@@ -63,6 +64,17 @@ class Vectors(MutableMapping[str, SourceVector]):
         # Optimize for read-only access.
         self.conn.execute(f'PRAGMA journal_mode = OFF')
 
+    def length_of_vectors(self, hashes: Iterable[str]) -> int:
+        """
+        Determines the total number of tokens in the given hashes.
+        """
+        with query_table(self.conn, hashes), self.conn:
+            n_tokens, = self.conn.execute('''
+                SELECT SUM(LENGTH(array))
+                  FROM vector NATURAL JOIN query
+            ''').fetchone()
+        return n_tokens
+
     def disconnect(self) -> None:
         self.conn.close()
 
@@ -99,6 +111,22 @@ class Vectors(MutableMapping[str, SourceVector]):
     @classmethod
     def from_filename(cls, path: Union[str, os.PathLike]) -> 'Vectors':
         return cls(sqlite3.connect(os.fspath(path)))
+
+
+@contextmanager
+def query_table(conn: sqlite3.Connection, hashes: Iterable[str]):
+    """
+    Context manager that creates a table called `query` that can be joined
+    against to speed up queries.
+    """
+    with conn:
+        conn.execute('CREATE TEMPORARY TABLE query(filehash PRIMARY KEY)')
+        conn.executemany('''
+            INSERT INTO query(filehash) VALUES (?)
+        ''', ((fh,) for fh in hashes))
+    yield
+    with conn:
+        conn.execute('DROP TABLE IF EXISTS query')
 
 
 def determine_from_language() -> sqlite3.Connection:
