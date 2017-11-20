@@ -2,6 +2,9 @@
 Sensibility
 ***********
 
+.. image:: https://travis-ci.org/naturalness/sensibility.svg?branch=master
+    :target: https://travis-ci.org/naturalness/sensibility
+
 Finds and fixes syntax errors. In development.
 
     **NOTE**: The cmput680_ tag has a working proof-of-concept. Clone the
