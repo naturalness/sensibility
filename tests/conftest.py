@@ -14,6 +14,8 @@ import pytest
 def pytest_addoption(parser):
     parser.addoption("--runslow", action="store_true",
                      help="run slow tests")
+    parser.addoption("--with-javascript", action="store_true",
+                     help="run JavaScript tests")
 
 
 @pytest.fixture
