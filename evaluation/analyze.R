@@ -41,14 +41,14 @@ aggdata <- with(results, {aggregate(
   # These are the responding variables that should be meaned.
   cbind(line_location_rr, exact_location_rr, valid_fix_rr, true_fix_rr, mean_val_loss) ~
   # These are the manipulated variables; there may be more!
-    hidden_layers + context_length + dropout + patience + optimizer + partition,
+    hidden_layers + context_length + dropout + patience + optimizer,
   results, mean
 )})
 
 # Figure out what actually affects line location MRR
 line.model <- with(results, {lm(
   valid_fix_rr ~
-    hidden_layers + context_length + dropout + patience + optimizer + partition + mean_val_loss
+    hidden_layers + context_length + dropout + patience + optimizer + mean_val_loss
 )})
 summary(line.model)
 
