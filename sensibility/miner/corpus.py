@@ -42,10 +42,20 @@ from sensibility.language import SourceSummary
 
 
 class NewCorpusError(Exception):
+    """
+    Raised when querying an empty corpus.
+    """
     pass
 
 
 class FileInfo:
+    """
+    Contains metadata over a file, as referenced by a filehash.
+    Note that one filehash maps uniquely to content, however the same content
+    can be present in multiple files, within a repository, or between
+    repositories. Use is_unique to determine whether this is the only copy of
+    the file within the corpus.
+    """
     def __init__(self, mappings: Set[SourceFileInRepository],
                  summary: SourceSummary) -> None:
         assert len(mappings) > 0
@@ -86,14 +96,26 @@ class FileInfo:
 
     @property
     def is_unique(self) -> bool:
+        """
+        True when there is one and only one file with the contents of this
+        file. False otherwise.
+        """
         return len(self._mappings) == 1
 
     @property
     def _any(self) -> SourceFileInRepository:
+        """
+        Returns any owner/repo/path containing this file.
+        """
         return next(iter(self._mappings))
 
 
 class Corpus:
+    """
+    A corpus of source code, backed by an SQLite3 database.
+
+    Uses SQLAlchemy (as an experiment), but it's honestly not really worth it.
+    """
     def __init__(self, engine=None,
                  url: str=None, path: Union[os.PathLike, str]=None,
                  read_only=False) -> None:
