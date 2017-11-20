@@ -5,7 +5,7 @@ import hashlib
 from itertools import product
 from functools import reduce
 from types import SimpleNamespace
-from typing import Any, Iterator, Iterable, Set, Mapping, Sized
+from typing import Any, Iterable, Iterator, List, Mapping, Set, Sized
 from pathlib import PurePath
 
 
@@ -56,7 +56,8 @@ class Configurations(Sized, Iterable[Configuration]):
         """
         return reduce(lambda acc, val: acc * len(val), self.options.values(), 1)
 
-    def extend(self, **kwargs) -> 'Configurations':
-        new_options = self.options.copy()
-        new_options.update(kwargs)
-        return type(self)(**new_options)
+    def __radd__(self, other: List[Configuration]) -> List[Configuration]:
+        return other + list(self)
+
+    def __add__(self, other: Iterable[Configuration]) -> List[Configuration]:
+        return list(self) + list(other)

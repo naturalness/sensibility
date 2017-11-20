@@ -76,8 +76,8 @@ with Makefile() as make:
     # === Medium configurations === #
     Experiment(name='medium',
                language='java',
-               # The first ranking configuration
-               training_configs=list(Configurations(
+               training_configs=Configurations(
+                   # The first ranking configuration
                    hidden_layers={200},
                    context_length={5},
                    batch_size={32},
@@ -88,9 +88,8 @@ with Makefile() as make:
                    train_set_size={MEDIUM_SET_SIZE},
                    validation_set_size={MEDIUM_SET_SIZE // 2},
                    partition={0, 1, 2, 3, 4},
-               ))
-               # The second ranking configuration
-               + list(Configurations(
+               ) + Configurations(
+                   # The second ranking configuration
                    hidden_layers={50},
                    context_length={20},
                    batch_size={32},
@@ -101,9 +100,8 @@ with Makefile() as make:
                    train_set_size={MEDIUM_SET_SIZE},
                    validation_set_size={MEDIUM_SET_SIZE // 2},
                    partition={0, 1, 2, 3, 4},
-               ))
-               # The original configuration (which was sixth overall)
-               + list(Configurations(
+               ) + Configurations(
+                   # The original configuration (which was sixth overall)
                    hidden_layers={300},
                    context_length={20},
                    batch_size={32},
@@ -114,7 +112,7 @@ with Makefile() as make:
                    train_set_size={MEDIUM_SET_SIZE},
                    validation_set_size={MEDIUM_SET_SIZE // 2},
                    partition={0, 1, 2, 3, 4},
-               )),
+               ),
                eval_configs=Configurations(
                    fix={'dual'},
                    mistakes={MEDIUM_SET_SIZE},
