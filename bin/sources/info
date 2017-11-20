@@ -36,7 +36,7 @@ parser.add_argument('-d', '--database', default=None)
 
 
 def print_unique(info: FileInfo) -> None:
-      print(f"""
+    print(f"""
 Name:   {info.path.name}
 Hash:   {info.filehash}
 Repo:   {info.owner}/{info.name}
@@ -49,12 +49,12 @@ SLOC:   {info.sloc}
 
 
 if __name__ == '__main__':
-      args = parser.parse_args()
-      # TODO: determine through command-line arguments
-      corpus = Corpus(read_only=True)
-      info = corpus.get_info(args.filehash)
+    args = parser.parse_args()
+    # TODO: determine corpus from command-line arguments
+    corpus = Corpus()
+    info = corpus.get_info(args.filehash)
 
-      if not info.is_unique:
-            print(f"Warning: File exists in {len(info._mappings)}",
-                  "paths/repos in the corpus", file=sys.stderr)
-      print_unique(info)
+    if not info.is_unique:
+        print(f"Warning: File exists in {len(info._mappings)}",
+              "paths/repos in the corpus", file=sys.stderr)
+    print_unique(info)

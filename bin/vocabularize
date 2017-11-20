@@ -19,8 +19,8 @@
 Vocabularizes files, either given as hashes or as source code on stdin.
 
 Usage:
-      vocabularize <hashes.txt >sentences
-      vocabularize - <file.ext >sentence
+vocabularize <hashes.txt >sentences
+vocabularize - <file.ext >sentence
 """
 
 import sys
@@ -31,18 +31,18 @@ from sensibility.language import language
 
 
 def print_sentence(source: bytes) -> None:
-      tokens = list(language.vocabularize(source))
-      assert all(' ' not in t and '\n' not in t for t in tokens)
-      print(' '.join(tokens))
+    tokens = list(language.vocabularize(source))
+    assert all(' ' not in t and '\n' not in t for t in tokens)
+    print(' '.join(tokens))
 
 
 if __name__ == '__main__':
-      if ['-'] == sys.argv[1:]:
-            # Vocabularize stdin
-            with open(sys.stdin.fileno(), 'rb') as input_file:
-                  print_sentence(input_file.read())
-      else:
-            # Treat stdin as file hashes, one per line.
-            corpus = Corpus(read_only=True)
-            for filehash in filehashes():
-                  print_sentence(corpus[filehash])
+    if ['-'] == sys.argv[1:]:
+        # Vocabularize stdin
+        with open(sys.stdin.fileno(), 'rb') as input_file:
+            print_sentence(input_file.read())
+    else:
+        # Treat stdin as file hashes, one per line.
+        corpus = Corpus()
+        for filehash in filehashes():
+            print_sentence(corpus[filehash])

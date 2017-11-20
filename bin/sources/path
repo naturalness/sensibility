@@ -41,7 +41,7 @@ if __name__ == '__main__':
     prefix = args.prefix
 
     # TODO: determine through command-line arguments
-    corpus = Corpus(read_only=True)
+    corpus = Corpus()
 
     filehashes = filehashes_from_stdin() if not args.filehashes else args.filehashes
     for filehash in filehashes:

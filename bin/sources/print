@@ -29,7 +29,7 @@ import sys
 from sensibility.miner.corpus import Corpus
 
 filehash, = sys.argv[1:]
-corpus = Corpus(read_only=True)
+corpus = Corpus()
 
 try:
     source = corpus[filehash]

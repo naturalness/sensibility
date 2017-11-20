@@ -52,7 +52,7 @@ class Downloader:
         self.client = GitHubGraphQLClient()
         self.worker = WorkQueue(Queue(DOWNLOAD_QUEUE, redis_client))
         self.errors = Queue(QUEUE_ERRORS, redis_client)
-        self.corpus = Corpus()
+        self.corpus = Corpus(writable=True)
         self._headers = {
             'User-Agent': 'eddieantonio-sensibility/0.3.0',
             'Authorization': f"token {get_github_token()}"

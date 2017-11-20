@@ -118,7 +118,7 @@ class Corpus:
     """
     def __init__(self, engine=None,
                  url: str=None, path: Union[os.PathLike, str]=None,
-                 read_only=False) -> None:
+                 writable=False) -> None:
         if engine is not None:
             self.engine = engine
         else:
@@ -128,7 +128,7 @@ class Corpus:
                 url = f"sqlite:///{os.fspath(path)}"
             self.engine = create_engine(url)
 
-        self._initialize_sqlite3(read_only)
+        self._initialize_sqlite3(writable)
 
         if self.empty:
             metadata.create_all(self.engine)
@@ -326,7 +326,7 @@ class Corpus:
         for row in self.conn.execute(query):
             yield row[repository_source.c.hash]
 
-    def _initialize_sqlite3(self, read_only: bool) -> None:
+    def _initialize_sqlite3(self, writable: bool) -> None:
         """
         Set some pragmas for initially creating the SQLite3 database.
         """
@@ -336,7 +336,7 @@ class Corpus:
             cur = dbapi_connection.cursor()
             cur.execute('PRAGMA encoding = "UTF-8"')
             cur.execute('PRAGMA foreign_keys = ON')
-            if not read_only:
+            if writable:
                 cur.executescript('''
                     PRAGMA journal_mode = WAL;
                     PRAGMA synchronous = NORMAL;

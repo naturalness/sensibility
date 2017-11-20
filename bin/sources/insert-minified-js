@@ -32,10 +32,11 @@ from sensibility.miner.connection import get_sqlite3_path
 
 logging.basicConfig(level=logging.DEBUG)
 
-# This only makes sense for JavaScript (I think).
-language.set_language('JavaScript')
+# This only makes sense for JavaScript.
+language.set('JavaScript')
 # Load the JavaScript corpus.
-corpus = Corpus()
+corpus = Corpus(writable=True)
+assert corpus.language.lower() == 'javascript'
 
 # Get a list of all parsed source files.
 logging.debug('Retrieving source summaries')
@@ -56,7 +57,7 @@ for source in files:
 logging.debug('Marking files that match glob `*[.-]min.js`')
 conn = sqlite3.connect(get_sqlite3_path())
 reason = f"minified:.min.js"
-query =  r'''
+query = r'''
     SELECT hash FROM repository_source
      WHERE lower(path) GLOB '*[.-]min.js'
 '''

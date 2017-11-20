@@ -28,7 +28,7 @@ from sensibility.language import language
 from sensibility.miner.corpus import Corpus
 from sensibility.miner.util import filehashes
 
-corpus = Corpus()
+corpus = Corpus(writable=True)
 
 
 def parse_and_insert(filehash: str) -> None:

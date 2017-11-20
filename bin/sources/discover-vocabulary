@@ -32,7 +32,7 @@ from sensibility.language import language
 
 
 if __name__ == '__main__':
-    corpus = Corpus(read_only=True)
+    corpus = Corpus()
 
     unique_entries = set()
     for filehash in filehashes():

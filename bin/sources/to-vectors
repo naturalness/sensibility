@@ -39,7 +39,7 @@ def vectorize(source: bytes) -> SourceVector:
 
 
 if __name__ == '__main__':
-    corpus = Corpus(read_only=True)
+    corpus = Corpus()
     vectors = Vectors()
 
     for file in tqdm(corpus.eligible_sources):

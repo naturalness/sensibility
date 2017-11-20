@@ -111,7 +111,7 @@ def main() -> None:
 
     # Magically get the corpus.
     # TODO: from cmdline arguments
-    corpus = Corpus(read_only=True)
+    corpus = Corpus()
     all_hashes_seen: Set[str] = set()
 
     def write_hashes(path: Path, hashes: Iterable[str]) -> None:
