@@ -13,14 +13,14 @@ from location_factory import LocationFactory
 
 # Only run tests in this module if Node.js is installed.
 pytestmark = pytest.mark.skipif(
-    not (shutil.which('node') or shutil.which('nodejs')),
-    reason="Requires Node.JS"
+    not pytest.config.getoption("--with-javascript"),
+    reason="need --with-javascript option to run"
 )
 
 # Use this as as decorator to mark slow tests.
 slow = pytest.mark.skipif(
-        not pytest.config.getoption("--runslow"),
-        reason="need --runslow option to run"
+    not pytest.config.getoption("--runslow"),
+    reason="need --runslow option to run"
 )
 
 test_file = r"""#!/usr/bin/env node
