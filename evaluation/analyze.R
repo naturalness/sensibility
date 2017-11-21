@@ -74,5 +74,33 @@ with(aggdata, cor.test(mean_val_loss, exact_location_rr))
 # How about true fix?
 with(aggdata, cor.test(mean_val_loss, true_fix_rr))
 
+wilcox.test(subset(aggdata, optimizer == "adam")$valid_fix_rr,
+            subset(aggdata, optimizer == "rmsprop")$valid_fix_rr,
+            alternative = "greater")
+
 # Sample violin plot:
 ggplot(results, aes(x=optimizer, y=exact_location_rr)) + geom_violin()
+
+# How often is Adam better than RMSprop, controlling for all other manipulated variables?
+library(plyr)
+ddply(aggdata, .(hidden_layers, context_length, dropout, patience),
+      function (df)
+        df[df$optimizer=="adam",]$valid_fix_rr > df[df$optimizer=="rmsprop",]$valid_fix_rr
+)
+# By how much?
+median(ddply(aggdata, .(hidden_layers, context_length, dropout, patience),
+             function (df)
+               df[df$optimizer=="adam",]$valid_fix_rr - df[df$optimizer=="rmsprop",]$valid_fix_rr)$V1
+)
+
+# How about dropout?
+dropout.effect <- ddply(aggdata, .(hidden_layers, context_length, optimizer, patience),
+      function (df)
+        df[df$dropout=="0.75",]$valid_fix_rr < df[df$dropout=="None",]$valid_fix_rr
+)
+sum(dropout.effect$V1) / nrow(dropout.effect)
+
+median(ddply(aggdata, .(hidden_layers, context_length, optimizer, patience),
+             function (df)
+               df[df$dropout=="None",]$valid_fix_rr - df[df$dropout=="0.75",]$valid_fix_rr)$V1
+)
