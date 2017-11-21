@@ -1,16 +1,14 @@
 library(DBI)
 library(ggplot2)
 
-con <- dbConnect(RSQLite::SQLite(), "results.sqlite3")
-results <- dbGetQuery(con, "
-  SELECT line_location_rank, exact_location_rank, valid_fix_rank, true_fix_rank,
-           forwards_val_loss, backwards_val_loss,
-         hidden_layers, context_length,
-           IFNULL(CAST(dropout AS TEXT), 'None') as [dropout],
-           patience, optimizer, partition
-    FROM result JOIN model ON result.model_id = model.id;
-")
-dbDisconnect(con)
+# Select the training set size:
+#  small set      -- 32
+#  medium set     -- 512
+#  larget set     -- 8192
+#  huge set       -- 32768
+#  enormous set   -- 131072
+TRAINING_SET_SIZE <- 32
+
 
 # Calculate the reciprocal of the rank. Nulls are converted to zeros.
 reciprank <- function (vec) {
@@ -19,8 +17,22 @@ reciprank <- function (vec) {
   return(rrs)
 }
 
+
+# Fetch the raw results from the database.
+con <- dbConnect(RSQLite::SQLite(), "results.sqlite3")
+raw.results <- dbGetQuery(con, "
+  SELECT line_location_rank, exact_location_rank, valid_fix_rank, true_fix_rank,
+           forwards_val_loss, backwards_val_loss,
+         hidden_layers, context_length,
+           IFNULL(CAST(dropout AS TEXT), 'None') as [dropout],
+           patience, optimizer, partition,
+         training_set_size
+    FROM result JOIN model ON result.model_id = model.id;
+")
+dbDisconnect(con)
+
 # Apply some transformations to the raw results.
-results <- within(results, {
+results <- within(raw.results, {
   # Treat these as factors rather than continuous variables
   dropout <- as.factor(dropout)
   patience <- as.factor(patience)
@@ -35,6 +47,11 @@ results <- within(results, {
   # Figure out the mean validation loss
   mean_val_loss <- (forwards_val_loss + backwards_val_loss)/2
 })
+
+# Select a subset according to the desired training set size.
+if (!is.na(TRAINING_SET_SIZE)) {
+  results <- subset(results, training_set_size==TRAINING_SET_SIZE)
+}
 
 # Get the MRR for all these responding variables.
 aggdata <- with(results, {aggregate(
