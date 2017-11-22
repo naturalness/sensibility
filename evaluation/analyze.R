@@ -1,5 +1,8 @@
 library(DBI)
 library(ggplot2)
+library(plyr)
+library(psych)
+library(xtable)
 
 # Select the training set size:
 #  small set      -- 32
@@ -37,13 +40,13 @@ results <- within(raw.results, {
   dropout <- as.factor(dropout)
   patience <- as.factor(patience)
   partition <- as.factor(partition)
-  
+
   # Get reciprocal ranks.
   line_location_rr <- reciprank(line_location_rank)
   exact_location_rr <- reciprank(exact_location_rank)
   valid_fix_rr <- reciprank(valid_fix_rank)
   true_fix_rr <- reciprank(true_fix_rank)
-  
+
   # Figure out the mean validation loss
   mean_val_loss <- (forwards_val_loss + backwards_val_loss)/2
 })
@@ -74,33 +77,47 @@ with(aggdata, cor.test(mean_val_loss, exact_location_rr))
 # How about true fix?
 with(aggdata, cor.test(mean_val_loss, true_fix_rr))
 
-wilcox.test(subset(aggdata, optimizer == "adam")$valid_fix_rr,
-            subset(aggdata, optimizer == "rmsprop")$valid_fix_rr,
-            alternative = "greater")
-
-# Sample violin plot:
-ggplot(results, aes(x=optimizer, y=exact_location_rr)) + geom_violin()
 
 # How often is Adam better than RMSprop, controlling for all other manipulated variables?
-library(plyr)
-ddply(aggdata, .(hidden_layers, context_length, dropout, patience),
-      function (df)
-        df[df$optimizer=="adam",]$valid_fix_rr > df[df$optimizer=="rmsprop",]$valid_fix_rr
-)
-# By how much?
-median(ddply(aggdata, .(hidden_layers, context_length, dropout, patience),
-             function (df)
-               df[df$optimizer=="adam",]$valid_fix_rr - df[df$optimizer=="rmsprop",]$valid_fix_rr)$V1
-)
+optimizer.effect <- ddply(aggdata, .(hidden_layers, context_length, dropout, patience),
+  function (df) {
+    adam <- df[df$optimizer=="adam",]
+    rmsprop <- df[df$optimizer=="rmsprop",]
 
-# How about dropout?
+    return(data.frame(valid.greater=adam$valid_fix_rr > rmsprop$valid_fix_rr,
+                      valid.difference=adam$valid_fix_rr - rmsprop$valid_fix_rr,
+                      true.greater=adam$true_fix_rr > rmsprop$true_fix_rr,
+                      true.difference=adam$true_fix_rr - rmsprop$true_fix_rr))
+  }
+)
+list(greater=sum(optimizer.effect$true.greater), out.of=nrow(optimizer.effect))
+t.test(optimizer.effect$true.difference)
+median(optimizer.effect$true.difference)
+
+# What is the effect of applying naïve dropout?
 dropout.effect <- ddply(aggdata, .(hidden_layers, context_length, optimizer, patience),
-      function (df)
-        df[df$dropout=="0.75",]$valid_fix_rr < df[df$dropout=="None",]$valid_fix_rr
-)
-sum(dropout.effect$V1) / nrow(dropout.effect)
+  function (df) {
+    none <- df[df$dropout=="None",]
+    dropout <- df[df$dropout=="0.75",]
 
-median(ddply(aggdata, .(hidden_layers, context_length, optimizer, patience),
-             function (df)
-               df[df$dropout=="None",]$valid_fix_rr - df[df$dropout=="0.75",]$valid_fix_rr)$V1
+    return(data.frame(valid.greater=none$valid_fix_rr > dropout$valid_fix_rr,
+                      valid.difference=none$valid_fix_rr - dropout$valid_fix_rr,
+                      true.greater=none$true_fix_rr > dropout$true_fix_rr,
+                      true.difference=none$true_fix_rr - dropout$true_fix_rr))
+  }
 )
+list(greater=sum(dropout.effect$true.greater), out.of=nrow(dropout.effect))
+t.test(dropout.effect$true.difference)
+median(dropout.effect$true.difference)
+
+
+# Sample violin plot:
+ggplot(results, aes(x=optimizer, y=true_fix_rr)) + geom_violin()
+
+# Create the contents of tab:top-configs
+columns <- c("hidden_layers", "context_length", "dropout", "patience",
+             "optimizer", "exact_location_rr", "valid_fix_rr", "true_fix_rr")
+print(xtable(subset(aggdata, select=columns)[c(93, 18, 88),]),
+      only.contents = TRUE,
+      booktabs = TRUE,
+      include.rownames = FALSE)
