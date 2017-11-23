@@ -62,9 +62,36 @@ aggdata <- with(results, {aggregate(
   results, mean
 )})
 
-# Figure out what actually affects line location MRR
+# Figure out what actually affects true fix MRR
 line.model <- with(results, {lm(
-  valid_fix_rr ~
+  true_fix_rr ~
     hidden_layers + context_length + patience + mean_val_loss + partition
 )})
 summary(line.model)
+
+# Figure out what actually affects valid fix MRR
+line.model <- with(results, {lm(
+  true_fix_rr ~
+    hidden_layers + context_length + patience + mean_val_loss + partition
+)})
+summary(line.model)
+
+# Are the top two models better than the originals?
+t.test(aggdata[aggdata$hidden_layers==300,]$true_fix_rr -
+         aggdata[aggdata$hidden_layers==200,]$true_fix_rr)
+t.test(aggdata[aggdata$hidden_layers==50,]$true_fix_rr -
+         aggdata[aggdata$hidden_layers==200,]$true_fix_rr)
+t.test(aggdata[aggdata$hidden_layers==300,]$true_fix_rr -
+         aggdata[aggdata$hidden_layers==50,]$true_fix_rr)
+
+# Is the 50,20 model affected by partition?
+line.model <- with(results[results$hidden_layers==50,], {lm(
+  true_fix_rr ~ partition
+)})
+summary(line.model)
+
+columns <- c("hidden_layers", "context_length", "exact_location_rr", "valid_fix_rr", "true_fix_rr")
+print(xtable(subset(aggdata, select=columns)[1:3,]),
+      only.contents = TRUE,
+      booktabs = TRUE,
+      include.rownames = FALSE)

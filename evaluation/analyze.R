@@ -68,6 +68,13 @@ aggdata <- with(results, {aggregate(
 # Figure out what actually affects line location MRR
 line.model <- with(results, {lm(
   valid_fix_rr ~
+    hidden_layers + context_length + dropout + patience + optimizer + partition + mean_val_loss
+)})
+summary(line.model)
+
+# Now, just ignore the effects of partition
+line.model <- with(results, {lm(
+  valid_fix_rr ~
     hidden_layers + context_length + dropout + patience + optimizer + mean_val_loss
 )})
 summary(line.model)
