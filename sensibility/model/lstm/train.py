@@ -462,7 +462,7 @@ def configure_gpu(prefered: Optional[int]) -> None:
         # Use an equal slice of the machine as the number of physical cores.
         # This is usually the ideal number of processes before resource contention.
         max_resources = 1. - 1. / full_cores_available()
-        limits = dict(maxLoad=0.99, maxMemory=max_resources)
+        limits = dict(maxLoad=max_resources, maxMemory=max_resources)
         if prefered is None:
             # Select an available GPU.
             device_id, = GPUtil.getFirstAvailable(
