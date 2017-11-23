@@ -130,9 +130,17 @@ class ModelDescription:
         """
         Continue training from an existing directory.
         """
-        raise NotImplementedError
+        assert self.incomplete_path.exists()
 
-    def _train(self) -> None:
+        # Continue from a saved intermediate model.
+        intermediates = self.incomplete_path.glob('intermediate-*.hdf5')
+        if not intermediates:
+            self._train()
+
+        last_epoch = max(intermediates, key=epoch_from_path)
+        self._train(continue_from=last_epoch)
+
+    def _train(self, continue_from: Path=None) -> None:
         logger.info("Saving model to %s", self.model_path)
         logger.info("%d training files", len(self.training_set))
         logger.info("%d validation files", len(self.validation_set))
@@ -147,6 +155,14 @@ class ModelDescription:
 
         from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
         model = self.compile_model()
+
+        # Load weights if we're continuing
+        if continue_from is None:
+            initial_epoch = 0
+        else:
+            logger.info('Continuing from %s', continue_from)
+            model.load_weights(str(continue_from))
+            initial_epoch = epoch_from_path(continue_from)
 
         try:
             model.fit_generator(
@@ -165,7 +181,7 @@ class ModelDescription:
                     EarlyStopping(patience=self.patience, mode='auto')
                 ],
                 use_multiprocessing=True,
-                # TODO: initial_epoch when restarting.
+                initial_epoch=initial_epoch,
             )
         except KeyboardInterrupt:
             model.save(str(self.interrupted_path))
@@ -327,6 +343,16 @@ def validation_loss(filename: Path) -> float:
     import re
     pat = re.compile(r'intermediate-(\d+\.\d+)-')
     return float(pat.match(filename.stem).group(1))
+
+
+def epoch_from_path(filename: Path) -> int:
+    """
+    Determine the epoch encded in a model filename.
+
+    >>> epoch_from_path(Path('models/intermediate-2.1664-07.hdf5'))
+    7
+    """
+    return int(filename.stem.split('-')[-1], base=10)
 
 
 def path_to_best_model(model_dir: Path) -> Path:
