@@ -49,6 +49,7 @@ from experiment import Experiment
 with Makefile() as make:
     SMALL_SET_SIZE = 32
     MEDIUM_SET_SIZE = 512
+    ORIGINAL_SET_SIZE = 11_000
 
     # === Small, exploratory configurations === #
     Experiment(name='small',
@@ -118,8 +119,42 @@ with Makefile() as make:
                    mistakes={MEDIUM_SET_SIZE},
                )).add_to_makefile(make)
 
+    Experiment(name='original',
+               language='java',
+               training_configs=Configurations(
+                   # The best overall ranking config from the medium set
+                   hidden_layers={300},
+                   context_length={20},
+                   batch_size={32},
+                   learning_rate={'0.001'},
+                   patience={20},
+                   dropout={None},
+                   optimizer={'adam'},
+                   train_set_size={ORIGINAL_SET_SIZE},
+                   validation_set_size={ORIGINAL_SET_SIZE // 2},
+                   partition={0, 1, 2, 3, 4},
+               ) + Configurations(
+                   # The best ranking config for true fix MRR (skewed...)
+                   hidden_layers={50},
+                   context_length={20},
+                   batch_size={32},
+                   learning_rate={'0.001'},
+                   patience={10},
+                   dropout={None},
+                   optimizer={'adam'},
+                   train_set_size={ORIGINAL_SET_SIZE},
+                   validation_set_size={ORIGINAL_SET_SIZE // 2},
+                   partition={0, 1, 2, 3, 4},
+               ),
+               eval_configs=Configurations(
+                   fix={'dual'},
+                   mistakes={ORIGINAL_SET_SIZE},
+               )).add_to_makefile(make)
+
+
     # Rule to make ALL of the experiments.
     make.phony_rule('experiments').depends_on(
         'small-experiments',
-        'medium-experiments'
+        'medium-experiments',
+        'original-experiments',
     )
