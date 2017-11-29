@@ -133,12 +133,17 @@ class ModelDescription:
         assert self.incomplete_path.exists()
 
         # Continue from a saved intermediate model.
-        intermediates = self.incomplete_path.glob('intermediate-*.hdf5')
-        if not intermediates:
-            self._train()
+        intermediates = list(self.incomplete_path.glob('intermediate-*.hdf5'))
 
-        last_epoch = max(intermediates, key=epoch_from_path)
-        self._train(continue_from=last_epoch)
+        if len(intermediates) > 0:
+            # There are intermediate files!
+            # Figure out the last epoch, and continue from there.
+            last_epoch = max(intermediates, key=epoch_from_path)
+            self._train(continue_from=last_epoch)
+        else:
+            # There might not be an intermediate file, so pretend we're
+            # starting from scratch.
+            self._train()
 
     def _train(self, continue_from: Path=None) -> None:
         logger.info("Saving model to %s", self.model_path)
@@ -162,7 +167,7 @@ class ModelDescription:
         else:
             logger.info('Continuing from %s', continue_from)
             model.load_weights(str(continue_from))
-            initial_epoch = epoch_from_path(continue_from)
+            initial_epoch = epoch_from_path(continue_from) + 1
 
         try:
             model.fit_generator(
