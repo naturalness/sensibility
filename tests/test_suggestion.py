@@ -75,7 +75,7 @@ def test_format_insertion(inner_missing_paren: 'File', i):
     # Check that the second line came from the file:
     assert ''.join(broken_file.lines[4].split()) == ''.join(lines[1].split())
     # Check that the fourth line has the insertion token
-    #assert ')' in lines[-1]
+    assert ')' in lines[-1]
 
     # TODO: more robust tests
     # TODO: check that the caret is in the right place.

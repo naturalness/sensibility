@@ -116,6 +116,9 @@ class Language(ABC):
     def to_text(self, entry: Vind) -> str:
         return self.vocabulary.to_text(entry)
 
+    def to_source_text(self, entry: Vind) -> str:
+        return self.vocabulary.to_source_text(entry)
+
     # Dunder methods
 
     def __str__(self) -> str:
@@ -267,6 +270,9 @@ class LanguageProxy(Language):
 
     def to_text(self, *args, **kwargs):
         return self.wrapped_language.to_text(*args, **kwargs)
+
+    def to_source_text(self, *args, **kwargs) -> str:
+        return self.wrapped_language.to_source_text(*args, **kwargs)
 
 
 class ConcreteLanguageProxy(LanguageProxy):

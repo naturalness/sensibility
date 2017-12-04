@@ -120,7 +120,7 @@ class Insert(Suggestion):
         t = Terminal()
 
         pos = self.pos
-        text = current_language.to_text(self.token)
+        text = current_language.to_source_text(self.token)
 
         # TODO: lack of bounds check...
         next_token = self.tokens[pos + 1]
@@ -153,6 +153,7 @@ def format_fix(filename: Path, fix: Edit) -> None:
     line = suggestion.line
     column = suggestion.column
     t = Terminal()
+    # Use a format similar to Clang's.
     header = t.bold(f"{filename}:{line}:{column}:")
     print(header, suggestion)
 
