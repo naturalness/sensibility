@@ -36,6 +36,10 @@ from sensibility.source_vector import SourceVector, to_source_vector
 from sensibility.vocabulary import NoSourceRepresentationError
 
 
+# The smallest positive (non-zero) float32.
+epsilon = np.nextafter(np.float32(0), np.float32(1))
+
+
 class LSTMFixerUpper:
     """
     Suggests fixes for syntax errors in a file with a dual LSTM model (which
@@ -104,10 +108,6 @@ class LSTMFixerUpper:
                 fixes.try_substitute(pos, likely_token)
 
         return tuple(fixes)
-
-
-# The smallest positive (non-zero) float32.
-epsilon = np.nextafter(np.float32(0), np.float32(1))
 
 
 class IndexResult(SupportsFloat):
