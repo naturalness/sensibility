@@ -18,8 +18,9 @@
 from blessings import Terminal  # type: ignore
 from pathlib import Path
 
-from sensibility.language import current_language
 from sensibility.edit import Edit, Insertion, Deletion, Substitution
+from sensibility.language import current_language
+from sensibility.vocabulary import Vind
 
 
 class Suggestion:
@@ -27,22 +28,28 @@ class Suggestion:
     Wraps an edit as a suggestion to a fix.
     """
 
+    # Both line and column MUST be one-indexed
+    # Note, that for some dumb reason, the convention is that column numbers
+    # are stored zero-indexed, but line numbers are stored one-indexed, so
+    # account for that...
     line: int
-    # This is always 1-indexed!
     column: int
 
     @staticmethod
     def enclose(filename: Path, fix: Edit) -> 'Suggestion':
         tokens = tuple(current_language.tokenize(filename.read_bytes()))
-        return {
-            Insertion: not_implemented,
-            Deletion: lambda: Remove(fix.index, tokens),
-            Substitution: not_implemented,
-        }[type(fix)]()
+        if isinstance(fix, Insertion):
+            return Insert(fix.token, fix.index, tokens)
+        elif isinstance(fix, Deletion):
+            return Remove(fix.index, tokens)
+        else:
+            raise NotImplementedError
 
     def __str__(self) -> str:
         raise NotImplementedError('The subclass MUST implement this')
 
+
+# TODO: these classes are ancient; I could fix them.
 
 class Remove(Suggestion):
     def __init__(self, pos, tokens):
@@ -59,7 +66,10 @@ class Remove(Suggestion):
 
     @property
     def column(self):
-        return self.token.column
+        """
+        ONE-INDEXED COLUMN
+        """
+        return 1 + self.token.column
 
     def __str__(self):
         t = Terminal()
@@ -69,7 +79,7 @@ class Remove(Suggestion):
                "".format_map(locals()))
         line_tokens = get_token_line(self.pos, self.tokens)
         line = format_line(line_tokens)
-        padding = ' ' * (1 + self.token.column)
+        padding = ' ' * (self.token.column)
         arrow = padding + t.bold_red('^')
         suggestion = padding + t.red(text)
 
@@ -77,7 +87,7 @@ class Remove(Suggestion):
 
 
 class Insert(Suggestion):
-    def __init__(self, token, pos, tokens):
+    def __init__(self, token: Vind, pos, tokens) -> None:
         self.token = token
         assert 1 < pos < len(tokens)
         self.tokens = tokens
@@ -97,7 +107,10 @@ class Insert(Suggestion):
 
     @property
     def column(self):
-        return self.tokens[self.pos].column
+        """
+        ONE-INDEXED COLUMN
+        """
+        return 1 + self.tokens[self.pos].column
 
     @property
     def insert_before(self):
@@ -107,7 +120,7 @@ class Insert(Suggestion):
         t = Terminal()
 
         pos = self.pos
-        text = self.token.value
+        text = current_language.to_text(self.token)
 
         # TODO: lack of bounds check...
         next_token = self.tokens[pos + 1]
@@ -119,12 +132,12 @@ class Insert(Suggestion):
         if self.insert_after:
             line = format_line(line_tokens)
             # Add an extra space BEFORE the insertion point:
-            padding = ' ' * (2 + 1 + self.column)
+            padding = ' ' * (2 + self.column)
         else:
             # Add an extra space AFTER insertion point;
             line = format_line(line_tokens,
                                insert_space_before=self.tokens[self.pos])
-            padding = ' ' * (1 + self.column)
+            padding = ' ' * (self.column)
 
         arrow = padding + t.bold_green('^')
         suggestion = padding + t.green(text)
