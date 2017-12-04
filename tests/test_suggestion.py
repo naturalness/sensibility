@@ -9,7 +9,7 @@ import tempfile
 
 import pytest
 
-from sensibility.edit import Edit, Insertion, Deletion
+from sensibility.edit import Edit, Insertion, Deletion, Substitution
 from sensibility.format_fix import format_fix
 
 
@@ -18,6 +18,18 @@ inner_missing_paren_source = ("""package ca.ualberta.cs.example;
 public class Foo {
     public boolean isBar(Object obj) {
         if ((obj instanceof Bar) {
+            return true;
+        }
+        return false;
+    }
+}
+""").encode('UTF-8')
+
+inner_bad_keyword_source = ("""package ca.ualberta.cs.example;
+
+public class Foo {
+    public boolean isBar(Object obj) {
+        If (obj instanceof Bar) {
             return true;
         }
         return false;
@@ -81,6 +93,31 @@ def test_format_insertion(inner_missing_paren: 'File', i):
     # TODO: check that the caret is in the right place.
 
 
+def test_format_replacement(inner_bad_keyword: 'File', i):
+    broken_file = inner_bad_keyword
+    fix = Substitution(21, original_token=i('If'), replacement=i('if'))
+    with slurp_stdout() as lines:
+        format_fix(broken_file.filename, fix)
+
+    # The error message format has exactly four lines
+    assert len(lines) == 4
+
+    # Check the formatting of the first line:
+    filename, line, column, message = lines[0].split(':', 3)
+    assert filename.endswith(broken_file.filename.name)
+    assert line == '5'
+    assert column == '9'
+    assert message.lstrip().startswith('try replacing')
+
+    # Check that the second line came from the file:
+    assert ''.join(broken_file.lines[4].split()) == ''.join(lines[1].split())
+    # Check that the fourth line has the insertion token
+    assert 'if' in lines[-1]
+
+    # TODO: more robust tests
+    # TODO: check that the caret is in the right place.
+
+
 class File(NamedTuple):
     filename: Path
     source: bytes
@@ -97,6 +134,15 @@ def inner_missing_paren():
         filename = dirpath / 'Foo.java'
         filename.write_bytes(inner_missing_paren_source)
         yield File(filename, inner_missing_paren_source)
+
+
+@pytest.fixture
+def inner_bad_keyword():
+    with tempfile.TemporaryDirectory() as dirname:
+        dirpath = Path(dirname)
+        filename = dirpath / 'Foo.java'
+        filename.write_bytes(inner_bad_keyword_source)
+        yield File(filename, inner_bad_keyword_source)
 
 
 @contextmanager
