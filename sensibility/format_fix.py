@@ -42,49 +42,16 @@ class Suggestion:
             return Insert(fix.token, fix.index, tokens)
         elif isinstance(fix, Deletion):
             return Remove(fix.index, tokens)
+        elif isinstance(fix, Substitution):
+            return Replace(fix, tokens)
         else:
-            raise NotImplementedError
+            raise ValueError(f"Unknown edit subclass: {fix}")
 
     def __str__(self) -> str:
         raise NotImplementedError('The subclass MUST implement this')
 
 
 # TODO: these classes are ancient; I could fix them.
-
-class Remove(Suggestion):
-    def __init__(self, pos, tokens):
-        self.pos = pos
-        self.tokens = tokens
-
-    @property
-    def token(self):
-        return self.tokens[self.pos]
-
-    @property
-    def line(self):
-        return self.token.line
-
-    @property
-    def column(self):
-        """
-        ONE-INDEXED COLUMN
-        """
-        return 1 + self.token.column
-
-    def __str__(self):
-        t = Terminal()
-        text = self.token.value
-
-        msg = ("try removing '{t.bold}{text}{t.normal}' "
-               "".format_map(locals()))
-        line_tokens = get_token_line(self.pos, self.tokens)
-        line = format_line(line_tokens)
-        padding = ' ' * (self.token.column)
-        arrow = padding + t.bold_red('^')
-        suggestion = padding + t.red(text)
-
-        return '\n'.join((msg, line, arrow, suggestion))
-
 
 class Insert(Suggestion):
     def __init__(self, token: Vind, pos, tokens) -> None:
@@ -141,6 +108,85 @@ class Insert(Suggestion):
 
         arrow = padding + t.bold_green('^')
         suggestion = padding + t.green(text)
+
+        return '\n'.join((msg, line, arrow, suggestion))
+
+
+class Remove(Suggestion):
+    def __init__(self, pos, tokens):
+        self.pos = pos
+        self.tokens = tokens
+
+    @property
+    def token(self):
+        return self.tokens[self.pos]
+
+    @property
+    def line(self):
+        return self.token.line
+
+    @property
+    def column(self):
+        """
+        ONE-INDEXED COLUMN
+        """
+        return 1 + self.token.column
+
+    def __str__(self):
+        t = Terminal()
+        text = self.token.value
+
+        msg = ("try removing '{t.bold}{text}{t.normal}' "
+               "".format_map(locals()))
+        line_tokens = get_token_line(self.pos, self.tokens)
+        line = format_line(line_tokens)
+        padding = ' ' * (self.token.column)
+        arrow = padding + t.bold_red('^')
+        suggestion = padding + t.red(text)
+
+        return '\n'.join((msg, line, arrow, suggestion))
+
+
+class Replace(Suggestion):
+    def __init__(self, fix: Substitution, tokens) -> None:
+        self.fix = fix
+        self.tokens = tokens
+
+    @property
+    def pos(self) -> int:
+        return self.fix.index
+
+    @property
+    def token(self):
+        return self.tokens[self.pos]
+
+    @property
+    def line(self):
+        return self.token.line
+
+    @property
+    def column(self):
+        """
+        ONE-INDEXED COLUMN
+        """
+        return 1 + self.token.column
+
+    def __str__(self) -> str:
+        t = Terminal()
+        original = self.token.value
+        replacement = current_language.to_source_text(self.fix.token)
+
+        msg = (
+            f"try replacing {t.bold_red}{original}{t.normal}"
+            f"with {t.bold_green}{replacement}{t.normal}"
+        )
+
+        line_tokens = get_token_line(self.pos, self.tokens)
+        # TODO: add strikethrough to the token!
+        line = format_line(line_tokens)
+        padding = ' ' * (self.token.column)
+        arrow = padding + t.bold_red('^')
+        suggestion = padding + t.red(replacement)
 
         return '\n'.join((msg, line, arrow, suggestion))
 
