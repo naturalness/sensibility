@@ -178,7 +178,7 @@ class Replace(Suggestion):
 
         msg = (
             f"try replacing {t.bold_red}{original}{t.normal}"
-            f"with {t.bold_green}{replacement}{t.normal}"
+            f" with {t.bold_green}{replacement}{t.normal}"
         )
 
         line_tokens = get_token_line(self.pos, self.tokens)
@@ -229,7 +229,7 @@ def format_line(tokens, insert_space_before=None):
         if token is insert_space_before:
             extra_padding = 2
 
-        padding = ' ' * (extra_padding + token.column + 1 - len(result))
+        padding = ' ' * (extra_padding + token.column - len(result))
         result += padding
         result += token.value
     return result

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec sensibility -l java prediction-server -P8080 models/java

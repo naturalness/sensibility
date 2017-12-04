@@ -31,6 +31,7 @@ from pathlib import Path
 
 from sensibility import current_language
 from sensibility.fix import LSTMFixerUpper
+from sensibility.format_fix import format_fix
 from sensibility.model.lstm.remote import RemoteDualLSTMModel
 from sensibility.source_vector import to_source_vector
 
@@ -38,6 +39,7 @@ from sensibility.source_vector import to_source_vector
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', type=Path)
 args = parser.parse_args()
+filename: Path = args.filename
 
 # Setup some Sensibility stuff.
 model = RemoteDualLSTMModel.connect()
@@ -45,5 +47,12 @@ current_language.set(model.language_name)
 fixer = LSTMFixerUpper(model)
 
 # Do it!
-source_bytes = args.filename.read_bytes()
-pprint(fixer.fix(source_bytes))
+source_bytes = filename.read_bytes()
+fixes = fixer.fix(source_bytes)
+
+if not fixes:
+    print("Unable to find a fix for", filename)
+    sys.exit(-1)
+
+for fix in fixes:
+    format_fix(filename, fix)
