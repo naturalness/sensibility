@@ -18,6 +18,7 @@
 from blessings import Terminal  # type: ignore
 from pathlib import Path
 
+from sensibility.language import current_language
 from sensibility.edit import Edit, Insertion, Deletion, Substitution
 
 
@@ -26,9 +27,18 @@ class Suggestion:
     Wraps an edit as a suggestion to a fix.
     """
 
+    line: int
+    # This is always 1-indexed!
+    column: int
+
     @staticmethod
     def enclose(filename: Path, fix: Edit) -> 'Suggestion':
-        raise NotImplementedError
+        tokens = tuple(current_language.tokenize(filename.read_bytes()))
+        return {
+            Insertion: not_implemented,
+            Deletion: lambda: Remove(fix.index, tokens),
+            Substitution: not_implemented,
+        }[type(fix)]()
 
     def __str__(self) -> str:
         raise NotImplementedError('The subclass MUST implement this')
@@ -127,4 +137,43 @@ def format_fix(filename: Path, fix: Edit) -> None:
     Prints a fix for the given filename.
     """
     suggestion = Suggestion.enclose(filename, fix)
-    print(suggestion)
+    line = suggestion.line
+    column = suggestion.column
+    t = Terminal()
+    header = t.bold(f"{filename}:{line}:{column}:")
+    print(header, suggestion)
+
+
+def get_token_line(pos, tokens):
+    line_no = tokens[pos].line
+
+    left_extent = pos
+    while left_extent > 0:
+        if tokens[left_extent - 1].line != line_no:
+            break
+        left_extent -= 1
+
+    right_extent = pos + 1
+    while right_extent < len(tokens):
+        if tokens[right_extent].line != line_no:
+            break
+        right_extent += 1
+
+    return tokens[left_extent:right_extent]
+
+
+def format_line(tokens, insert_space_before=None):
+    result = ''
+    extra_padding = 0
+    for token in tokens:
+        if token is insert_space_before:
+            extra_padding = 2
+
+        padding = ' ' * (extra_padding + token.column + 1 - len(result))
+        result += padding
+        result += token.value
+    return result
+
+
+def not_implemented():
+    raise NotImplementedError()

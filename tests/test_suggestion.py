@@ -33,13 +33,26 @@ def setup():
 
 def test_format_deletion(inner_missing_paren: 'File', i):
     broken_file = inner_missing_paren
-    fix = Deletion(23, i('('))
+    fix = Deletion(24, i('('))
     with slurp_stdout() as lines:
         format_fix(broken_file.filename, fix)
 
-    # Check that the first line has the filename
-    assert broken_file.filename.stem in lines[0]
-    # TODO: assert other basic things, like correct line number
+    # The error message format has exactly four lines
+    assert len(lines) == 4
+
+    # Check the formatting of the first line:
+    filename, line, column, message = lines[0].split(':', 3)
+    assert filename.endswith(broken_file.filename.name)
+    assert line == '5'
+    assert column == '13'
+    assert message.lstrip().startswith('try removing')
+
+    # Check that the second line came from the file:
+    assert broken_file.lines[4] in lines[1]
+    # Check that the fourth line has the deltion token
+
+    # TODO: more robust tests
+    # TODO: check that the caret is in the right place.
 
 
 class File(NamedTuple):
@@ -69,3 +82,7 @@ def slurp_stdout():
         yield lines
     # Add the lines captured.
     lines.extend(f.getvalue().split('\n'))
+
+    # The last line is usually empty, so remove it.
+    if f.getvalue()[-1] == '\n' and lines[-1] == '':
+        lines.pop()
