@@ -37,6 +37,18 @@ public class Foo {
 }
 """).encode('UTF-8')
 
+# TODO: make tests for regressions here.
+"""public class A {
+    public static void main(String args[]) {
+        if (args.length 2) {
+            System.out.println("Not enough args!");
+            System.exit(1);
+        }
+        System.out.println("Hello, world!");
+    }
+}
+"""
+
 
 def setup():
     from sensibility import current_language
