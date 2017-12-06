@@ -231,7 +231,7 @@ def format_line(tokens, insert_space_before=None):
 
         padding = ' ' * (extra_padding + token.column - len(result))
         result += padding
-        result += token.value
+        result += token._raw
     return result
 
 

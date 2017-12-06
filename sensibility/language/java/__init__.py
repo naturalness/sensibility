@@ -97,6 +97,25 @@ class LazyVocabulary:
         return self.value
 
 
+class JavaToken(Token):
+    """
+    HACK: javac_parser has some... interesting ideas about normalization.
+    so add a `_raw` field to the token.
+    """
+    # TODO: fix with upstream (javac_parser) to return a sensible value for the normalized value
+    __slots__ = ('_raw',)
+
+    def __init__(self, *, _raw: str, name: str, value: str, start: Position, end: Position) -> None:
+        super().__init__(name=name, value=value, start=start, end=end)
+        self._raw = _raw
+
+    def __repr__(self) -> str:
+        cls = type(self).__name__
+        return (f"{cls}(_raw={self._raw!r}"
+                f"name={self.name!r}, value={self.value!r}, "
+                f"start={self.start!r}, end={self.end!r})")
+
+
 class Java(Language):
     """
     Defines the Java 8 programming language.
@@ -133,15 +152,16 @@ class Java(Language):
         #   3. A 2-tuple of start line, start column
         #   4. A 2-tuple of end line, end column
         #   5. A whitespace-free representation of the value
-        for name, _raw_value, start, end, normalized in tokens:
+        for name, raw_value, start, end, normalized in tokens:
             # Omit the EOF token, as it's only useful for the parser.
             if name == 'EOF':
                 continue
             # Take the NORMALIZED value, as Java allows unicode escapes in
             # ARBITRARY tokens and then things get hairy here.
-            yield Token(name=name, value=normalized,
-                        start=Position(line=start[0], column=start[1]),
-                        end=Position(line=end[0], column=end[1]))
+            yield JavaToken(_raw=raw_value,
+                            name=name, value=normalized,
+                            start=Position(line=start[0], column=start[1]),
+                            end=Position(line=end[0], column=end[1]))
 
     def check_syntax(self, source: Union[str, bytes]) -> bool:
         return self.java.get_num_parse_errors(to_str(source)) == 0
