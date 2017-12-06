@@ -8,7 +8,7 @@ library(xtable)
 #  small set      -- 32
 #  medium set     -- 512
 #  original set   -- 11000
-TRAINING_SET_SIZE <- 512
+TRAINING_SET_SIZE <- 11000
 
 
 # Calculate the reciprocal of the rank. Nulls are converted to zeros.
@@ -56,40 +56,8 @@ aggdata <- with(results, {aggregate(
   # These are the responding variables that should be meaned.
   cbind(exact_location_rr, valid_fix_rr, true_fix_rr, mean_val_loss) ~
   # These are the manipulated variables; there may be more!
-    hidden_layers + context_length + patience,
+    hidden_layers + context_length + patience + partition,
   results, mean
 )})
 
-# Figure out what actually affects true fix MRR
-line.model <- with(results, {lm(
-  true_fix_rr ~
-    hidden_layers + context_length + patience + mean_val_loss + partition
-)})
-summary(line.model)
-
-# Figure out what actually affects valid fix MRR
-line.model <- with(results, {lm(
-  true_fix_rr ~
-    hidden_layers + context_length + patience + mean_val_loss + partition
-)})
-summary(line.model)
-
-# Are the top two models better than the originals?
-t.test(aggdata[aggdata$hidden_layers==300,]$true_fix_rr -
-         aggdata[aggdata$hidden_layers==200,]$true_fix_rr)
-t.test(aggdata[aggdata$hidden_layers==50,]$true_fix_rr -
-         aggdata[aggdata$hidden_layers==200,]$true_fix_rr)
-t.test(aggdata[aggdata$hidden_layers==300,]$true_fix_rr -
-         aggdata[aggdata$hidden_layers==50,]$true_fix_rr)
-
-# Is the 50,20 model affected by partition?
-line.model <- with(results[results$hidden_layers==50,], {lm(
-  true_fix_rr ~ partition
-)})
-summary(line.model)
-
-columns <- c("hidden_layers", "context_length", "exact_location_rr", "valid_fix_rr", "true_fix_rr")
-print(xtable(subset(aggdata, select=columns)[1:3,]),
-      only.contents = TRUE,
-      booktabs = TRUE,
-      include.rownames = FALSE)
+ggplot(results, aes(y=valid_fix_rank)) + geom_violin()

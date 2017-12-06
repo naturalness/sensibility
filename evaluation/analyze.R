@@ -7,9 +7,7 @@ library(xtable)
 # Select the training set size:
 #  small set      -- 32
 #  medium set     -- 512
-#  larget set     -- 8192
-#  huge set       -- 32768
-#  enormous set   -- 131072
+#  original set   -- 11000
 TRAINING_SET_SIZE <- 32
 
 
