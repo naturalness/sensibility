@@ -19,6 +19,7 @@
 Implements the logic to attempt to fix syntax errors.
 """
 
+import logging
 from typing import Iterable, Iterator, List, NamedTuple, Set, Sequence, SupportsFloat
 from typing import cast
 
@@ -260,13 +261,12 @@ class Fixes(Iterable[Edit]):
         """
         Actually apply the edit to the file. Add it to the fixes if it works.
         """
-        # XXX: Move this import elsewhere.
+        logger = logging.getLogger(type(self).__name__)
         try:
+            logger.info(f"Applying %r", edit)
             source_code = edit.apply(self.vector).to_source_code()
         except NoSourceRepresentationError:
-            import logging
-            logger = logging.getLogger(type(self).__name__)
-            logger.info(f"Tried applying %r", edit)
+            logger.warn(f"No source representation for %r", edit)
             return
         if language.check_syntax(source_code):
             self.fixes.append(edit)
