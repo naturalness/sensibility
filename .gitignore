@@ -81,6 +81,8 @@ unparsed
 ### Local ###
 
 /.token
+# Demonstration Java files
+/*.java
 
 # Databases
 *.sqlite3
