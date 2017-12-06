@@ -38,13 +38,16 @@ public class Foo {
 """).encode('UTF-8')
 
 # TODO: make tests for regressions here.
-"""public class A {
+int_print_regression_source = b"""package ca.ualberta.cs.example;
+
+public class Hello {
     public static void main(String args[]) {
-        if (args.length 2) {
-            System.out.println("Not enough args!");
-            System.exit(1);
+        if (args.length != 2)
+            int exitStatus = 2;
+            System.out.println("Not enough args");
+            System.exit(exitStatus);
         }
-        System.out.println("Hello, world!");
+        System.out.println("Hello, World!");
     }
 }
 """
@@ -130,6 +133,22 @@ def test_format_replacement(inner_bad_keyword: 'File', i):
     # TODO: check that the caret is in the right place.
 
 
+def test_int_print_regression(int_print_regression: 'File', i):
+    """
+    Old version would print 'text.integer' instead of the raw value of the
+    integer.
+    """
+    broken_file = int_print_regression
+    fix = Insertion(31, i('{'))
+    with slurp_stdout() as lines:
+        format_fix(broken_file.filename, fix)
+
+    # XXX: Really specific assertions here:
+    source_line = lines[1]
+    assert 'token.integer' not in source_line
+    assert '2' in source_line
+
+
 class File(NamedTuple):
     filename: Path
     source: bytes
@@ -141,20 +160,25 @@ class File(NamedTuple):
 
 @pytest.fixture
 def inner_missing_paren():
-    with tempfile.TemporaryDirectory() as dirname:
-        dirpath = Path(dirname)
-        filename = dirpath / 'Foo.java'
-        filename.write_bytes(inner_missing_paren_source)
-        yield File(filename, inner_missing_paren_source)
+    yield from create_temp_file(inner_missing_paren_source)
+
+
+@pytest.fixture
+def int_print_regression():
+    yield from create_temp_file(int_print_regression_source)
 
 
 @pytest.fixture
 def inner_bad_keyword():
+    yield from create_temp_file(inner_bad_keyword_source)
+
+
+def create_temp_file(source: bytes, basename: str='Foo.java'):
     with tempfile.TemporaryDirectory() as dirname:
         dirpath = Path(dirname)
-        filename = dirpath / 'Foo.java'
-        filename.write_bytes(inner_bad_keyword_source)
-        yield File(filename, inner_bad_keyword_source)
+        filename = dirpath / basename
+        filename.write_bytes(source)
+        yield File(filename, source)
 
 
 @contextmanager
