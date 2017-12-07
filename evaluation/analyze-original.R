@@ -60,4 +60,8 @@ aggdata <- with(results, {aggregate(
   results, mean
 )})
 
-ggplot(results, aes(y=valid_fix_rank)) + geom_violin()
+results.300 <- subset(results, hidden_layers == 300)
+ggplot(results.300, aes(x=hidden_layers, y=valid_fix_rr)) + geom_violin()
+ggplot(results.300, aes(x=hidden_layers, y=exact_location_rr)) + geom_violin()
+ggplot(results.300, aes(x=hidden_layers, y=true_fix_rr)) + geom_violin()
+
