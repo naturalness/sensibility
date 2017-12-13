@@ -26,21 +26,21 @@ import io
 import logging
 import time
 import zipfile
-from typing import Any, Dict, Iterator, Tuple, Union
 from pathlib import PurePosixPath
+from typing import Any, Dict, Iterator, Tuple, Union
 
-import requests
 import dateutil.parser
+import requests
 
 from sensibility.language import language
-from .rqueue import Queue, WorkQueue
-from .names import DOWNLOAD_QUEUE
-from .connection import get_redis_client, get_github_token
-from .rate_limit import wait_for_rate_limit, seconds_until
-from .models import (
-    RepositoryID, RepositoryMetadata, SourceFile, SourceFileInRepository
-)
+
+from .connection import get_github_token, get_redis_client
 from .corpus import Corpus, NewCorpusError
+from .models import (RepositoryID, RepositoryMetadata, SourceFile,
+                     SourceFileInRepository)
+from .names import DOWNLOAD_QUEUE
+from .rate_limit import seconds_until, wait_for_rate_limit
+from .rqueue import Queue, WorkQueue
 
 QUEUE_ERRORS = DOWNLOAD_QUEUE.errors
 logger = logging.getLogger('download_worker')

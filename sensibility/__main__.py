@@ -32,7 +32,6 @@ from typing import Dict, List, Tuple
 
 from sensibility._paths import REPOSITORY_ROOT
 
-
 bin_dir = REPOSITORY_ROOT / 'bin'
 
 

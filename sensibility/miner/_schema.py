@@ -37,18 +37,15 @@ It is recommend to use DELETE mode when accessing the database read-only:
 
 """
 
-from typing import Iterable, Any, Tuple
+from typing import Any, Iterable, Tuple
 
-from sqlalchemy import (  # type: ignore
-    Table, Column, Index,
-    Integer, String, DateTime, LargeBinary,
-    MetaData,
-    ForeignKeyConstraint
-)
-from sqlalchemy import select, literal_column  # type: ignore
+from sqlalchemy.ext import compiler  # type: ignore
 from sqlalchemy.schema import DDLElement  # type: ignore
 from sqlalchemy.sql import table  # type: ignore
-from sqlalchemy.ext import compiler  # type: ignore
+
+from sqlalchemy import (Column, DateTime,  # type: ignore; type: ignore
+                        ForeignKeyConstraint, Index, Integer, LargeBinary,
+                        MetaData, String, Table, literal_column, select)
 
 
 def _to(table_name, *columns):

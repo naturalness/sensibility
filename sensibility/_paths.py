@@ -20,10 +20,9 @@ Paths for internal use.
 """
 
 import warnings
-
-from sensibility.language import language
 from pathlib import Path
 
+from sensibility.language import language
 
 # Get paths for here and repository root dir.
 HERE = Path(__file__).parent

@@ -70,17 +70,16 @@ import heapq
 import random
 import sys
 import warnings
-
-from pathlib import Path
 from functools import partial, total_ordering
+from pathlib import Path
 from typing import Iterable, Set
 
 from tqdm import tqdm
 
-from sensibility.miner.models import RepositoryID
-from sensibility.miner.corpus import Corpus
 from sensibility._paths import EVALUATION_DIR
 from sensibility.language import language
+from sensibility.miner.corpus import Corpus
+from sensibility.miner.models import RepositoryID
 
 PARTITIONS = 5
 stderr = partial(print, file=sys.stderr)

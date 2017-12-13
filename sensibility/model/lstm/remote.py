@@ -19,14 +19,15 @@
 Provides a model-like class that queries a remote model via XMLRPC.
 """
 
-from typing import Sequence, Iterable
-from xmlrpc.client import ServerProxy, Fault  # type: ignore
+from typing import Iterable, Sequence
+from xmlrpc.client import Fault, ServerProxy  # type: ignore
 
 import numpy as np
 
 from sensibility import current_language
 from sensibility.source_vector import SourceVector
 from sensibility.vocabulary import Vind
+
 from . import DualLSTMModel, TokenResult
 
 

@@ -23,11 +23,10 @@ import sqlite3
 import warnings
 from functools import lru_cache
 
-import redis
 import github3
+import redis
 
 from .._paths import get_sources_path
-
 
 __all__ = [
     'get_github_client', 'get_github_token',

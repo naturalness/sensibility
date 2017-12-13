@@ -20,11 +20,11 @@ A SourceVector is a sequence of Vind (vocabulary indices) that all allows for
 mutations.
 """
 
-import sys
-import random
 import array
+import random
+import sys
 from itertools import zip_longest
-from typing import IO, Iterable, Iterator, Sequence, Any, List, cast
+from typing import IO, Any, Iterable, Iterator, List, Sequence, cast
 
 from .vocabulary import Vind
 

@@ -22,11 +22,11 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Iterable, MutableMapping, Optional, Union
+from typing import Iterable, Iterator, MutableMapping, Optional, Union
 
+from .._paths import get_vectors_path
 from ..lexical_analysis import Lexeme
 from ..source_vector import SourceVector
-from .._paths import get_vectors_path
 
 
 SCHEMA = """

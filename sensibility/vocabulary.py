@@ -18,8 +18,7 @@
 import json
 import warnings
 from os import PathLike
-from typing import Dict, Iterable, NewType, Optional, Sequence, Sized
-from typing import cast
+from typing import Dict, Iterable, NewType, Optional, Sequence, Sized, cast
 
 __all__ = 'Vocabulary', 'Entry', 'Vind'
 

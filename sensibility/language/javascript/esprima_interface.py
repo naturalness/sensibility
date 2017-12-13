@@ -19,16 +19,15 @@
 Provides an interface to Esprima, implemented in Node.JS.
 """
 
-import warnings
 import atexit
-import os
 import json
+import os
 import subprocess
+import warnings
 from pathlib import Path
-from typing import Any, IO, Optional, Iterator
+from typing import IO, Any, Iterator, Optional
 
 import zmq  # type: ignore
-
 
 here = Path(__file__).parent.absolute()
 esprima_bin = here / 'esprima-interface'

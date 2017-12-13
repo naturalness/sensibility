@@ -20,25 +20,20 @@ Access to the corpus.
 """
 
 import os
-from typing import Any, Dict, Iterator, Set, Tuple, Union
 from pathlib import PurePosixPath
+from typing import Any, Dict, Iterator, Set, Tuple, Union
 
-from sqlalchemy import create_engine, event, MetaData  # type: ignore
+from sqlalchemy import MetaData, create_engine, event  # type: ignore
 from sqlalchemy.engine import Engine  # type: ignore
 from sqlalchemy.sql import select, text  # type: ignore
 
-from .connection import get_sqlite3_path
-from .models import (
-    SourceFile, RepositoryMetadata, SourceFileInRepository, MockSourceFile,
-    RepositoryID
-)
-from ._schema import (
-    failure, meta, repository, repository_source, source_file, source_summary,
-    eligible_source,
-    metadata
-)
-
 from sensibility.language import SourceSummary
+
+from ._schema import (eligible_source, failure, meta, metadata, repository,
+                      repository_source, source_file, source_summary)
+from .connection import get_sqlite3_path
+from .models import (MockSourceFile, RepositoryID, RepositoryMetadata,
+                     SourceFile, SourceFileInRepository)
 
 
 class NewCorpusError(Exception):

@@ -16,7 +16,6 @@ q:work:[uuid]: <[data]>
 
 from uuid import UUID
 
-
 __all__ = ['DOWNLOAD_QUEUE', 'PARSE_QUEUE', 'WORK_QUEUE']
 
 

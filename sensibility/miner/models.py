@@ -24,12 +24,11 @@ RepositoryID(owner='erlang', name='otp')
 'torvalds/linux'
 """
 
-import re
-import hashlib
 import datetime
+import hashlib
+import re
 from pathlib import PurePosixPath
 from typing import NamedTuple, Union
-
 
 __all__ = [
     'RepositoryID'

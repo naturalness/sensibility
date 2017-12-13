@@ -20,11 +20,10 @@ Yields contexts in both forwards and backwards directions.
 """
 
 from itertools import chain, repeat
-from typing import Sequence, TypeVar, Iterable, Tuple, Union, overload
+from typing import Iterable, Sequence, Tuple, TypeVar, Union, overload
 
-from sensibility.abram import at_least
 from sensibility import current_language
-
+from sensibility.abram import at_least
 
 # Types
 T = TypeVar('T')
@@ -37,6 +36,7 @@ class Sentences(Sequence[Sentence]):
     DO NOT INSTANTIATE THIS CLASS DIRECTLY: instead use the .forwards_from()
     or .backwards_from() static methods to instantiate a subclass.
     """
+
     def __init__(self, seq: Sequence[T], context_length: int) -> None:
         self.seq = seq
         self.context_length = context_length
@@ -82,6 +82,7 @@ class ForwardSentences(Sentences):
     """
     Addresses the prefix and the adjacent token from a token stream.
     """
+
     def make_sentence(self, index: int) -> Sentence:
         vector = self.seq
         assert 0 <= index < len(vector)
@@ -105,6 +106,7 @@ class BackwardSentences(Sentences):
     """
     Addresses the suffix and the adjacent token from a token stream.
     """
+
     def make_sentence(self, index: int) -> Sentence:
         vector = self.seq
         assert 0 <= index < len(vector)

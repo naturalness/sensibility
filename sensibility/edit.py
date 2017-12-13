@@ -23,9 +23,8 @@ import random
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Hashable, Optional, Tuple, Type, TypeVar
 
-from .vocabulary import Vind
 from .source_vector import SourceVector
-
+from .vocabulary import Vind
 
 # Serialization format:
 #   - Name of edit class

@@ -19,8 +19,8 @@
 Miscellaneous filehashes
 """
 
-import sys
 import sqlite3
+import sys
 from typing import Iterator
 
 

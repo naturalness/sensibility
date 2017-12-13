@@ -20,22 +20,17 @@ Implements the logic to attempt to fix syntax errors.
 """
 
 import logging
-from typing import Iterable, Iterator, List, NamedTuple, Set, Sequence, SupportsFloat
-from typing import cast
+from typing import (Iterable, Iterator, List, NamedTuple, Sequence, Set,
+                    SupportsFloat, cast)
 
 import numpy as np
 from numpy.linalg import norm  # noqa
 
-from sensibility import (
-    Edit, Insertion, Deletion, Substitution,
-    Token,
-    Vind,
-    language,
-)
+from sensibility import (Deletion, Edit, Insertion, Substitution, Token, Vind,
+                         language)
 from sensibility.model.lstm import DualLSTMModel
 from sensibility.source_vector import SourceVector, to_source_vector
 from sensibility.vocabulary import NoSourceRepresentationError
-
 
 # The smallest positive (non-zero) float32.
 epsilon = np.nextafter(np.float32(0), np.float32(1))

@@ -22,16 +22,15 @@ Loops batches for training and for validation (development) forever.
 import logging
 from pathlib import Path
 from random import shuffle
-from typing import Iterable, Iterator, Sequence, Set, Tuple, cast
-from typing import Union
+from typing import Iterable, Iterator, Sequence, Set, Tuple, Union, cast
 
 import numpy as np
 from more_itertools import chunked
 
 from sensibility.evaluation.vectors import Vectors
-from sensibility.sentences import Sentence, T, forward_sentences, backward_sentences
 from sensibility.language import language
-
+from sensibility.sentences import (Sentence, T, backward_sentences,
+                                   forward_sentences)
 
 Batch = Tuple[np.ndarray, np.ndarray]
 

@@ -19,16 +19,16 @@
 Compute natural break between "minified" and "hand-written" JavaScript.
 """
 
-import sys
 import logging
-from math import log, exp
+import sys
+from math import exp, log
 from operator import attrgetter
 from typing import NamedTuple, Sequence, Tuple
 
-import numpy as np
 import jenkspy  # type: ignore
+import numpy as np
 
-from sensibility.language import language, SourceSummary
+from sensibility.language import SourceSummary, language
 
 
 class SummaryWithHash:

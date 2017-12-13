@@ -19,9 +19,8 @@ import sqlite3
 from typing import Iterable, Iterator, NewType, Optional, Tuple
 
 from sensibility import Edit
-from sensibility.vocabulary import Vind
 from sensibility.evaluation.distance import FixEvent
-
+from sensibility.vocabulary import Vind
 
 # Different types of IDs that are both just ints, but it's very important
 # that the IDs don't get confused for one-another.

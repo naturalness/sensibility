@@ -23,12 +23,11 @@ from typing import Callable, Dict, Iterable, Optional, Sequence, Tuple, cast
 
 from Levenshtein import editops  # type: ignore
 
-from sensibility.lexical_analysis import Token
-from sensibility.language import language
-from sensibility.vocabulary import Vind
 from sensibility import Edit
 from sensibility.abram import at_least
-
+from sensibility.language import language
+from sensibility.lexical_analysis import Token
+from sensibility.vocabulary import Vind
 
 TokenConverter = Callable[[Token], str]
 EditOp = Tuple[str, int, int, int, int]

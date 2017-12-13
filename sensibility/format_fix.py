@@ -15,10 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from blessings import Terminal  # type: ignore
 from pathlib import Path
 
-from sensibility.edit import Edit, Insertion, Deletion, Substitution
+from blessings import Terminal  # type: ignore
+
+from sensibility.edit import Deletion, Edit, Insertion, Substitution
 from sensibility.language import current_language
 from sensibility.vocabulary import Vind
 

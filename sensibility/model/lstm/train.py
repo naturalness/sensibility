@@ -29,14 +29,13 @@ import warnings
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Set, Tuple, cast
 
+from sensibility._paths import (get_training_set_path, get_validation_set_path,
+                                get_vectors_path)
 from sensibility.language import language
 from sensibility.miner.util import filehashes
 from sensibility.utils import symlink_within_dir
-from sensibility._paths import (
-    get_validation_set_path, get_training_set_path, get_vectors_path
-)
-from .loop_batches import LoopBatchesEndlessly
 
+from .loop_batches import LoopBatchesEndlessly
 
 # === Default command line arguments === #
 

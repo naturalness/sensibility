@@ -19,8 +19,7 @@
 Utilites designed to maintain Dr. Hindle's sanity.
 """
 
-from typing import Union, TypeVar
-
+from typing import TypeVar, Union
 
 Number = TypeVar('Number', int, float, complex)
 
