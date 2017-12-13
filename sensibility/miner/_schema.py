@@ -43,7 +43,7 @@ from sqlalchemy.ext import compiler  # type: ignore
 from sqlalchemy.schema import DDLElement  # type: ignore
 from sqlalchemy.sql import table  # type: ignore
 
-from sqlalchemy import (Column, DateTime,  # type: ignore; type: ignore
+from sqlalchemy import (Column, DateTime,  # type: ignore
                         ForeignKeyConstraint, Index, Integer, LargeBinary,
                         MetaData, String, Table, literal_column, select)
 
