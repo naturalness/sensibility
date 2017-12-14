@@ -18,11 +18,16 @@
 Sensibility --- detect and fix syntax errors in source code.
 """
 
+import pkg_resources
+
 from .edit import Edit, Insertion, Deletion, Substitution
 from .language import Language, current_language
 from .lexical_analysis import Lexeme, Token, Location, Position
 from .source_vector import SourceVector
 from .vocabulary import Vocabulary, Vind
+
+# Get the current version from setup.py
+__version__ = pkg_resources.get_distribution(__name__).version
 
 # XXX: Deprecated: this alias
 language = current_language
