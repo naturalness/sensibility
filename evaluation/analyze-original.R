@@ -22,11 +22,12 @@ reciprank <- function (vec) {
 # Fetch the raw results from the database.
 con <- dbConnect(RSQLite::SQLite(), "results.sqlite3")
 raw.results <- dbGetQuery(con, "
-  SELECT exact_location_rank, valid_fix_rank, true_fix_rank,
+  SELECT line_location_rank, exact_location_rank, valid_fix_rank, true_fix_rank,
            forwards_val_loss, backwards_val_loss,
          hidden_layers, context_length,
            patience, partition,
-         training_set_size
+         training_set_size,
+        bad_file
     FROM result JOIN model ON result.model_id = model.id;
 ")
 dbDisconnect(con)
@@ -38,6 +39,7 @@ results <- within(raw.results, {
   partition <- as.factor(partition)
 
   # Get reciprocal ranks.
+  line_location_rr <- reciprank(line_location_rank)
   exact_location_rr <- reciprank(exact_location_rank)
   valid_fix_rr <- reciprank(valid_fix_rank)
   true_fix_rr <- reciprank(true_fix_rank)
@@ -54,7 +56,7 @@ if (!is.na(TRAINING_SET_SIZE)) {
 # Get the MRR for all these responding variables.
 aggdata <- with(results, {aggregate(
   # These are the responding variables that should be meaned.
-  cbind(exact_location_rr, valid_fix_rr, true_fix_rr, mean_val_loss) ~
+  cbind(line_location_rr, exact_location_rr, valid_fix_rr, true_fix_rr, mean_val_loss) ~
   # These are the manipulated variables; there may be more!
     hidden_layers + context_length + patience + partition,
   results, mean
@@ -65,3 +67,7 @@ ggplot(results.300, aes(x=hidden_layers, y=valid_fix_rr)) + geom_violin()
 ggplot(results.300, aes(x=hidden_layers, y=exact_location_rr)) + geom_violin()
 ggplot(results.300, aes(x=hidden_layers, y=true_fix_rr)) + geom_violin()
 
+mean(results.300$line_location_rr)
+mean(results.300$exact_location_rr)
+mean(results.300$valid_fix_rr)
+mean(results.300$true_fix_rr)
