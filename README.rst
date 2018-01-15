@@ -9,11 +9,10 @@ Finds and fixes syntax errors. This is experimental software.
 
     **NOTE**: Please use the saner2018_ tag if you're looking to replicate the
     results from our SANER 2018 paper. Find the replication data on `archive.org`_
-    See Citation_ for how to cite this paper.
+    See Citation_ for how to cite this paper. Use the following to clone
+    Sensibility with the correct branch::
 
-    ::
-
-        git clone --branch=saner2018 https://github.com/eddieantonio/training-grammar-guru.git
+        git clone --branch=saner2018 https://github.com/naturalness/sensibility.git
 
 .. _saner2018: https://github.com/naturalness/sensibility/tree/saner2018
 .. _`archive.org`: https://archive.org/details/sensibility-saner2018
