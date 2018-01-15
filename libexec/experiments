@@ -119,7 +119,10 @@ with Makefile() as make:
                    mistakes={MEDIUM_SET_SIZE},
                )).add_to_makefile(make)
 
-    Experiment(name='original',
+
+    # Creates models tested for LSTM 2; the one most similar to LSTM 1 was
+    # ultimately chosen.
+    Experiment(name='lstm2',
                language='java',
                training_configs=Configurations(
                    # The best overall ranking config from the medium set
@@ -151,10 +154,31 @@ with Makefile() as make:
                    mistakes={ORIGINAL_SET_SIZE},
                )).add_to_makefile(make)
 
+    # LSTM 1 was found before all of this experimental setup, but this rule
+    # effectively creates it (minus the lack of proper shuffling)
+    Experiment(name='lstm1',
+               language='java',
+               training_configs=Configurations(
+                   # The best overall ranking config from the medium set
+                   hidden_layers={300},
+                   context_length={20},
+                   batch_size={32},
+                   learning_rate={'0.001'},
+                   patience={3},
+                   dropout={None},
+                   optimizer={'rmsprop'},
+                   train_set_size={ORIGINAL_SET_SIZE},
+                   validation_set_size={ORIGINAL_SET_SIZE // 2},
+                   partition={0, 1, 2, 3, 4},
+               ),
+               eval_configs=Configurations(
+                   fix={'dual'},
+                   mistakes={ORIGINAL_SET_SIZE},
+               )).add_to_makefile(make)
 
     # Rule to make ALL of the experiments.
     make.phony_rule('experiments').depends_on(
         'small-experiments',
         'medium-experiments',
-        'original-experiments',
+        'lstm2-experiments',
     )
