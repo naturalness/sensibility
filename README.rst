@@ -5,19 +5,18 @@ Sensibility
 .. image:: https://travis-ci.org/naturalness/sensibility.svg?branch=master
     :target: https://travis-ci.org/naturalness/sensibility
 
-Finds and fixes syntax errors. In development.
+Finds and fixes syntax errors. This is experimental software.
 
-    **NOTE**: The cmput680_ tag has a working proof-of-concept. Clone the
-    `old repo`_ at the ``cmput680`` tag:
+    **NOTE**: Please use the saner2018_ tag if you're looking to replicate the
+    results from our SANER 2018 paper. Find the replication data on `archive.org`_
+    See Citation_ for how to cite this paper.
 
     ::
 
-        git clone --branch=cmput680 https://github.com/eddieantonio/training-grammar-guru.git
+        git clone --branch=saner2018 https://github.com/eddieantonio/training-grammar-guru.git
 
-    Then following its install and usage sections.
-
-.. _old repo: https://github.com/eddieantonio/training-grammar-guru
-.. _cmput680: https://github.com/eddieantonio/training-grammar-guru/tree/cmput680
+.. _saner2018: https://github.com/naturalness/sensibility/tree/saner2018
+.. _`archive.org`: https://archive.org/details/sensibility-saner2018
 
 
 Requirements
@@ -119,6 +118,22 @@ Evaluation
 Type ``make experiments`` to train all of the models and evaluate each one.
 See ``libexec/experiments`` for more details.
 
+
+Citation
+========
+
+If you use Sensibility in academic works, please use the following citation:
+
+    @inproceedings{santos2018, 
+        author={Santos, Eddie Antonio and
+                Campbell, Joshua Charles and
+                Patel, Dhvani and
+                Hindle, Abram and
+                Amaral, Jos{\'e} Nelson}, 
+        booktitle={2018 {IEEE} 25th International Conference on Software Analysis, Evolution and Reengineering ({SANER})}, 
+        title={Syntax and {Sensibility}: Using Language Models to Detect and Correct Syntax Errors},
+        year={2018}, 
+        month={Mar}}
 
 License
 =======
