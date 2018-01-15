@@ -122,7 +122,7 @@ See ``libexec/experiments`` for more details.
 Citation
 ========
 
-If you use Sensibility in academic works, please use the following citation:
+If you use Sensibility in academic works, please use the following citation::
 
     @inproceedings{santos2018, 
         author={Santos, Eddie Antonio and
