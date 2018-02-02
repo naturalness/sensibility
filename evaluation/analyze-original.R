@@ -73,6 +73,7 @@ aggdata <- with(results, {aggregate(
 
 MAX_RANK <- 5
 
+# TODO: make into function that will work with valid fix and exact location
 results.300 <- subset(results, hidden_layers == 300)
 results.300 <- within(results.300, {
   true_fix_rank[is.na(true_fix_rank)] <- Inf
@@ -101,3 +102,8 @@ mean(results.300$valid_fix_rr)
 mean(results.300$true_fix_rr)
 
 
+aggdata.partitioned$config <- as.factor(
+  with(aggdata.partitioned, paste(hidden_layers, context_length))
+  )
+t.test(true_fix_rr ~ config, aggdata.partitioned, paired=TRUE, alternative = "greater")
+xtable(aggdata.partitioned)
