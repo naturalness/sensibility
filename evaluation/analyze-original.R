@@ -3,6 +3,7 @@ library(ggplot2)
 library(plyr)
 library(psych)
 library(xtable)
+library(scales)
 
 # Select the training set size:
 #  small set      -- 32
@@ -85,8 +86,10 @@ results.300 <- within(results.300, {
 amount.first <- length(which(results.300$true_fix_rank == 1))
 pct.first <- 100 * amount.first / nrow(results.300)
 
+# With help from https://stackoverflow.com/a/14511974/6626414
 ggplot(results.300, aes(x=true_fix_rank)) +
-  geom_bar()
+  geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels=percent)
 
 #ggplot(results.300, aes(x=hidden_layers, y=valid_fix_rr)) + geom_violin()
 #ggplot(results.300, aes(x=hidden_layers, y=exact_location_rr)) + geom_violin()
