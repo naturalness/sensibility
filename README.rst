@@ -4,6 +4,8 @@ Sensibility
 
 .. image:: https://travis-ci.org/naturalness/sensibility.svg?branch=master
     :target: https://travis-ci.org/naturalness/sensibility
+.. image:: https://zenodo.org/badge/93442311.svg
+   :target: https://zenodo.org/badge/latestdoi/93442311
 
 Finds and fixes syntax errors. This is experimental software.
 
