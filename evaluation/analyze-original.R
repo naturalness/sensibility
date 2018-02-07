@@ -104,6 +104,6 @@ mean(results.300$true_fix_rr)
 
 aggdata.partitioned$config <- as.factor(
   with(aggdata.partitioned, paste(hidden_layers, context_length))
-  )
+)
 t.test(true_fix_rr ~ config, aggdata.partitioned, paired=TRUE, alternative = "greater")
 xtable(aggdata.partitioned)
