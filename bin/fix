@@ -50,8 +50,13 @@ model = RemoteDualLSTMModel.connect()
 current_language.set(model.language_name)
 fixer = LSTMFixerUpper(model)
 
-# Do it!
+# Before we do anything, check if it's valid...
 source_bytes = filename.read_bytes()
+if current_language.check_syntax(source_bytes):
+    # No syntax errors!
+    sys.exit(0)
+
+# Do it!
 fixes = fixer.fix(source_bytes)
 
 if not fixes:
