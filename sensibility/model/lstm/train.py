@@ -144,7 +144,7 @@ class ModelDescription:
             # starting from scratch.
             self._train()
 
-    def _train(self, continue_from: Path=None) -> None:
+    def _train(self, continue_from: Path = None) -> None:
         logger.info("Saving model to %s", self.model_path)
         logger.info("%d training files", len(self.training_set))
         logger.info("%d validation files", len(self.validation_set))
@@ -346,7 +346,10 @@ def validation_loss(filename: Path) -> float:
     """
     import re
     pat = re.compile(r'intermediate-(\d+\.\d+)-')
-    return float(pat.match(filename.stem).group(1))
+    m = pat.match(filename.stem)
+    if m is None:
+        raise ValueError(f"Not an intermediate model filename: {filename}")
+    return float(m.group(1))
 
 
 def epoch_from_path(filename: Path) -> int:

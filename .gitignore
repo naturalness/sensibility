@@ -106,3 +106,4 @@ experiments.mk
 /training/
 /mistakes/
 mistakes.txt
+.pytest_cache
