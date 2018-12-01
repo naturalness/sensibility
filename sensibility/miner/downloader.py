@@ -190,7 +190,9 @@ class GitHubGraphQLClient:
                     }
                   }
                 }
-                license
+                licenseInfo {
+                  name
+                }
               }
             }
         """, owner=repo.owner, name=repo.name)
@@ -205,7 +207,7 @@ class GitHubGraphQLClient:
             owner=owner,
             name=name,
             revision=latest_commit['sha1'],
-            license=info['license'],
+            license=info['licenseInfo'],
             commit_date=dateutil.parser.parse(latest_commit['committedDate'])
         )
 
