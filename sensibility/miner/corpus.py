@@ -121,8 +121,6 @@ class Corpus:
                 if path is None:
                     path = get_sqlite3_path() if path is None else path
                 url = f"sqlite:///{os.fspath(path)}"
-            if not os.path.exists(os.path.dirname(path)):
-                os.makedirs(os.path.dirname(path))
             self.engine = create_engine(url)
 
         self._initialize_sqlite3(writable)
