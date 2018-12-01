@@ -20,7 +20,7 @@ Access to the corpus.
 """
 
 import os
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterator, Set, Tuple, Union
 
 from sqlalchemy import MetaData, create_engine, event  # type: ignore
@@ -119,8 +119,16 @@ class Corpus:
         else:
             if url is None:
                 if path is None:
-                    path = get_sqlite3_path() if path is None else path
-                url = f"sqlite:///{os.fspath(path)}"
+                    path = get_sqlite3_path()
+
+                # Ensure the containing directory exists.
+                effective_path = Path(path)
+                containing_dir = effective_path.parent
+                if not containing_dir.is_dir():
+                    containing_dir.mkdir(parents=True)
+
+                url = f"sqlite:///{os.fspath(effective_path)}"
+
             self.engine = create_engine(url)
 
         self._initialize_sqlite3(writable)
