@@ -211,7 +211,7 @@ class GitHubGraphQLClient:
             owner=owner,
             name=name,
             revision=latest_commit['sha1'],
-            license=license_name,
+            license=license_name or '',
             commit_date=dateutil.parser.parse(latest_commit['committedDate'])
         )
 
