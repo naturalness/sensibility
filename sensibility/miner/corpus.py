@@ -20,7 +20,7 @@ Access to the corpus.
 """
 
 import os
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterator, Set, Tuple, Union
 
 from sqlalchemy import MetaData, create_engine, event  # type: ignore
@@ -112,15 +112,24 @@ class Corpus:
     Uses SQLAlchemy (as an experiment), but it's honestly not really worth it.
     """
     def __init__(self, engine=None,
-                 url: str=None, path: Union[os.PathLike, str]=None,
+                 url: str = None,
+                 path: Union[os.PathLike, str] = None,
                  writable=False) -> None:
         if engine is not None:
             self.engine = engine
         else:
             if url is None:
                 if path is None:
-                    path = get_sqlite3_path() if path is None else path
-                url = f"sqlite:///{os.fspath(path)}"
+                    path = get_sqlite3_path()
+
+                # Ensure the containing directory exists.
+                effective_path = Path(path)
+                containing_dir = effective_path.parent
+                if not containing_dir.is_dir():
+                    containing_dir.mkdir(parents=True)
+
+                url = f"sqlite:///{os.fspath(effective_path)}"
+
             self.engine = create_engine(url)
 
         self._initialize_sqlite3(writable)
@@ -239,8 +248,8 @@ class Corpus:
                           hash=filehash,
                           sloc=summary.sloc, n_tokens=summary.n_tokens)
 
-    def insert_failure(self, filehash: str, reason: str=None,
-                       ignore: bool=False) -> None:
+    def insert_failure(self, filehash: str, reason: str = None,
+                       ignore: bool = False) -> None:
         """
         Insert the word count into the source summary.
 
