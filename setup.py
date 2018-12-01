@@ -59,7 +59,7 @@ setup(
         'python-Levenshtein>=0.12.0',
         'pyzmq>=16.0.2, <17.0.0',
         'redis>=2.10.5',
-        'requests==2.13.0',
+        'requests==2.20.0',
         'SQLAlchemy>=1.1.9',
         'Theano>=0.8.0, < 0.9.0',
         'tqdm',
