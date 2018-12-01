@@ -112,7 +112,8 @@ class Corpus:
     Uses SQLAlchemy (as an experiment), but it's honestly not really worth it.
     """
     def __init__(self, engine=None,
-                 url: str=None, path: Union[os.PathLike, str]=None,
+                 url: str = None,
+                 path: Union[os.PathLike, str] = None,
                  writable=False) -> None:
         if engine is not None:
             self.engine = engine
@@ -247,8 +248,8 @@ class Corpus:
                           hash=filehash,
                           sloc=summary.sloc, n_tokens=summary.n_tokens)
 
-    def insert_failure(self, filehash: str, reason: str=None,
-                       ignore: bool=False) -> None:
+    def insert_failure(self, filehash: str, reason: str = None,
+                       ignore: bool = False) -> None:
         """
         Insert the word count into the source summary.
 
