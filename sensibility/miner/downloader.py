@@ -202,12 +202,15 @@ class GitHubGraphQLClient:
             raise ValueError(f'Could not fetch info for {repo}')
         owner, name = RepositoryID.parse(info['nameWithOwner'])
         latest_commit = info['defaultBranchRef']['target']
+        licenseName = None
+        if info['licenseInfo'] is not None:
+            licenseName = info['licenseInfo']['name']
 
         return RepositoryMetadata(
             owner=owner,
             name=name,
             revision=latest_commit['sha1'],
-            license=info['licenseInfo'],
+            license=licenseName,
             commit_date=dateutil.parser.parse(latest_commit['committedDate'])
         )
 
