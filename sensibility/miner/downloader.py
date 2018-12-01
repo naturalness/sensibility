@@ -27,7 +27,7 @@ import logging
 import time
 import zipfile
 from pathlib import PurePosixPath
-from typing import Any, Dict, Iterator, Tuple, Union
+from typing import Any, Dict, Iterator, Tuple, Union, Optional
 
 import dateutil.parser
 import requests
@@ -190,7 +190,9 @@ class GitHubGraphQLClient:
                     }
                   }
                 }
-                license
+                licenseInfo {
+                  name
+                }
               }
             }
         """, owner=repo.owner, name=repo.name)
@@ -200,12 +202,16 @@ class GitHubGraphQLClient:
             raise ValueError(f'Could not fetch info for {repo}')
         owner, name = RepositoryID.parse(info['nameWithOwner'])
         latest_commit = info['defaultBranchRef']['target']
+        license_name: Optional[str] = None
+        if info['licenseInfo'] is not None:
+            # as per https://developer.github.com/v4/object/license/
+            license_name = info['licenseInfo']['name']
 
         return RepositoryMetadata(
             owner=owner,
             name=name,
             revision=latest_commit['sha1'],
-            license=info['license'],
+            license=license_name or '',
             commit_date=dateutil.parser.parse(latest_commit['committedDate'])
         )
 
