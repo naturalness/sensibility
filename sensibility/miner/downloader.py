@@ -204,6 +204,7 @@ class GitHubGraphQLClient:
         latest_commit = info['defaultBranchRef']['target']
         license_name: Optional[str] = None
         if info['licenseInfo'] is not None:
+            # as per https://developer.github.com/v4/object/license/
             license_name = info['licenseInfo']['name']
 
         return RepositoryMetadata(
