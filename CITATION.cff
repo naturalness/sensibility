@@ -2,34 +2,49 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: >-
-  Syntax and Sensibility: Using language models to
-  detect and correct syntax errors
 message: >-
   Please cite this software using the metadata from
   'preferred-citation'.
-type: software
-authors:
-  - given-names: Eddie Antonio
-    family-names: Santos
-    email: easantos@ualberta.ca
-    affiliation: University of Alberta
-    orcid: 'https://orcid.org/0000-0001-5337-715X'
-  - given-names: Hazel Victoria
-    family-names: Campbell
-    email: hazel.campbell@ualberta.ca
-    affiliation: University of Alberta
-  - given-names: Dhvani
-    family-names: Patel
-    email: dhvani@ualberta.ca
-    affiliation: University of Alberta
-  - email: hindle1@ualberta.ca
-    affiliation: University of Alberta
-    given-names: Abram
-    family-names: Hindle
-  - given-names: José Nelson
-    family-names: Amaral
-    email: jamaral@ualberta.ca
-    affiliation: University of Alberta
+title: >-
+  Syntax and Sensibility: Using language models to
+  detect and correct syntax errors
+doi: 10.5281/zenodo.1168715.svg
+preferred-citation:
+  type: conference-paper
+  title: >-
+    Syntax and Sensibility: Using language models to
+    detect and correct syntax errors
+  doi: 10.1109/SANER.2018.8330219
+  booktitle: >-
+    2018 IEEE 25th International Conference on Software Analysis, Evolution and Reengineering (SANER)}, 
+  year: 2018
+  month: 5
+  start: 311
+  end: 322
+  authors:
+    - given-names: Eddie Antonio
+      family-names: Santos
+      email: easantos@ualberta.ca
+      affiliation: University of Alberta
+      orcid: 'https://orcid.org/0000-0001-5337-715X'
+    - given-names: Hazel Victoria
+      family-names: Campbell
+      email: hazel.campbell@ualberta.ca
+      affiliation: University of Alberta
+      orc: 'https://orcid.org/0000-0002-3819-6219'
+    - given-names: Dhvani
+      family-names: Patel
+      email: dhvani@ualberta.ca
+      affiliation: University of Alberta
+    - email: hindle1@ualberta.ca
+      affiliation: University of Alberta
+      given-names: Abram
+      family-names: Hindle
+      orc: 'https://orcid.org/0000-0002-4373-4958'
+    - given-names: José Nelson
+      family-names: Amaral
+      email: jamaral@ualberta.ca
+      affiliation: University of Alberta
+      orc: 'https://orcid.org/0000-0002-9943-1809'
 repository-code: 'https://github.com/naturalness/sensibility'
 commit: 4802ce2940d8cbd333237500a132b59b587f005f
